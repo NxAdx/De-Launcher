@@ -9,8 +9,8 @@
 const { withAndroidManifest } = require("expo/config-plugins");
 
 function addPermissions(androidManifest) {
-  if (!androidManifest.manifest.uses_permission) {
-    androidManifest.manifest.uses_permission = [];
+  if (!androidManifest.manifest["uses-permission"]) {
+    androidManifest.manifest["uses-permission"] = [];
   }
 
   const requiredPermissions = [
@@ -20,11 +20,11 @@ function addPermissions(androidManifest) {
   ];
 
   for (const perm of requiredPermissions) {
-    const hasPermission = androidManifest.manifest.uses_permission.some(
+    const hasPermission = androidManifest.manifest["uses-permission"].some(
       (p) => p.$?.["android:name"] === perm
     );
     if (!hasPermission) {
-      androidManifest.manifest.uses_permission.push({
+      androidManifest.manifest["uses-permission"].push({
         $: { "android:name": perm },
       });
     }
