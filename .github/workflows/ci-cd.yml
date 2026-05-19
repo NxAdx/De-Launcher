@@ -14,6 +14,7 @@ concurrency:
 env:
   CI: true
   EXPO_NO_TELEMETRY: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
 jobs:
@@ -77,6 +78,8 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
+        env:
+          NODE_ENV: development
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleDebug --build-cache --parallel --no-daemon
