@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["DeLauncherNativeModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.delaunchernative.DeLauncherNativeModule"]
+  }
+}
