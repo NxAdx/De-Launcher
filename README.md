@@ -44,10 +44,10 @@ Important: **Expo Go can preview the React Native interface only.** Local Expo n
 
 ## Tech Stack
 
-- **Framework**: React Native 0.81 with Expo SDK 54
+- **Framework**: React Native 0.83 with Expo SDK 55
 - **Language**: TypeScript 5.9 (strict mode)
 - **State Management**: Zustand 5.0 + React Context
-- **Persistence**: react-native-mmkv 4.3 (synchronous, high-performance KV storage)
+- **Persistence**: react-native-mmkv 4.3 in native builds, Expo Go-safe fallback storage for previews
 - **UI Animations**: Reanimated 4.1, Gesture Handler 2.28
 - **Navigation**: Expo Router 6.0
 - **Native Modules**: Expo Modules + Custom Kotlin code

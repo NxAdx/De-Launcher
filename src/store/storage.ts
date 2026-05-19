@@ -1,28 +1,62 @@
 /**
- * MMKV Storage instance for De-Launcher
+ * Storage adapter for De-Launcher.
+ *
+ * Native development builds use MMKV. Expo Go cannot load react-native-mmkv
+ * because it depends on NitroModules, so Expo Go uses localStorage or memory.
  */
-import { createMMKV } from "react-native-mmkv";
-import type { MMKV } from "react-native-mmkv";
+import Constants from "expo-constants";
 import type { StateStorage } from "zustand/middleware";
 
-// MMKV instance — will be initialized at runtime on device.
-// In dev/web environments, fall back gracefully.
-let storage: MMKV;
-try {
-  storage = createMMKV({ id: "de-launcher-storage" });
-} catch {
-  // Fallback for environments where MMKV native module isn't available
-  storage = {
-    getString: () => undefined,
-    set: () => {},
-    remove: () => {},
-  } as unknown as MMKV;
+type KeyValueStorage = {
+  getString: (key: string) => string | undefined;
+  set: (key: string, value: string) => void;
+  remove: (key: string) => void;
+};
+
+const memory = new Map<string, string>();
+
+function createFallbackStorage(): KeyValueStorage {
+  return {
+    getString: (key) => {
+      if (typeof localStorage !== "undefined") {
+        return localStorage.getItem(key) ?? undefined;
+      }
+      return memory.get(key);
+    },
+    set: (key, value) => {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(key, value);
+        return;
+      }
+      memory.set(key, value);
+    },
+    remove: (key) => {
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(key);
+        return;
+      }
+      memory.delete(key);
+    },
+  };
 }
+
+const storage: KeyValueStorage =
+  Constants.appOwnership === "expo"
+    ? createFallbackStorage()
+    : (() => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { createMMKV } = require("react-native-mmkv") as typeof import("react-native-mmkv");
+          return createMMKV({ id: "de-launcher-storage" });
+        } catch {
+          return createFallbackStorage();
+        }
+      })();
+
 export { storage };
 
 /**
- * Zustand storage adapter for MMKV.
- * Enables persist middleware to use MMKV instead of AsyncStorage.
+ * Zustand storage adapter.
  */
 export const mmkvStorage: StateStorage = {
   getItem: (name: string) => {
