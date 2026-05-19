@@ -98,6 +98,18 @@ class DeLauncherNativeModule : Module() {
       -1
     }
 
+    OnCreate {
+      appContext.reactContext?.let {
+        appWidgetManager = android.appwidget.AppWidgetManager.getInstance(it)
+        appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
+        appWidgetHost?.startListening()
+      }
+    }
+
+    OnDestroy {
+      appWidgetHost?.stopListening()
+    }
+
     View(WidgetHostView::class) {
       Prop("appWidgetId") { view: WidgetHostView, appWidgetId: Int ->
         view.appWidgetHost = appWidgetHost
@@ -110,20 +122,6 @@ class DeLauncherNativeModule : Module() {
   private var appWidgetManager: android.appwidget.AppWidgetManager? = null
   private var appWidgetHost: android.appwidget.AppWidgetHost? = null
   private val APPWIDGET_HOST_ID = 1024
-
-  override fun onCreate() {
-    super.onCreate()
-    appContext.reactContext?.let {
-      appWidgetManager = android.appwidget.AppWidgetManager.getInstance(it)
-      appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
-      appWidgetHost?.startListening()
-    }
-  }
-
-  override fun onDestroy() {
-    super.onDestroy()
-    appWidgetHost?.stopListening()
-  }
 
   private fun drawableToBase64(drawable: Drawable): String? {
     val bitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
