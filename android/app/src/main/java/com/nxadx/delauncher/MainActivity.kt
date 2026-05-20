@@ -58,8 +58,18 @@ class MainActivity : ReactActivity() {
           return
       }
 
-      // Use the default back button implementation on Android S
+  // Use the default back button implementation on Android S
       // because it's doing more than [Activity.moveTaskToBack] in fact.
       super.invokeDefaultOnBackPressed()
+  }
+
+  override fun onNewIntent(intent: android.content.Intent?) {
+      super.onNewIntent(intent)
+      intent?.let {
+          if (it.hasCategory(android.content.Intent.CATEGORY_HOME)) {
+              val localIntent = android.content.Intent("com.nxadx.delauncher.HOME_PRESSED")
+              sendBroadcast(localIntent)
+          }
+      }
   }
 }

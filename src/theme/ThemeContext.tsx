@@ -20,21 +20,19 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const { theme: storedTheme, setTheme: setStoredTheme } = useSettingsStore();
-
-  // Determine active mode: stored preference > system
-  const mode: ThemeMode = storedTheme ?? (systemScheme === "dark" ? "dark" : "light");
-
-  const colors = useMemo(() => getThemeColors(mode), [mode]);
+  // Permanently force OLED Dark Mode
+  const mode: ThemeMode = "dark";
+  const colors = useMemo(() => getThemeColors("dark"), []);
 
   const toggleTheme = useCallback(() => {
-    setStoredTheme(mode === "dark" ? "light" : "dark");
-  }, [mode, setStoredTheme]);
+    // No-op to preserve interface compatibility
+  }, []);
 
   const setTheme = useCallback(
-    (newMode: ThemeMode) => setStoredTheme(newMode),
-    [setStoredTheme]
+    (newMode: ThemeMode) => {
+      // No-op to preserve interface compatibility
+    },
+    []
   );
 
   const value = useMemo(
@@ -43,9 +41,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors,
       toggleTheme,
       setTheme,
-      isDark: mode === "dark",
+      isDark: true,
     }),
-    [mode, colors, toggleTheme, setTheme]
+    [colors, toggleTheme, setTheme]
   );
 
   return (

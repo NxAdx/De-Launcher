@@ -13,7 +13,8 @@
 import { useEffect, useState } from "react";
 import { View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack, ErrorBoundary } from "expo-router";
+import { Stack, ErrorBoundary, router } from "expo-router";
+import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
 export { ErrorBoundary };
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -52,6 +53,29 @@ function RootLayoutContent() {
     allowedPackages,
     setAllowedPackages,
   } = useAppStore();
+
+  useEffect(() => {
+    try {
+      const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
+        // Pop/dismiss all navigation routes back to the root index screen "/"
+        try {
+          router.dismissAll();
+        } catch (e) {
+          // Ignore
+        }
+        try {
+          router.replace("/");
+        } catch (e) {
+          console.warn("Failed to reset route to home index:", e);
+        }
+      });
+      return () => {
+        subscription.remove();
+      };
+    } catch (e) {
+      console.warn("Failed to subscribe to onHomePressed event:", e);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadApps() {

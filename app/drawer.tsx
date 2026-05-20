@@ -9,7 +9,7 @@ import { View, Text, StyleSheet, Pressable, Switch } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
-import { ChevronDown, ShieldOff } from "lucide-react-native";
+import { ChevronDown, ShieldOff, Settings } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -150,7 +150,16 @@ export default function DrawerScreen() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           All Apps
         </Text>
-        <View style={{ width: 28 }} />
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.dismissAll();
+            router.push("/settings");
+          }}
+          hitSlop={16}
+        >
+          <Settings size={24} color={colors.textPrimary} />
+        </Pressable>
       </Animated.View>
 
       {/* Search */}

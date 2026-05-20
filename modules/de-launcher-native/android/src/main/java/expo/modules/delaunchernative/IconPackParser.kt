@@ -38,32 +38,78 @@ class IconPackParser(private val context: Context) {
         val actions = listOf(
             "org.adw.launcher.THEMES",
             "com.novalauncher.THEME",
+            "com.anddoes.launcher.THEME",
+            "com.teslacoilsw.launcher.THEME",
+            "com.fede.launcher.THEME_ICONPACK",
             "com.gau.go.launcherex.theme",
             "com.dlto.atom.launcher.THEME",
             "solo.launcher.THEME"
         )
 
         for (action in actions) {
-            val intent = Intent(action)
-            val resolveInfos = pm.queryIntentActivities(intent, 0)
-            for (ri in resolveInfos) {
-                iconPackPackages.add(ri.activityInfo.packageName)
+            try {
+                val intent = Intent(action)
+                val resolveInfos = pm.queryIntentActivities(intent, 0)
+                for (ri in resolveInfos) {
+                    iconPackPackages.add(ri.activityInfo.packageName)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to query action $action: ${e.message}")
             }
+        }
+
+        // Fallback: Scan all installed packages on the system to verify if they have appfilter XML resources
+        try {
+            val allPackages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+            for (pkgInfo in allPackages) {
+                val pkgName = pkgInfo.packageName
+                if (pkgName == context.packageName) continue
+                if (iconPackPackages.contains(pkgName)) continue // already added
+
+                try {
+                    val appInfo = pm.getApplicationInfo(pkgName, PackageManager.GET_META_DATA)
+                    val resources = pm.getResourcesForApplication(appInfo.packageName)
+                    
+                    var hasAppFilter = false
+                    var appfilterResId = resources.getIdentifier("appfilter", "xml", pkgName)
+                    if (appfilterResId == 0) {
+                        appfilterResId = resources.getIdentifier("appfilter", "raw", pkgName)
+                    }
+                    
+                    if (appfilterResId > 0) {
+                        hasAppFilter = true
+                    } else {
+                        // Check assets
+                        try {
+                            resources.assets.open("appfilter.xml").use {
+                                hasAppFilter = true
+                            }
+                        } catch (e: Exception) {
+                            // Not in assets
+                        }
+                    }
+
+                    if (hasAppFilter) {
+                        iconPackPackages.add(pkgName)
+                        Log.d(TAG, "Found icon pack via fallback scanner: $pkgName")
+                    }
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Fallback scanner failed: ${e.message}")
         }
 
         for (packageName in iconPackPackages) {
             try {
                 val appInfo = pm.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 val resources = pm.getResourcesForApplication(appInfo.packageName)
-                val appfilterResId = resources.getIdentifier("appfilter", "xml", appInfo.packageName)
-
-                if (appfilterResId > 0) {
-                    val label = appInfo.loadLabel(pm).toString()
-                    val mappings = parseAppfilter(resources, appfilterResId)
-                    if (mappings.isNotEmpty()) {
-                        iconPacks.add(IconPackInfo(appInfo.packageName, label, mappings))
-                        Log.d(TAG, "Found icon pack: ${appInfo.packageName} - $label (${mappings.size} mappings)")
-                    }
+                val label = appInfo.loadLabel(pm).toString()
+                val mappings = parseAppfilter(resources, packageName)
+                if (mappings.isNotEmpty()) {
+                    iconPacks.add(IconPackInfo(packageName, label, mappings))
+                    Log.d(TAG, "Found icon pack: $packageName - $label (${mappings.size} mappings)")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse icon pack $packageName: ${e.message}")
@@ -74,41 +120,65 @@ class IconPackParser(private val context: Context) {
     }
 
     /**
-     * Parse appfilter.xml from an icon pack and extract package -> drawable mappings.
+     * Parse appfilter.xml from an icon pack (checking xml, raw, and assets paths) and extract package -> drawable mappings.
      */
-    private fun parseAppfilter(resources: Resources, appfilterResId: Int): Map<String, String> {
+    private fun parseAppfilter(resources: Resources, packageName: String): Map<String, String> {
         val mappings = mutableMapOf<String, String>()
 
+        // 1. Try xml resource
         try {
-            val inputStream = resources.openRawResource(appfilterResId)
-            val mappingsList = parseAppfilterXml(inputStream)
-            for ((pkg, drawable) in mappingsList) {
-                mappings[pkg] = drawable
+            val resId = resources.getIdentifier("appfilter", "xml", packageName)
+            if (resId > 0) {
+                val parser = resources.getXml(resId)
+                val mappingsList = parseAppfilterXmlParser(parser)
+                for ((pkg, drawable) in mappingsList) {
+                    mappings[pkg] = drawable
+                }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse appfilter: ${e.message}")
+            Log.w(TAG, "Failed to parse appfilter xml resource for $packageName: ${e.message}")
+        }
+
+        // 2. Try raw resource
+        if (mappings.isEmpty()) {
+            try {
+                val resId = resources.getIdentifier("appfilter", "raw", packageName)
+                if (resId > 0) {
+                    resources.openRawResource(resId).use { inputStream ->
+                        val mappingsList = parseAppfilterXml(inputStream)
+                        for ((pkg, drawable) in mappingsList) {
+                            mappings[pkg] = drawable
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse appfilter raw resource for $packageName: ${e.message}")
+            }
+        }
+
+        // 3. Try assets
+        if (mappings.isEmpty()) {
+            try {
+                resources.assets.open("appfilter.xml").use { inputStream ->
+                    val mappingsList = parseAppfilterXml(inputStream)
+                    for ((pkg, drawable) in mappingsList) {
+                        mappings[pkg] = drawable
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore if not in assets
+            }
         }
 
         return mappings
     }
 
     /**
-     * Parse appfilter.xml content.
-     * Format:
-     * <appfilter>
-     *   <item component="ComponentInfo{com.example.app/.MainActivity}" drawable="custom_icon" />
-     *   <item component="com.example.app" drawable="custom_icon" />
-     *   <item component="com.example.app/.Activity" drawable="custom_icon" />
-     * </appfilter>
+     * Parse appfilter.xml content using a general XmlPullParser.
      */
-    private fun parseAppfilterXml(inputStream: InputStream): List<Pair<String, String>> {
+    private fun parseAppfilterXmlParser(parser: XmlPullParser): List<Pair<String, String>> {
         val mappings = mutableListOf<Pair<String, String>>()
-
         try {
-            val factory = XmlPullParserFactory.newInstance()
-            val parser = factory.newPullParser()
-            parser.setInput(inputStream, "utf-8")
-
             var eventType = parser.eventType
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
@@ -116,13 +186,9 @@ class IconPackParser(private val context: Context) {
                     val drawable = parser.getAttributeValue(null, "drawable")
 
                     if (component != null && drawable != null) {
-                        // Extract package name from component
                         val packageName = extractPackageName(component)
                         if (packageName != null) {
-                            // Store both the package name and component for lookup flexibility
                             mappings.add(packageName to drawable)
-                            
-                            // Also extract the activity name for activity-specific lookups
                             val activity = extractActivityName(component)
                             if (activity != null && activity != packageName) {
                                 mappings.add(activity to drawable)
@@ -133,12 +199,24 @@ class IconPackParser(private val context: Context) {
                 eventType = parser.next()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Error parsing appfilter XML: ${e.message}")
-        } finally {
-            inputStream.close()
+            Log.w(TAG, "Error parsing appfilter XML with parser: ${e.message}")
         }
-
         return mappings
+    }
+
+    /**
+     * Parse appfilter.xml content from an input stream.
+     */
+    private fun parseAppfilterXml(inputStream: InputStream): List<Pair<String, String>> {
+        return try {
+            val factory = XmlPullParserFactory.newInstance()
+            val parser = factory.newPullParser()
+            parser.setInput(inputStream, "utf-8")
+            parseAppfilterXmlParser(parser)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error setting up appfilter XML: ${e.message}")
+            emptyList()
+        }
     }
 
     /**
@@ -219,13 +297,7 @@ class IconPackParser(private val context: Context) {
             }
 
             val resources = context.packageManager.getResourcesForApplication(iconPackPackage)
-            val appfilterResId = resources.getIdentifier("appfilter", "xml", iconPackPackage)
-
-            val mappings = if (appfilterResId > 0) {
-                parseAppfilter(resources, appfilterResId)
-            } else {
-                emptyMap()
-            }
+            val mappings = parseAppfilter(resources, iconPackPackage)
             mappingsCache[iconPackPackage] = mappings
             mappings[targetPackage]
         } catch (e: Exception) {

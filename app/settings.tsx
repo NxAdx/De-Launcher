@@ -12,6 +12,8 @@ import {
   ScrollView,
   Switch,
   Pressable,
+  Modal,
+  Image,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
 import { router } from "expo-router";
@@ -26,12 +28,14 @@ import {
   Palette,
   Home,
   Image as ImageIcon,
+  LayoutGrid,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
+import { useAppStore } from "@/src/store/appStore";
 import { getAvailableIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
 import { IconPackInfo } from "@/modules/de-launcher-native";
 
@@ -109,6 +113,12 @@ export default function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [iconPacks, setIconPacks] = useState<IconPackInfo[]>([]);
+  const [isDockModalVisible, setIsDockModalVisible] = useState(false);
+
+  const installedApps = useAppStore((s) => s.installedApps);
+  const dockPackages = useAppStore((s) => s.dockPackages);
+  const addToDock = useAppStore((s) => s.addToDock);
+  const removeFromDock = useAppStore((s) => s.removeFromDock);
 
   const {
     gridColumns,
@@ -191,31 +201,6 @@ export default function SettingsScreen() {
         <SectionHeader title="APPEARANCE" colors={colors} />
 
         <SettingRow
-          icon={
-            isDark ? (
-              <Moon size={20} color={colors.textSecondary} />
-            ) : (
-              <Sun size={20} color={colors.textSecondary} />
-            )
-          }
-          label="Dark Mode"
-          description={isDark ? "OLED-optimized dark theme" : "Light theme"}
-          right={
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{
-                false: "rgba(0,0,0,0.1)",
-                true: colors.accent,
-              }}
-              thumbColor="#FFFFFF"
-            />
-          }
-          colors={colors}
-          isDark={isDark}
-        />
-
-        <SettingRow
           icon={<Grid3x3 size={20} color={colors.textSecondary} />}
           label="Grid Columns"
           description={`${gridColumns} columns per row`}
@@ -241,6 +226,23 @@ export default function SettingsScreen() {
             </Pressable>
           }
           onPress={handleChangeWallpaper}
+          colors={colors}
+          isDark={isDark}
+        />
+
+        {/* ─── Dock Customization ─── */}
+        <SectionHeader title="DOCK" colors={colors} />
+
+        <SettingRow
+          icon={<LayoutGrid size={20} color={colors.textSecondary} />}
+          label="Configure Dock"
+          description={`${dockPackages.length} of 5 apps configured`}
+          right={
+            <Pressable onPress={() => setIsDockModalVisible(true)} style={styles.gridButton}>
+              <LayoutGrid size={16} color={colors.accent} />
+            </Pressable>
+          }
+          onPress={() => setIsDockModalVisible(true)}
           colors={colors}
           isDark={isDark}
         />
@@ -447,6 +449,20 @@ export default function SettingsScreen() {
           isDark={isDark}
         />
 
+        <SettingRow
+          icon={<LayoutGrid size={20} color={colors.textSecondary} />}
+          label="App Selector"
+          description="Manage allowed apps on your homescreen"
+          right={
+            <Pressable onPress={() => router.push("/drawer")} style={styles.gridButton}>
+              <LayoutGrid size={16} color={colors.accent} />
+            </Pressable>
+          }
+          onPress={() => router.push("/drawer")}
+          colors={colors}
+          isDark={isDark}
+        />
+
         {/* ─── About ─── */}
         <SectionHeader title="ABOUT" colors={colors} />
 
@@ -476,6 +492,89 @@ export default function SettingsScreen() {
           </Text>
         </Animated.View>
       </ScrollView>
+
+      {/* Dock Customizer Modal */}
+      <Modal
+        visible={isDockModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setIsDockModalVisible(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+          <View style={styles.header}>
+            <Pressable onPress={() => setIsDockModalVisible(false)} hitSlop={16}>
+              <ArrowLeft size={24} color={colors.textPrimary} />
+            </Pressable>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+              Configure Dock
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+            Select up to 5 apps for the quick access dock.
+          </Text>
+
+          <ScrollView style={styles.modalScrollView} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            {installedApps.map((app) => {
+              const isDocked = dockPackages.includes(app.packageName);
+              return (
+                <View
+                  key={app.packageName}
+                  style={[
+                    styles.appRow,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.02)"
+                        : "rgba(0,0,0,0.02)",
+                    },
+                  ]}
+                >
+                  <View style={styles.appInfo}>
+                    <Image
+                      source={{
+                        uri: app.icon?.startsWith("data:") || app.icon?.startsWith("file:")
+                          ? app.icon
+                          : app.icon
+                            ? `data:image/png;base64,${app.icon}`
+                            : undefined
+                      }}
+                      style={styles.modalAppIcon}
+                    />
+                    <View style={styles.appTextContainer}>
+                      <Text style={[styles.appLabel, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {app.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={isDocked}
+                    onValueChange={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (isDocked) {
+                        removeFromDock(app.packageName);
+                      } else {
+                        if (dockPackages.length >= 5) {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                          return;
+                        }
+                        addToDock(app.packageName);
+                      }
+                    }}
+                    disabled={!isDocked && dockPackages.length >= 5}
+                    trackColor={{
+                      false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                      true: colors.accent,
+                    }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -597,5 +696,48 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalSubtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing["4xl"],
+  },
+  modalAppIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  appRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.xs,
+  },
+  appInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: spacing.md,
+  },
+  appTextContainer: {
+    flex: 1,
+  },
+  appLabel: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.md,
   },
 });

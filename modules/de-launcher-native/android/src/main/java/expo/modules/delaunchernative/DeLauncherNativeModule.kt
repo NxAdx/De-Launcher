@@ -16,6 +16,8 @@ class DeLauncherNativeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("DeLauncherNative")
 
+    Events("onHomePressed")
+
     AsyncFunction("getInstalledApps") { ->
       appContext.reactContext?.let { context ->
         val appList = mutableListOf<Map<String, Any?>>()
@@ -206,10 +208,23 @@ class DeLauncherNativeModule : Module() {
 
     OnCreate {
       try {
-        appContext.reactContext?.let {
-          appWidgetManager = android.appwidget.AppWidgetManager.getInstance(it)
-          appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
+        appContext.reactContext?.let { context ->
+          appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+          appWidgetHost = android.appwidget.AppWidgetHost(context, APPWIDGET_HOST_ID)
           appWidgetHost?.startListening()
+
+          // Register BroadcastReceiver for Home button presses
+          val filter = android.content.IntentFilter("com.nxadx.delauncher.HOME_PRESSED")
+          val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, intent: android.content.Intent?) {
+              this@DeLauncherNativeModule.sendEvent("onHomePressed", mapOf<String, Any?>())
+            }
+          }
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+          } else {
+            context.registerReceiver(receiver, filter)
+          }
         }
       } catch (t: Throwable) {
         android.util.Log.e("DeLauncherNative", "Error in OnCreate initialization", t)

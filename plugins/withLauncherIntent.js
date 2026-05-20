@@ -38,14 +38,14 @@ function addQueries(androidManifest) {
     androidManifest.manifest.queries = [];
   }
 
-  const hasQueries = androidManifest.manifest.queries.some(
+  const hasLauncherQuery = androidManifest.manifest.queries.some(
     (q) => q.intent && q.intent.some(
       (i) => i.action?.[0]?.$?.["android:name"] === "android.intent.action.MAIN" &&
              i.category?.[0]?.$?.["android:name"] === "android.intent.category.LAUNCHER"
     )
   );
 
-  if (!hasQueries) {
+  if (!hasLauncherQuery) {
     androidManifest.manifest.queries.push({
       intent: [
         {
@@ -54,6 +54,36 @@ function addQueries(androidManifest) {
         },
       ],
     });
+  }
+
+  // Add queries for all standard icon pack themes to guarantee visibility on Android 11+
+  const iconPackActions = [
+    "org.adw.launcher.THEMES",
+    "com.novalauncher.THEME",
+    "com.anddoes.launcher.THEME",
+    "com.teslacoilsw.launcher.THEME",
+    "com.fede.launcher.THEME_ICONPACK",
+    "com.gau.go.launcherex.theme",
+    "com.dlto.atom.launcher.THEME",
+    "solo.launcher.THEME"
+  ];
+
+  for (const actionName of iconPackActions) {
+    const hasActionQuery = androidManifest.manifest.queries.some(
+      (q) => q.intent && q.intent.some(
+        (i) => i.action?.[0]?.$?.["android:name"] === actionName
+      )
+    );
+
+    if (!hasActionQuery) {
+      androidManifest.manifest.queries.push({
+        intent: [
+          {
+            action: [{ $: { "android:name": actionName } }],
+          },
+        ],
+      });
+    }
   }
 
   return androidManifest;

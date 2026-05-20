@@ -12,10 +12,10 @@ import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } fr
 import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { router } from "expo-router";
-import { Settings, ArrowLeft, ArrowRight, Trash } from "lucide-react-native";
+import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { spacing } from "@/src/theme/tokens";
+import { spacing, layout } from "@/src/theme/tokens";
 import { Clock } from "@/src/components/Clock";
 import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
@@ -33,6 +33,9 @@ export default function HomeScreen() {
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const moveApp = useAppStore((s) => s.moveApp);
   const toggleAppAllowed = useAppStore((s) => s.toggleAppAllowed);
+  const dockPackages = useAppStore((s) => s.dockPackages);
+  const addToDock = useAppStore((s) => s.addToDock);
+  const removeFromDock = useAppStore((s) => s.removeFromDock);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
   const allowedApps = React.useMemo(() => {
@@ -100,7 +103,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Dock */}
-        <Dock />
+        <Dock onLongPress={handleAppLongPress} />
 
         {/* Long Press Context Menu */}
         {selectedApp && (
@@ -155,6 +158,36 @@ export default function HomeScreen() {
                     </Pressable>
                   )}
 
+                  {dockPackages.includes(selectedApp.packageName) ? (
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        removeFromDock(selectedApp.packageName);
+                        setSelectedApp(null);
+                      }}
+                    >
+                      <Minus size={18} color={colors.textPrimary} />
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        Remove from Dock
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    dockPackages.length < 5 && (
+                      <Pressable
+                        style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                        onPress={() => {
+                          addToDock(selectedApp.packageName);
+                          setSelectedApp(null);
+                        }}
+                      >
+                        <Plus size={18} color={colors.textPrimary} />
+                        <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                          Add to Dock
+                        </Text>
+                      </Pressable>
+                    )
+                  )}
+
                   <Pressable
                     style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                     onPress={() => {
@@ -201,6 +234,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
+    marginBottom: layout.dockHeight,
   },
   modalOverlay: {
     flex: 1,
