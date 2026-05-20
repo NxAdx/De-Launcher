@@ -136,7 +136,7 @@ export default function DrawerScreen() {
     <View
       style={[
         styles.container,
-        { backgroundColor: colors.bg, paddingTop: insets.top },
+        { backgroundColor: colors.surface, paddingTop: insets.top },
       ]}
     >
       {/* Header */}

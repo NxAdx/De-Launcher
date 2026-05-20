@@ -29,6 +29,10 @@ export async function getAvailableIconPacks(): Promise<IconPackInfo[]> {
   return await DeLauncherNativeModule.getAvailableIconPacks();
 }
 
+export async function promptSetDefaultLauncher(): Promise<void> {
+  return await DeLauncherNativeModule.promptSetDefaultLauncher();
+}
+
 export async function getIconFromPack(
   iconPackPackage: string,
   drawableName: string

@@ -6,7 +6,7 @@
  * 2. AccessibilityService registration for the Distraction Engine
  * 3. Required permissions
  */
-const { withAndroidManifest } = require("expo/config-plugins");
+const { withAndroidManifest, withAndroidStyles } = require("expo/config-plugins");
 
 function addPermissions(androidManifest) {
   if (!androidManifest.manifest["uses-permission"]) {
@@ -133,11 +133,57 @@ function addAccessibilityService(androidManifest) {
   return androidManifest;
 }
 
+function addWallpaperTheme(styles) {
+  if (!styles.resources.style) {
+    return styles;
+  }
+  
+  const appTheme = styles.resources.style.find(
+    (style) => style.$?.name === "AppTheme"
+  );
+
+  if (appTheme) {
+    if (!appTheme.item) {
+      appTheme.item = [];
+    }
+
+    const hasShowWallpaper = appTheme.item.some((item) => item.$?.name === "android:windowShowWallpaper");
+    if (!hasShowWallpaper) {
+      appTheme.item.push({
+        $: { name: "android:windowShowWallpaper" },
+        _: "true",
+      });
+    }
+
+    const hasWindowBackground = appTheme.item.some((item) => item.$?.name === "android:windowBackground");
+    if (!hasWindowBackground) {
+      appTheme.item.push({
+        $: { name: "android:windowBackground" },
+        _: "@android:color/transparent",
+      });
+    } else {
+      const bgItem = appTheme.item.find((item) => item.$?.name === "android:windowBackground");
+      if (bgItem) {
+        bgItem._ = "@android:color/transparent";
+      }
+    }
+  }
+
+  return styles;
+}
+
 module.exports = function withLauncherIntent(config) {
-  return withAndroidManifest(config, (config) => {
+  config = withAndroidManifest(config, (config) => {
     config.modResults = addPermissions(config.modResults);
     config.modResults = addLauncherIntentFilter(config.modResults);
     config.modResults = addAccessibilityService(config.modResults);
     return config;
   });
+  
+  config = withAndroidStyles(config, (config) => {
+    config.modResults = addWallpaperTheme(config.modResults);
+    return config;
+  });
+
+  return config;
 };

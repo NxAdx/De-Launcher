@@ -17,70 +17,98 @@ class DeLauncherNativeModule : Module() {
     Name("DeLauncherNative")
 
     AsyncFunction("getInstalledApps") { ->
-      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any?>>()
-      val pm = context.packageManager
-      val intent = Intent(Intent.ACTION_MAIN, null).apply {
-        addCategory(Intent.CATEGORY_LAUNCHER)
-      }
-      
-      val apps = pm.queryIntentActivities(intent, 0)
-      val appList = mutableListOf<Map<String, Any?>>()
+      appContext.reactContext?.let { context ->
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN, null).apply {
+          addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+        
+        val apps = pm.queryIntentActivities(intent, 0)
+        val appList = mutableListOf<Map<String, Any?>>()
 
-      for (resolveInfo in apps) {
-        val packageName = resolveInfo.activityInfo.packageName
-        // Exclude our own launcher app
-        if (packageName == context.packageName) continue
+        for (resolveInfo in apps) {
+          val packageName = resolveInfo.activityInfo.packageName
+          // Exclude our own launcher app
+          if (packageName == context.packageName) continue
 
-        val label = resolveInfo.loadLabel(pm).toString()
-        val drawable = resolveInfo.loadIcon(pm)
-        val iconBase64 = drawableToBase64(drawable)
-        val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+          val label = resolveInfo.loadLabel(pm).toString()
+          val drawable = resolveInfo.loadIcon(pm)
+          val iconUri = drawableToUri(context, drawable, packageName)
+          val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
-        appList.add(
-          mapOf(
-            "packageName" to packageName,
-            "label" to label,
-            "icon" to iconBase64,
-            "isSystem" to isSystem
+          appList.add(
+            mapOf(
+              "packageName" to packageName,
+              "label" to label,
+              "icon" to iconUri,
+              "isSystem" to isSystem
+            )
           )
-        )
-      }
-      return@AsyncFunction appList
+        }
+        appList
+      } ?: emptyList<Map<String, Any?>>()
     }
 
     AsyncFunction("launchApp") { packageName: String ->
-      val context = appContext.reactContext ?: return@AsyncFunction
-      val pm = context.packageManager
-      val launchIntent = pm.getLaunchIntentForPackage(packageName)
-      if (launchIntent != null) {
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(launchIntent)
+      appContext.reactContext?.let { context ->
+        val pm = context.packageManager
+        val launchIntent = if (packageName == "com.android.settings") {
+          Intent(android.provider.Settings.ACTION_SETTINGS)
+        } else {
+          pm.getLaunchIntentForPackage(packageName)
+        }
+
+        if (launchIntent != null) {
+          launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+          try {
+            context.startActivity(launchIntent)
+          } catch (e: Exception) {
+            android.util.Log.e("DeLauncherNative", "Error launching app: $packageName", e)
+          }
+        }
+      }
+    }
+
+    AsyncFunction("promptSetDefaultLauncher") { ->
+      appContext.reactContext?.let { context ->
+        val intent = Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+          context.startActivity(intent)
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Error prompting default launcher", e)
+        }
       }
     }
 
     AsyncFunction("updateWhitelist") { whitelist: List<String> ->
-      val context = appContext.reactContext ?: return@AsyncFunction
-      val prefs = context.getSharedPreferences("delauncher_prefs", android.content.Context.MODE_PRIVATE)
-      prefs.edit().putStringSet("whitelist", whitelist.toSet()).apply()
-    }
-
-    AsyncFunction("getAvailableIconPacks") { ->
-      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any?>>()
-      val parser = IconPackParser(context)
-      val packs = parser.getAvailableIconPacks()
-      packs.map { pack ->
-        mapOf(
-          "packageName" to pack.packageName,
-          "label" to pack.label,
-          "mappingCount" to pack.iconMappings.size
-        )
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("delauncher_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("whitelist", whitelist.toSet()).apply()
       }
     }
 
-    AsyncFunction("getIconFromPack") { iconPackPackage: String, drawableName: String ->
-      val context = appContext.reactContext ?: return@AsyncFunction null
-      val parser = IconPackParser(context)
-      parser.getIconFromPack(iconPackPackage, drawableName)
+    AsyncFunction("getAvailableIconPacks") { ->
+      appContext.reactContext?.let { context ->
+        val parser = IconPackParser(context)
+        val packs = parser.getAvailableIconPacks()
+        packs.map { pack ->
+          mapOf(
+            "packageName" to pack.packageName,
+            "label" to pack.label,
+            "mappingCount" to pack.iconMappings.size
+          )
+        }
+      } ?: emptyList<Map<String, Any?>>()
+    }
+
+    AsyncFunction("getIconFromPack") { iconPackPackage: String, packageNameOrDrawableName: String ->
+      appContext.reactContext?.let { context ->
+        val parser = IconPackParser(context)
+        val drawableName = parser.getDrawableNameForPackage(iconPackPackage, packageNameOrDrawableName) 
+          ?: packageNameOrDrawableName.replace(".", "_").lowercase()
+        parser.getIconFromPack(iconPackPackage, drawableName)
+      }
     }
 
     AsyncFunction("allocateAppWidgetId") { ->
@@ -131,8 +159,15 @@ class DeLauncherNativeModule : Module() {
   private var appWidgetHost: android.appwidget.AppWidgetHost? = null
   private val APPWIDGET_HOST_ID = 1024
 
-  private fun drawableToBase64(drawable: Drawable): String? {
+  private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String): String? {
     return try {
+      val cacheDir = context.cacheDir
+      val iconFile = java.io.File(cacheDir, "app_icon_$packageName.png")
+      
+      if (iconFile.exists() && iconFile.length() > 0) {
+        return "file://" + iconFile.absolutePath
+      }
+
       val originalBitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
         drawable.bitmap
       } else {
@@ -154,12 +189,14 @@ class DeLauncherNativeModule : Module() {
         originalBitmap
       }
 
-      val outputStream = ByteArrayOutputStream()
-      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-      val byteArray = outputStream.toByteArray()
-      "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+      val out = java.io.FileOutputStream(iconFile)
+      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+      out.flush()
+      out.close()
+      
+      "file://" + iconFile.absolutePath
     } catch (t: Throwable) {
-      android.util.Log.e("DeLauncherNative", "Failed to convert drawable to base64", t)
+      android.util.Log.e("DeLauncherNative", "Failed to cache drawable", t)
       null
     }
   }

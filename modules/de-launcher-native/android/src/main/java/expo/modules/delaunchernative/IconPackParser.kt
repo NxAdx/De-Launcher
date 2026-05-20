@@ -1,6 +1,7 @@
 package expo.modules.delaunchernative
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
@@ -22,6 +23,8 @@ data class IconPackInfo(
 class IconPackParser(private val context: Context) {
     companion object {
         private const val TAG = "IconPackParser"
+        // Cache mapping from icon pack package name to its parsed appfilter mappings
+        private val mappingsCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
     }
 
     /**
@@ -30,26 +33,40 @@ class IconPackParser(private val context: Context) {
     fun getAvailableIconPacks(): List<IconPackInfo> {
         val pm = context.packageManager
         val iconPacks = mutableListOf<IconPackInfo>()
+        val iconPackPackages = mutableSetOf<String>()
 
-        // Query for packages that expose icon packs
-        // Icon packs typically have a drawable resource called "appfilter.xml"
-        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        val actions = listOf(
+            "org.adw.launcher.THEMES",
+            "com.novalauncher.THEME",
+            "com.gau.go.launcherex.theme",
+            "com.dlto.atom.launcher.THEME",
+            "solo.launcher.THEME"
+        )
 
-        for (app in packages) {
+        for (action in actions) {
+            val intent = Intent(action)
+            val resolveInfos = pm.queryIntentActivities(intent, 0)
+            for (ri in resolveInfos) {
+                iconPackPackages.add(ri.activityInfo.packageName)
+            }
+        }
+
+        for (packageName in iconPackPackages) {
             try {
-                val resources = pm.getResourcesForApplication(app.packageName)
-                val appfilterResId = resources.getIdentifier("appfilter", "xml", app.packageName)
+                val appInfo = pm.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                val resources = pm.getResourcesForApplication(appInfo.packageName)
+                val appfilterResId = resources.getIdentifier("appfilter", "xml", appInfo.packageName)
 
                 if (appfilterResId > 0) {
-                    val label = app.loadLabel(pm).toString()
+                    val label = appInfo.loadLabel(pm).toString()
                     val mappings = parseAppfilter(resources, appfilterResId)
                     if (mappings.isNotEmpty()) {
-                        iconPacks.add(IconPackInfo(app.packageName, label, mappings))
-                        Log.d(TAG, "Found icon pack: ${app.packageName} - $label (${mappings.size} mappings)")
+                        iconPacks.add(IconPackInfo(appInfo.packageName, label, mappings))
+                        Log.d(TAG, "Found icon pack: ${appInfo.packageName} - $label (${mappings.size} mappings)")
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse icon pack ${app.packageName}: ${e.message}")
+                Log.w(TAG, "Failed to parse icon pack $packageName: ${e.message}")
             }
         }
 
@@ -176,7 +193,7 @@ class IconPackParser(private val context: Context) {
 
             if (resId > 0) {
                 val drawable = resources.getDrawable(resId, null)
-                drawableToBase64(drawable, size)
+                drawableToUri(context, drawable, size, iconPackPackage, drawableName)
             } else {
                 Log.w(TAG, "Drawable not found: $drawableName in $iconPackPackage")
                 null
@@ -196,36 +213,54 @@ class IconPackParser(private val context: Context) {
         targetPackage: String
     ): String? {
         return try {
+            val cached = mappingsCache[iconPackPackage]
+            if (cached != null) {
+                return cached[targetPackage]
+            }
+
             val resources = context.packageManager.getResourcesForApplication(iconPackPackage)
             val appfilterResId = resources.getIdentifier("appfilter", "xml", iconPackPackage)
 
-            if (appfilterResId > 0) {
-                val mappings = parseAppfilter(resources, appfilterResId)
-                mappings[targetPackage]
+            val mappings = if (appfilterResId > 0) {
+                parseAppfilter(resources, appfilterResId)
             } else {
-                null
+                emptyMap()
             }
+            mappingsCache[iconPackPackage] = mappings
+            mappings[targetPackage]
         } catch (e: Exception) {
             Log.w(TAG, "Failed to get drawable name: ${e.message}")
             null
         }
     }
 
-    private fun drawableToBase64(drawable: Drawable, size: Int): String? {
-        val bitmap: Bitmap = if (drawable is android.graphics.drawable.BitmapDrawable && drawable.bitmap != null) {
-            scaleBitmap(drawable.bitmap, size)
-        } else {
-            val newBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(newBitmap)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            newBitmap
-        }
+    private fun drawableToUri(context: Context, drawable: Drawable, size: Int, iconPack: String, drawableName: String): String? {
+        try {
+            val cacheDir = context.cacheDir
+            val iconFile = java.io.File(cacheDir, "app_icon_${iconPack}_${drawableName}.png")
+            if (iconFile.exists() && iconFile.length() > 0) {
+                return "file://" + iconFile.absolutePath
+            }
 
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-        val byteArray = outputStream.toByteArray()
-        return "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+            val bitmap: Bitmap = if (drawable is android.graphics.drawable.BitmapDrawable && drawable.bitmap != null) {
+                scaleBitmap(drawable.bitmap, size)
+            } else {
+                val newBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(newBitmap)
+                drawable.setBounds(0, 0, size, size)
+                drawable.draw(canvas)
+                newBitmap
+            }
+
+            val out = java.io.FileOutputStream(iconFile)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            out.flush()
+            out.close()
+            return "file://" + iconFile.absolutePath
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cache icon pack drawable: ${e.message}")
+            return null
+        }
     }
 
     private fun scaleBitmap(bitmap: Bitmap, size: Int): Bitmap {

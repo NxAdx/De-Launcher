@@ -13,20 +13,20 @@ export const palette = {
 
   // Dark Mode Surfaces
   dark: {
-    bg: "#000000",
+    bg: "transparent",
     surface: "#0A0A0A",
     surfaceElevated: "#141414",
-    surfaceOverlay: "#1A1A1A",
+    surfaceOverlay: "rgba(0,0,0,0.7)",
     border: "rgba(255, 255, 255, 0.08)",
     borderFocused: "rgba(255, 255, 255, 0.16)",
   },
 
   // Light Mode Surfaces
   light: {
-    bg: "#F8F8F8",
+    bg: "transparent",
     surface: "#FFFFFF",
     surfaceElevated: "#FFFFFF",
-    surfaceOverlay: "#F0F0F0",
+    surfaceOverlay: "rgba(255,255,255,0.7)",
     border: "rgba(0, 0, 0, 0.08)",
     borderFocused: "rgba(0, 0, 0, 0.16)",
   },

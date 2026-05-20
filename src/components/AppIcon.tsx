@@ -70,25 +70,29 @@ export function AppIcon({
 
   // Load custom icon from icon pack when pack changes
   useEffect(() => {
-    if (!activeIconPack || loadedPack === activeIconPack) return;
+    if (!activeIconPack) {
+      setCustomIcon(null);
+      setLoadedPack(null);
+      return;
+    }
+
+    if (loadedPack === activeIconPack) return;
 
     const loadCustomIcon = async () => {
       try {
-        // TODO: Need to implement mapping logic to determine drawable name from package name
-        // For now, we'll use a simple convention: com.example.app -> com_example_app
-        const drawableName = app.packageName
-          .replace(/\./g, "_")
-          .toLowerCase();
-        const icon = await getIconFromPack(activeIconPack, drawableName);
+        const icon = await getIconFromPack(activeIconPack, app.packageName);
         if (icon) {
           setCustomIcon(icon);
           setLoadedPack(activeIconPack);
+        } else {
+          setCustomIcon(null);
         }
       } catch (error) {
         console.warn(
           `Failed to load icon from pack for ${app.packageName}:`,
           error
         );
+        setCustomIcon(null);
       }
     };
 
@@ -122,7 +126,7 @@ export function AppIcon({
   }, [app, onLongPress, hapticEnabled]);
 
   const avatarBg = getAvatarColor(app.packageName);
-  const appIconUri = app.icon?.startsWith("data:")
+  const appIconUri = app.icon?.startsWith("data:") || app.icon?.startsWith("file:")
     ? app.icon
     : app.icon
       ? `data:image/png;base64,${app.icon}`

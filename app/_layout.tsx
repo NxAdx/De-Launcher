@@ -39,8 +39,8 @@ import {
 // Prevent splash auto-hide
 SplashScreen.preventAutoHideAsync();
 
-// Set system background to pure black
-SystemUI.setBackgroundColorAsync("#000000");
+// Set system background to transparent to show system wallpaper
+// SystemUI.setBackgroundColorAsync("#000000");
 
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
@@ -167,7 +167,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "transparent" }}>
       <ThemeProvider>
         <RootLayoutContent />
       </ThemeProvider>

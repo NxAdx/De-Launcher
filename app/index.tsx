@@ -7,12 +7,12 @@
  * - Dock at the bottom
  * - Swipe up to open app drawer
  */
-import React, { useCallback } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import React, { useCallback, useState } from "react";
+import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } from "react-native";
+import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { router } from "expo-router";
-import { Settings } from "lucide-react-native";
+import { Settings, ArrowLeft, ArrowRight, Trash } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { spacing } from "@/src/theme/tokens";
@@ -27,9 +27,13 @@ import { AppInfo } from "@/src/types/app";
 export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const statusBarHeight = RNStatusBar.currentHeight ?? insets.top ?? 24;
   const showClock = useSettingsStore((s) => s.showClock);
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
+  const moveApp = useAppStore((s) => s.moveApp);
+  const toggleAppAllowed = useAppStore((s) => s.toggleAppAllowed);
+  const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
   const allowedApps = React.useMemo(() => {
     return installedApps.filter((app) =>
@@ -41,8 +45,8 @@ export default function HomeScreen() {
     launchApp(app.packageName);
   }, []);
 
-  const handleAppLongPress = useCallback((_app: AppInfo) => {
-    // TODO: Open context menu (remove from home, add to dock, block)
+  const handleAppLongPress = useCallback((app: AppInfo) => {
+    setSelectedApp(app);
   }, []);
 
   // Swipe up gesture to open app drawer
@@ -61,7 +65,7 @@ export default function HomeScreen() {
         {/* Settings gear */}
         <Animated.View
           entering={FadeIn.delay(400)}
-          style={[styles.settingsButton, { top: insets.top + spacing.sm }]}
+          style={[styles.settingsButton, { top: statusBarHeight + spacing.sm }]}
         >
           <Pressable
             onPress={() => router.push("/settings")}
@@ -74,7 +78,7 @@ export default function HomeScreen() {
 
         {/* Clock */}
         {showClock && (
-          <View style={{ paddingTop: insets.top }}>
+          <View style={{ paddingTop: statusBarHeight }}>
             <Clock />
           </View>
         )}
@@ -82,7 +86,10 @@ export default function HomeScreen() {
         {/* App Grid — only allowed apps */}
         <Animated.View
           entering={FadeInUp.duration(500).delay(300)}
-          style={styles.gridContainer}
+          style={[
+            styles.gridContainer,
+            !showClock && { paddingTop: statusBarHeight + 80 },
+          ]}
         >
           <AppGrid
             apps={allowedApps}
@@ -93,6 +100,86 @@ export default function HomeScreen() {
 
         {/* Dock */}
         <Dock />
+
+        {/* Long Press Context Menu */}
+        {selectedApp && (
+          <Modal
+            visible={!!selectedApp}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={() => setSelectedApp(null)}
+          >
+            <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
+              <Animated.View entering={FadeInDown.duration(250)} style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
+                {/* App Title inside Menu */}
+                <View style={styles.menuHeader}>
+                  <Text style={[styles.menuAppTitle, { color: colors.textPrimary }]}>
+                    {selectedApp.label}
+                  </Text>
+                  <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
+                    {selectedApp.packageName}
+                  </Text>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.menuOptions}>
+                  {allowedApps.indexOf(selectedApp) > 0 && (
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        moveApp(selectedApp.packageName, "left");
+                        setSelectedApp(null);
+                      }}
+                    >
+                      <ArrowLeft size={18} color={colors.textPrimary} />
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        Move Left
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  {allowedApps.indexOf(selectedApp) < allowedApps.length - 1 && (
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        moveApp(selectedApp.packageName, "right");
+                        setSelectedApp(null);
+                      }}
+                    >
+                      <ArrowRight size={18} color={colors.textPrimary} />
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        Move Right
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  <Pressable
+                    style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      toggleAppAllowed(selectedApp.packageName);
+                      setSelectedApp(null);
+                    }}
+                  >
+                    <Trash size={18} color={colors.error} />
+                    <Text style={[styles.menuOptionText, { color: colors.error }]}>
+                      Remove from Home
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.menuOption, styles.cancelOption]}
+                    onPress={() => setSelectedApp(null)}
+                  >
+                    <Text style={[styles.menuOptionText, { color: colors.textTertiary, textAlign: "center", width: "100%" }]}>
+                      Cancel
+                    </Text>
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </Pressable>
+          </Modal>
+        )}
       </View>
     </GestureDetector>
   );
@@ -113,5 +200,51 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
+  },
+  menuContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.xl,
+    paddingBottom: spacing["3xl"],
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+  },
+  menuHeader: {
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  menuAppTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+  },
+  menuAppSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  menuOptions: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  menuOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.base,
+    gap: spacing.md,
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+  },
+  menuOptionText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+  },
+  cancelOption: {
+    marginTop: spacing.sm,
+    justifyContent: "center",
+    backgroundColor: "transparent",
   },
 });

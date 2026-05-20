@@ -24,13 +24,14 @@ import {
   Clock as ClockIcon,
   Vibrate,
   Palette,
+  Home,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { getAvailableIconPacks } from "@/src/services/appManager";
+import { getAvailableIconPacks, promptSetDefaultLauncher } from "@/src/services/appManager";
 import { IconPackInfo } from "@/modules/de-launcher-native";
 
 // ─── Setting Row Components ─────────────────────────────
@@ -149,11 +150,16 @@ export default function SettingsScreen() {
     [setActiveIconPack]
   );
 
+  const handleSetDefaultLauncher = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await promptSetDefaultLauncher();
+  }, []);
+
   return (
     <View
       style={[
         styles.container,
-        { backgroundColor: colors.bg, paddingTop: insets.top },
+        { backgroundColor: colors.surface, paddingTop: insets.top },
       ]}
     >
       {/* Header */}
@@ -376,6 +382,23 @@ export default function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
           }
+          colors={colors}
+          isDark={isDark}
+        />
+
+        {/* ─── System ─── */}
+        <SectionHeader title="SYSTEM" colors={colors} />
+
+        <SettingRow
+          icon={<Home size={20} color={colors.textSecondary} />}
+          label="Default Launcher"
+          description="Set De-Launcher as your default home screen"
+          right={
+            <Pressable onPress={handleSetDefaultLauncher} style={styles.gridButton}>
+              <Home size={16} color={colors.accent} />
+            </Pressable>
+          }
+          onPress={handleSetDefaultLauncher}
           colors={colors}
           isDark={isDark}
         />

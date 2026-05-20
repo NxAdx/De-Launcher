@@ -11,6 +11,7 @@ import {
   launchApp as nativeLaunchApp,
   getAvailableIconPacks as nativeGetAvailableIconPacks,
   getIconFromPack as nativeGetIconFromPack,
+  promptSetDefaultLauncher as nativePromptSetDefaultLauncher,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
@@ -133,6 +134,17 @@ export async function getIconFromPack(
       error
     );
     return null;
+  }
+}
+
+/**
+ * Prompt the user to set De-Launcher as their default home screen.
+ */
+export async function promptSetDefaultLauncher(): Promise<void> {
+  try {
+    await nativePromptSetDefaultLauncher();
+  } catch (error) {
+    console.error("[AppManager] Error promoting default launcher:", error);
   }
 }
 
