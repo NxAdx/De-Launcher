@@ -16,7 +16,14 @@ import { launchApp } from "@/src/services/appManager";
 
 export function Dock() {
   const { colors, isDark } = useTheme();
-  const dockApps = useAppStore((s) => s.getDockApps());
+  const installedApps = useAppStore((s) => s.installedApps);
+  const dockPackages = useAppStore((s) => s.dockPackages);
+
+  const dockApps = React.useMemo(() => {
+    return dockPackages
+      .map((pkg) => installedApps.find((app) => app.packageName === pkg))
+      .filter(Boolean) as AppInfo[];
+  }, [installedApps, dockPackages]);
 
   const handlePress = useCallback((app: AppInfo) => {
     launchApp(app.packageName);

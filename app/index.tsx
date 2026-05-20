@@ -28,8 +28,14 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const showClock = useSettingsStore((s) => s.showClock);
-  const getAllowedApps = useAppStore((s) => s.getAllowedApps);
-  const allowedApps = getAllowedApps();
+  const installedApps = useAppStore((s) => s.installedApps);
+  const allowedPackages = useAppStore((s) => s.allowedPackages);
+
+  const allowedApps = React.useMemo(() => {
+    return installedApps.filter((app) =>
+      allowedPackages.includes(app.packageName)
+    );
+  }, [installedApps, allowedPackages]);
 
   const handleAppPress = useCallback((app: AppInfo) => {
     launchApp(app.packageName);

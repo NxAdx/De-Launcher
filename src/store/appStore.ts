@@ -26,8 +26,6 @@ interface AppState {
 
   // Computed helpers
   isAllowed: (packageName: string) => boolean;
-  getAllowedApps: () => AppInfo[];
-  getDockApps: () => AppInfo[];
 }
 
 export const useAppStore = create<AppState>()(
@@ -73,20 +71,6 @@ export const useAppStore = create<AppState>()(
       reorderDock: (packages) => set({ dockPackages: packages }),
 
       isAllowed: (packageName) => get().allowedPackages.includes(packageName),
-
-      getAllowedApps: () => {
-        const { installedApps, allowedPackages } = get();
-        return installedApps.filter((app) =>
-          allowedPackages.includes(app.packageName)
-        );
-      },
-
-      getDockApps: () => {
-        const { installedApps, dockPackages } = get();
-        return dockPackages
-          .map((pkg) => installedApps.find((app) => app.packageName === pkg))
-          .filter(Boolean) as AppInfo[];
-      },
     }),
     {
       name: "app-store",
