@@ -76,7 +76,6 @@ jobs:
             -Dorg.gradle.daemon=false
             -Dorg.gradle.jvmargs=-Xmx4096m
             -Dorg.gradle.caching=true
-            -Dorg.gradle.configuration-cache=true
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease \
