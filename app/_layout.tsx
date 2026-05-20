@@ -11,7 +11,8 @@
  * - Error boundary
  */
 import { useEffect, useState } from "react";
-import { StatusBar, View, Text } from "react-native";
+import { View, Text } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -93,7 +94,7 @@ function RootLayoutContent() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <Text style={{ color: colors.text, fontSize: 16, textAlign: "center", marginBottom: 10 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, textAlign: "center", marginBottom: 10 }}>
           App Error
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: "center" }}>
