@@ -13,7 +13,8 @@
 import { useEffect, useState } from "react";
 import { View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack } from "expo-router";
+import { Stack, ErrorBoundary } from "expo-router";
+export { ErrorBoundary };
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";

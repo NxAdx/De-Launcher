@@ -105,8 +105,8 @@ class DeLauncherNativeModule : Module() {
           appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
           appWidgetHost?.startListening()
         }
-      } catch (e: Exception) {
-        android.util.Log.e("DeLauncherNative", "Error in OnCreate initialization", e)
+      } catch (t: Throwable) {
+        android.util.Log.e("DeLauncherNative", "Error in OnCreate initialization", t)
       }
     }
 
@@ -133,7 +133,7 @@ class DeLauncherNativeModule : Module() {
 
   private fun drawableToBase64(drawable: Drawable): String? {
     return try {
-      val bitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+      val originalBitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
         drawable.bitmap
       } else {
         val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 1
@@ -145,12 +145,21 @@ class DeLauncherNativeModule : Module() {
         newBitmap
       }
       
+      // Downscale to prevent OOM
+      val maxSize = 96
+      val ratio = Math.min(maxSize.toFloat() / originalBitmap.width, maxSize.toFloat() / originalBitmap.height)
+      val scaledBitmap = if (ratio < 1f) {
+        Bitmap.createScaledBitmap(originalBitmap, (originalBitmap.width * ratio).toInt(), (originalBitmap.height * ratio).toInt(), true)
+      } else {
+        originalBitmap
+      }
+
       val outputStream = ByteArrayOutputStream()
-      bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
       val byteArray = outputStream.toByteArray()
       "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
-    } catch (e: Exception) {
-      android.util.Log.e("DeLauncherNative", "Failed to convert drawable to base64", e)
+    } catch (t: Throwable) {
+      android.util.Log.e("DeLauncherNative", "Failed to convert drawable to base64", t)
       null
     }
   }
