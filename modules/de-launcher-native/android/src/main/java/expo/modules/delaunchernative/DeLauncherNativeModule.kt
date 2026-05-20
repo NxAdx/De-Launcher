@@ -99,15 +99,23 @@ class DeLauncherNativeModule : Module() {
     }
 
     OnCreate {
-      appContext.reactContext?.let {
-        appWidgetManager = android.appwidget.AppWidgetManager.getInstance(it)
-        appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
-        appWidgetHost?.startListening()
+      try {
+        appContext.reactContext?.let {
+          appWidgetManager = android.appwidget.AppWidgetManager.getInstance(it)
+          appWidgetHost = android.appwidget.AppWidgetHost(it, APPWIDGET_HOST_ID)
+          appWidgetHost?.startListening()
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("DeLauncherNative", "Error in OnCreate initialization", e)
       }
     }
 
     OnDestroy {
-      appWidgetHost?.stopListening()
+      try {
+        appWidgetHost?.stopListening()
+      } catch (e: Exception) {
+        android.util.Log.e("DeLauncherNative", "Error in OnDestroy", e)
+      }
     }
 
     View(WidgetHostView::class) {
@@ -124,21 +132,26 @@ class DeLauncherNativeModule : Module() {
   private val APPWIDGET_HOST_ID = 1024
 
   private fun drawableToBase64(drawable: Drawable): String? {
-    val bitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
-      drawable.bitmap
-    } else {
-      val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 1
-      val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 1
-      val newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-      val canvas = Canvas(newBitmap)
-      drawable.setBounds(0, 0, canvas.width, canvas.height)
-      drawable.draw(canvas)
-      newBitmap
+    return try {
+      val bitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+        drawable.bitmap
+      } else {
+        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 1
+        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 1
+        val newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(newBitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        newBitmap
+      }
+      
+      val outputStream = ByteArrayOutputStream()
+      bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+      val byteArray = outputStream.toByteArray()
+      "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    } catch (e: Exception) {
+      android.util.Log.e("DeLauncherNative", "Failed to convert drawable to base64", e)
+      null
     }
-    
-    val outputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-    val byteArray = outputStream.toByteArray()
-    return "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
   }
 }

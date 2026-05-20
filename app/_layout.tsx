@@ -143,13 +143,25 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (!fontsLoaded && !fontError) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 1500); // 1.5 second safety net
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const shouldRender = fontsLoaded || fontError || timedOut;
+
+  useEffect(() => {
+    if (shouldRender) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [shouldRender]);
+
+  if (!shouldRender) {
     return null;
   }
 
