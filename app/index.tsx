@@ -10,7 +10,6 @@
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } from "react-native";
 import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,7 +20,7 @@ import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { launchApp } from "@/src/services/appManager";
+import { launchApp, prefetchIcon } from "@/src/services/appManager";
 import { AppInfo } from "@/src/types/app";
 
 export default function HomeScreen() {
@@ -53,19 +52,21 @@ export default function HomeScreen() {
     setSelectedApp(app);
   }, []);
 
-  // Swipe up gesture to open app drawer
-  const swipeUp = Gesture.Pan()
-    .activeOffsetY(-50)
-    .onEnd((event) => {
-      if (event.translationY < -80) {
-        router.push("/drawer");
+  // Background preloader for custom icon pack icons to guarantee synchronous zero-flicker mounts
+  const activeIconPack = useSettingsStore((s) => s.activeIconPack);
+  React.useEffect(() => {
+    if (!activeIconPack) return;
+    const preload = async () => {
+      const allPkgs = Array.from(new Set([...allowedPackages, ...dockPackages]));
+      for (const pkg of allPkgs) {
+        prefetchIcon(activeIconPack, pkg);
       }
-    })
-    .runOnJS(true);
+    };
+    preload();
+  }, [activeIconPack, allowedPackages, dockPackages]);
 
   return (
-    <GestureDetector gesture={swipeUp}>
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
         {/* Settings gear */}
         <Animated.View
           entering={FadeIn.delay(400)}
@@ -215,7 +216,6 @@ export default function HomeScreen() {
           </Modal>
         )}
       </View>
-    </GestureDetector>
   );
 }
 

@@ -48,8 +48,8 @@ export const palette = {
   },
 
   // Accent — a single, muted tone. Intentionally subdued.
-  accent: "#A78BFA", // Soft violet
-  accentMuted: "rgba(167, 139, 250, 0.15)",
+  accent: "#FFFFFF", // Monochrome white
+  accentMuted: "rgba(255, 255, 255, 0.15)",
 
   // Semantic
   error: "#EF4444",
@@ -194,8 +194,8 @@ export const durations = {
 export const layout = {
   screenPaddingH: spacing.xl,
   dockHeight: 80,
-  appIconSize: 56,
-  appIconSizeLarge: 64,
+  appIconSize: 48,
+  appIconSizeLarge: 58,
   gridColumns: 4,
   gridGap: spacing.base,
   touchTarget: 48,

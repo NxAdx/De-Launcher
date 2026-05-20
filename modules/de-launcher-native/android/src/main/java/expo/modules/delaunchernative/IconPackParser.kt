@@ -106,7 +106,16 @@ class IconPackParser(private val context: Context) {
                 val appInfo = pm.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 val resources = pm.getResourcesForApplication(appInfo.packageName)
                 val label = appInfo.loadLabel(pm).toString()
-                val mappings = parseAppfilter(resources, packageName)
+                
+                // Leverage mappingsCache to prevent expensive XML parsing when reloading settings screen
+                val mappings = mappingsCache[packageName] ?: run {
+                    val parsed = parseAppfilter(resources, packageName)
+                    if (parsed.isNotEmpty()) {
+                        mappingsCache[packageName] = parsed
+                    }
+                    parsed
+                }
+
                 if (mappings.isNotEmpty()) {
                     iconPacks.add(IconPackInfo(packageName, label, mappings))
                     Log.d(TAG, "Found icon pack: $packageName - $label (${mappings.size} mappings)")
@@ -263,7 +272,7 @@ class IconPackParser(private val context: Context) {
     fun getIconFromPack(
         iconPackPackage: String,
         drawableName: String,
-        size: Int = 48
+        size: Int = 256
     ): String? {
         return try {
             val resources = context.packageManager.getResourcesForApplication(iconPackPackage)

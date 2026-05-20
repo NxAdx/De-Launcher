@@ -23,7 +23,7 @@ import { useAppStore } from "@/src/store/appStore";
 import { useTheme } from "@/src/theme/ThemeContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const ROW_HEIGHT = 104;
+const ROW_HEIGHT = 92;
 
 interface DraggableItemProps {
   app: AppInfo;
@@ -225,7 +225,7 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
   const isAnyDragging = useSharedValue(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [activePage, setActivePage] = useState(0);
-  const [gridHeight, setGridHeight] = useState(416); // Standard 4 rows default
+  const [gridHeight, setGridHeight] = useState(368); // Standard 4 rows default (4 * 92)
 
   // Synchronize dynamic updates from outer stores safely when drag gesture is inert
   useEffect(() => {
@@ -291,10 +291,8 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
         style={styles.scrollStyle}
       >
         {pages.map((pageApps, pageIndex) => {
-          // Centering offsets
-          const pageRows = Math.ceil(pageApps.length / gridColumns);
-          const activeRows = Math.min(4, Math.max(1, pageRows));
-          const verticalOffset = Math.max(0, (gridHeight - activeRows * ROW_HEIGHT) / 2);
+          // Centering offsets based on a stable 4-row height layout to keep coordinates static
+          const verticalOffset = Math.max(0, (gridHeight - 4 * ROW_HEIGHT) / 2);
 
           return (
             <View

@@ -8,8 +8,6 @@
 import React, { useCallback } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { LayoutGrid } from "lucide-react-native";
-import { router } from "expo-router";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { spacing, layout, radii } from "@/src/theme/tokens";
 import { AppIcon } from "./AppIcon";
@@ -60,26 +58,6 @@ export function Dock({ onLongPress }: DockProps) {
             showLabel={false}
           />
         ))}
-
-        {/* Permanent Premium App Drawer trigger button */}
-        <Pressable
-          onPress={() => router.push("/drawer")}
-          style={({ pressed }) => [
-            styles.drawerButton,
-            {
-              width: layout.appIconSize,
-              height: layout.appIconSize,
-              borderRadius: layout.appIconSize * 0.22,
-              backgroundColor: pressed
-                ? "rgba(167, 139, 250, 0.2)"
-                : isDark
-                ? "rgba(255, 255, 255, 0.05)"
-                : "rgba(0, 0, 0, 0.05)",
-            },
-          ]}
-        >
-          <LayoutGrid size={24} color={colors.accent} />
-        </Pressable>
       </View>
     </Animated.View>
   );
@@ -100,9 +78,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-evenly",
-  },
-  drawerButton: {
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

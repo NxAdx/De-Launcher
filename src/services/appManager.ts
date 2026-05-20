@@ -120,22 +120,60 @@ export async function getAvailableIconPacks(): Promise<IconPackInfo[]> {
   }
 }
 
+const iconPackCache = new Map<string, string | null>();
+
 /**
- * Get an icon from a specific icon pack.
+ * Get an icon from a specific icon pack (uses memory cache first).
  */
 export async function getIconFromPack(
   iconPackPackage: string,
   drawableName: string
 ): Promise<string | null> {
+  const cacheKey = `${iconPackPackage}:${drawableName}`;
+  if (iconPackCache.has(cacheKey)) {
+    return iconPackCache.get(cacheKey) ?? null;
+  }
   try {
-    return await nativeGetIconFromPack(iconPackPackage, drawableName);
+    const iconUri = await nativeGetIconFromPack(iconPackPackage, drawableName);
+    iconPackCache.set(cacheKey, iconUri);
+    return iconUri;
   } catch (error) {
     console.error(
       `[AppManager] Error getting icon from pack ${iconPackPackage}:`,
       error
     );
+    iconPackCache.set(cacheKey, null);
     return null;
   }
+}
+
+/**
+ * Synchronously check if a custom icon pack URI is cached.
+ */
+export function getCachedIcon(iconPackPackage: string, drawableName: string): string | null | undefined {
+  const cacheKey = `${iconPackPackage}:${drawableName}`;
+  return iconPackCache.get(cacheKey);
+}
+
+/**
+ * Prefetch a custom icon into cache.
+ */
+export async function prefetchIcon(iconPackPackage: string, drawableName: string): Promise<void> {
+  const cacheKey = `${iconPackPackage}:${drawableName}`;
+  if (iconPackCache.has(cacheKey)) return;
+  try {
+    const iconUri = await nativeGetIconFromPack(iconPackPackage, drawableName);
+    iconPackCache.set(cacheKey, iconUri);
+  } catch (e) {
+    iconPackCache.set(cacheKey, null);
+  }
+}
+
+/**
+ * Clear the icon pack memory cache.
+ */
+export function clearIconPackCache(): void {
+  iconPackCache.clear();
 }
 
 /**

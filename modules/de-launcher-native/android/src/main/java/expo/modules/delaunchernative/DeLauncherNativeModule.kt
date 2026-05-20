@@ -88,7 +88,8 @@ class DeLauncherNativeModule : Module() {
     AsyncFunction("launchApp") { packageName: String ->
       appContext.reactContext?.let { context ->
         val pm = context.packageManager
-        val launchIntent = if (packageName == "com.android.settings") {
+        val isSettings = packageName.contains("settings", ignoreCase = true)
+        val launchIntent = if (isSettings) {
           Intent(android.provider.Settings.ACTION_SETTINGS)
         } else {
           pm.getLaunchIntentForPackage(packageName)
@@ -100,6 +101,23 @@ class DeLauncherNativeModule : Module() {
             context.startActivity(launchIntent)
           } catch (e: Exception) {
             android.util.Log.e("DeLauncherNative", "Error launching app: $packageName", e)
+            if (isSettings) {
+              try {
+                context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+              } catch (e2: Exception) {
+                android.util.Log.e("DeLauncherNative", "Error launching settings fallback", e2)
+              }
+            }
+          }
+        } else if (isSettings) {
+          try {
+            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+          } catch (e: Exception) {
+            android.util.Log.e("DeLauncherNative", "Error launching settings fallback when intent null", e)
           }
         }
       }
@@ -273,8 +291,8 @@ class DeLauncherNativeModule : Module() {
         newBitmap
       }
       
-      // Downscale to prevent OOM
-      val maxSize = 96
+      // Downscale to prevent OOM but keep high density
+      val maxSize = 256
       val ratio = Math.min(maxSize.toFloat() / originalBitmap.width, maxSize.toFloat() / originalBitmap.height)
       val scaledBitmap = if (ratio < 1f) {
         Bitmap.createScaledBitmap(originalBitmap, (originalBitmap.width * ratio).toInt(), (originalBitmap.height * ratio).toInt(), true)

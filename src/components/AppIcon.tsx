@@ -17,7 +17,7 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, layout } from "@/src/theme/tokens";
 import { AppInfo } from "@/src/types/app";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { getIconFromPack } from "@/src/services/appManager";
+import { getIconFromPack, getCachedIcon } from "@/src/services/appManager";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -65,8 +65,14 @@ export function AppIcon({
   const activeIconPack = useSettingsStore((s) => s.activeIconPack);
   const showLabel = showLabelProp ?? globalShowLabels;
   const scale = useSharedValue(1);
-  const [customIcon, setCustomIcon] = useState<string | null>(null);
-  const [loadedPack, setLoadedPack] = useState<string | null>(null);
+  const [customIcon, setCustomIcon] = useState<string | null>(() => {
+    if (activeIconPack) {
+      const cached = getCachedIcon(activeIconPack, app.packageName);
+      if (cached !== undefined) return cached;
+    }
+    return null;
+  });
+  const [loadedPack, setLoadedPack] = useState<string | null>(activeIconPack ?? null);
 
   // Load custom icon from icon pack when pack changes
   useEffect(() => {
@@ -77,6 +83,14 @@ export function AppIcon({
     }
 
     if (loadedPack === activeIconPack) return;
+
+    // Check JS memory cache first
+    const cached = getCachedIcon(activeIconPack, app.packageName);
+    if (cached !== undefined) {
+      setCustomIcon(cached);
+      setLoadedPack(activeIconPack);
+      return;
+    }
 
     const loadCustomIcon = async () => {
       try {
@@ -104,11 +118,11 @@ export function AppIcon({
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.88, { damping: 15, stiffness: 300 });
+    scale.value = withSpring(0.88, { damping: 15, stiffness: 300, mass: 0.5 });
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+    scale.value = withSpring(1, { damping: 12, stiffness: 200, mass: 0.5 });
   }, [scale]);
 
   const handlePress = useCallback(() => {

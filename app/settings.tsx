@@ -274,7 +274,7 @@ export default function SettingsScreen() {
                       {
                         color:
                           activeIconPack === null
-                            ? colors.bg
+                            ? "#000000"
                             : colors.textPrimary,
                       },
                     ]}
@@ -323,7 +323,7 @@ export default function SettingsScreen() {
                         {
                           color:
                             activeIconPack === pack.packageName
-                              ? colors.bg
+                              ? "#000000"
                               : colors.textPrimary,
                         },
                       ]}
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   gridButtonText: {
     fontFamily: typography.family.bold,
