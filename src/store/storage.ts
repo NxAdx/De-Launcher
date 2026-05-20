@@ -46,8 +46,13 @@ const storage: KeyValueStorage =
     : (() => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { createMMKV } = require("react-native-mmkv") as typeof import("react-native-mmkv");
-          return createMMKV({ id: "de-launcher-storage" });
+          const { MMKV } = require("react-native-mmkv") as typeof import("react-native-mmkv");
+          const mmkv = new MMKV({ id: "de-launcher-storage" });
+          return {
+            getString: (key) => mmkv.getString(key),
+            set: (key, value) => mmkv.set(key, value),
+            remove: (key) => mmkv.delete(key),
+          };
         } catch {
           return createFallbackStorage();
         }
