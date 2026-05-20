@@ -5,13 +5,16 @@
  * - Font loading (Inter family)
  * - Theme provider
  * - Gesture handler root
+ * - Safe area provider
  * - System UI configuration
  * - Splash screen management
+ * - Error boundary
  */
-import { useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
+import { StatusBar, View, Text } from "react-native";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
 import {
@@ -39,6 +42,7 @@ SystemUI.setBackgroundColorAsync("#000000");
 
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
+  const [error, setError] = useState<Error | null>(null);
   const {
     setInstalledApps,
     dockPackages,
@@ -49,15 +53,31 @@ function RootLayoutContent() {
 
   useEffect(() => {
     async function loadApps() {
-      const apps = await getInstalledApps();
-      setInstalledApps(apps);
+      try {
+        const apps = await getInstalledApps();
+        setInstalledApps(apps);
 
-      // Set defaults on first run
-      if (dockPackages.length === 0) {
-        reorderDock(DEFAULT_DOCK_PACKAGES);
-      }
-      if (allowedPackages.length === 0) {
-        setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
+        // Set defaults on first run
+        if (dockPackages.length === 0) {
+          reorderDock(DEFAULT_DOCK_PACKAGES);
+        }
+        if (allowedPackages.length === 0) {
+          setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
+        }
+      } catch (err) {
+        console.error("[RootLayout] Error loading apps:", err);
+        // Fallback: still try to set defaults even if app loading fails
+        try {
+          if (dockPackages.length === 0) {
+            reorderDock(DEFAULT_DOCK_PACKAGES);
+          }
+          if (allowedPackages.length === 0) {
+            setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
+          }
+        } catch (fallbackErr) {
+          console.error("[RootLayout] Error setting defaults:", fallbackErr);
+          setError(fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr)));
+        }
       }
     }
     loadApps();
@@ -69,8 +89,22 @@ function RootLayoutContent() {
     setInstalledApps,
   ]);
 
+  // Error fallback UI
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <Text style={{ color: colors.text, fontSize: 16, textAlign: "center", marginBottom: 10 }}>
+          App Error
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: "center" }}>
+          {error.message}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={{
@@ -94,7 +128,7 @@ function RootLayoutContent() {
           }}
         />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }
 
