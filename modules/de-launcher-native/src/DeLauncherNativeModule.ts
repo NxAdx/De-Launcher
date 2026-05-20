@@ -20,6 +20,7 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   getInstalledApps(): Promise<AppInfo[]>;
   launchApp(packageName: string): Promise<void>;
   updateWhitelist(whitelist: string[]): Promise<void>;
+  promptSetDefaultLauncher(): Promise<void>;
   
   // Icon Packs
   getAvailableIconPacks(): Promise<IconPackInfo[]>;
@@ -41,6 +42,11 @@ const expoGoFallback = {
     );
   },
   updateWhitelist: async () => {},
+  promptSetDefaultLauncher: async () => {
+    console.warn(
+      `[DeLauncherNative] promptSetDefaultLauncher() requires an Android development build.`
+    );
+  },
   getAvailableIconPacks: async () => [],
   getIconFromPack: async () => null,
   allocateAppWidgetId: async () => -1,
