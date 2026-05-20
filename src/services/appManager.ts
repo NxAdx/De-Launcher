@@ -12,6 +12,7 @@ import {
   getAvailableIconPacks as nativeGetAvailableIconPacks,
   getIconFromPack as nativeGetIconFromPack,
   promptSetDefaultLauncher as nativePromptSetDefaultLauncher,
+  changeWallpaper as nativeChangeWallpaper,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
@@ -145,6 +146,17 @@ export async function promptSetDefaultLauncher(): Promise<void> {
     await nativePromptSetDefaultLauncher();
   } catch (error) {
     console.error("[AppManager] Error promoting default launcher:", error);
+  }
+}
+
+/**
+ * Open the system wallpaper picker chooser.
+ */
+export async function changeWallpaper(): Promise<void> {
+  try {
+    await nativeChangeWallpaper();
+  } catch (error) {
+    console.error("[AppManager] Error opening wallpaper picker:", error);
   }
 }
 

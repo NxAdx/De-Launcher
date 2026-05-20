@@ -25,13 +25,14 @@ import {
   Vibrate,
   Palette,
   Home,
+  Image as ImageIcon,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { getAvailableIconPacks, promptSetDefaultLauncher } from "@/src/services/appManager";
+import { getAvailableIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
 import { IconPackInfo } from "@/modules/de-launcher-native";
 
 // ─── Setting Row Components ─────────────────────────────
@@ -155,6 +156,11 @@ export default function SettingsScreen() {
     await promptSetDefaultLauncher();
   }, []);
 
+  const handleChangeWallpaper = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await changeWallpaper();
+  }, []);
+
   return (
     <View
       style={[
@@ -225,7 +231,23 @@ export default function SettingsScreen() {
           isDark={isDark}
         />
 
-        {iconPacks.length > 0 && (
+        <SettingRow
+          icon={<ImageIcon size={20} color={colors.textSecondary} />}
+          label="Change Wallpaper"
+          description="Choose a system wallpaper"
+          right={
+            <Pressable onPress={handleChangeWallpaper} style={styles.gridButton}>
+              <ImageIcon size={16} color={colors.accent} />
+            </Pressable>
+          }
+          onPress={handleChangeWallpaper}
+          colors={colors}
+          isDark={isDark}
+        />
+
+        {/* ─── Icon Packs ─── */}
+        <SectionHeader title="ICON PACKS" colors={colors} />
+        {iconPacks.length > 0 ? (
           <>
             <Pressable
               onPress={() => handleIconPackSelect(null)}
@@ -324,6 +346,28 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </>
+        ) : (
+          <View
+            style={[
+              styles.infoCard,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(0,0,0,0.03)",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Palette size={20} color={colors.accent} style={styles.infoCardIcon} />
+            <View style={styles.infoCardTextContainer}>
+              <Text style={[styles.infoCardTitle, { color: colors.textPrimary }]}>
+                No Icon Packs Installed
+              </Text>
+              <Text style={[styles.infoCardDescription, { color: colors.textSecondary }]}>
+                Install Nova or Lawnchair compatible icon packs from the Play Store to customize your home screen.
+              </Text>
+            </View>
+          </View>
         )}
 
         {/* ─── Display ─── */}
@@ -528,5 +572,30 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
+  },
+  infoCard: {
+    flexDirection: "row",
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  infoCardIcon: {
+    marginLeft: spacing.xs,
+  },
+  infoCardTextContainer: {
+    flex: 1,
+  },
+  infoCardTitle: {
+    fontFamily: typography.family.semiBold,
+    fontSize: typography.size.sm,
+    marginBottom: 2,
+  },
+  infoCardDescription: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: 16,
   },
 });

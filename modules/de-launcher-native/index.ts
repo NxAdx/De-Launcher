@@ -33,6 +33,10 @@ export async function promptSetDefaultLauncher(): Promise<void> {
   return await DeLauncherNativeModule.promptSetDefaultLauncher();
 }
 
+export async function changeWallpaper(): Promise<void> {
+  return await DeLauncherNativeModule.changeWallpaper();
+}
+
 export async function getIconFromPack(
   iconPackPackage: string,
   drawableName: string

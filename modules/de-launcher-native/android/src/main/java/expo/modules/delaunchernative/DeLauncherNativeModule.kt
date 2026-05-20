@@ -18,32 +18,66 @@ class DeLauncherNativeModule : Module() {
 
     AsyncFunction("getInstalledApps") { ->
       appContext.reactContext?.let { context ->
-        val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN, null).apply {
-          addCategory(Intent.CATEGORY_LAUNCHER)
-        }
-        
-        val apps = pm.queryIntentActivities(intent, 0)
         val appList = mutableListOf<Map<String, Any?>>()
+        val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as? android.content.pm.LauncherApps
+        val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as? android.os.UserManager
 
-        for (resolveInfo in apps) {
-          val packageName = resolveInfo.activityInfo.packageName
-          // Exclude our own launcher app
-          if (packageName == context.packageName) continue
+        if (launcherApps != null && userManager != null) {
+          try {
+            val profiles = userManager.userProfiles
+            for (profile in profiles) {
+              val activities = launcherApps.getActivityList(null, profile)
+              for (info in activities) {
+                val packageName = info.applicationInfo.packageName
+                // Exclude our own launcher app
+                if (packageName == context.packageName) continue
 
-          val label = resolveInfo.loadLabel(pm).toString()
-          val drawable = resolveInfo.loadIcon(pm)
-          val iconUri = drawableToUri(context, drawable, packageName)
-          val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                val label = info.label.toString()
+                val drawable = info.getIcon(0)
+                val iconUri = drawableToUri(context, drawable, packageName)
+                val isSystem = (info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
-          appList.add(
-            mapOf(
-              "packageName" to packageName,
-              "label" to label,
-              "icon" to iconUri,
-              "isSystem" to isSystem
+                appList.add(
+                  mapOf(
+                    "packageName" to packageName,
+                    "label" to label,
+                    "icon" to iconUri,
+                    "isSystem" to isSystem
+                  )
+                )
+              }
+            }
+          } catch (t: Throwable) {
+            android.util.Log.e("DeLauncherNative", "Error using LauncherApps, falling back", t)
+          }
+        }
+
+        if (appList.isEmpty()) {
+          val pm = context.packageManager
+          val intent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+          }
+          
+          val apps = pm.queryIntentActivities(intent, 0)
+          for (resolveInfo in apps) {
+            val packageName = resolveInfo.activityInfo.packageName
+            // Exclude our own launcher app
+            if (packageName == context.packageName) continue
+
+            val label = resolveInfo.loadLabel(pm).toString()
+            val drawable = resolveInfo.loadIcon(pm)
+            val iconUri = drawableToUri(context, drawable, packageName)
+            val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
+            appList.add(
+              mapOf(
+                "packageName" to packageName,
+                "label" to label,
+                "icon" to iconUri,
+                "isSystem" to isSystem
+              )
             )
-          )
+          }
         }
         appList
       } ?: emptyList<Map<String, Any?>>()
@@ -71,12 +105,56 @@ class DeLauncherNativeModule : Module() {
 
     AsyncFunction("promptSetDefaultLauncher") { ->
       appContext.reactContext?.let { context ->
-        val intent = Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        var launched = false
+        
+        // 1. Try Settings.ACTION_HOME_SETTINGS (API 21+)
         try {
+          val intent = Intent(android.provider.Settings.ACTION_HOME_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
           context.startActivity(intent)
+          launched = true
         } catch (e: Exception) {
-          android.util.Log.e("DeLauncherNative", "Error prompting default launcher", e)
+          android.util.Log.w("DeLauncherNative", "Failed ACTION_HOME_SETTINGS, trying fallback intent", e)
+        }
+        
+        if (!launched) {
+          // 2. Try HOME intent to trigger default chooser
+          try {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+              addCategory(Intent.CATEGORY_HOME)
+              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            launched = true
+          } catch (e: Exception) {
+            android.util.Log.w("DeLauncherNative", "Failed HOME category intent, trying global settings", e)
+          }
+        }
+        
+        if (!launched) {
+          // 3. Try global Settings page
+          try {
+            val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+          } catch (e: Exception) {
+            android.util.Log.e("DeLauncherNative", "Failed all fallback intents to open settings", e)
+          }
+        }
+      }
+    }
+
+    AsyncFunction("changeWallpaper") { ->
+      appContext.reactContext?.let { context ->
+        val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+        val chooser = Intent.createChooser(intent, "Select Wallpaper")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+          context.startActivity(chooser)
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Error starting wallpaper chooser", e)
         }
       }
     }

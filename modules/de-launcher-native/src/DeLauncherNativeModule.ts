@@ -21,6 +21,7 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   launchApp(packageName: string): Promise<void>;
   updateWhitelist(whitelist: string[]): Promise<void>;
   promptSetDefaultLauncher(): Promise<void>;
+  changeWallpaper(): Promise<void>;
   
   // Icon Packs
   getAvailableIconPacks(): Promise<IconPackInfo[]>;
@@ -45,6 +46,11 @@ const expoGoFallback = {
   promptSetDefaultLauncher: async () => {
     console.warn(
       `[DeLauncherNative] promptSetDefaultLauncher() requires an Android development build.`
+    );
+  },
+  changeWallpaper: async () => {
+    console.warn(
+      `[DeLauncherNative] changeWallpaper() requires an Android development build.`
     );
   },
   getAvailableIconPacks: async () => [],

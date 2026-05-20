@@ -33,6 +33,32 @@ function addPermissions(androidManifest) {
   return androidManifest;
 }
 
+function addQueries(androidManifest) {
+  if (!androidManifest.manifest.queries) {
+    androidManifest.manifest.queries = [];
+  }
+
+  const hasQueries = androidManifest.manifest.queries.some(
+    (q) => q.intent && q.intent.some(
+      (i) => i.action?.[0]?.$?.["android:name"] === "android.intent.action.MAIN" &&
+             i.category?.[0]?.$?.["android:name"] === "android.intent.category.LAUNCHER"
+    )
+  );
+
+  if (!hasQueries) {
+    androidManifest.manifest.queries.push({
+      intent: [
+        {
+          action: [{ $: { "android:name": "android.intent.action.MAIN" } }],
+          category: [{ $: { "android:name": "android.intent.category.LAUNCHER" } }],
+        },
+      ],
+    });
+  }
+
+  return androidManifest;
+}
+
 function addLauncherIntentFilter(androidManifest) {
   const mainApplication = androidManifest.manifest.application?.[0];
   if (!mainApplication) {
@@ -175,6 +201,7 @@ function addWallpaperTheme(styles) {
 module.exports = function withLauncherIntent(config) {
   config = withAndroidManifest(config, (config) => {
     config.modResults = addPermissions(config.modResults);
+    config.modResults = addQueries(config.modResults);
     config.modResults = addLauncherIntentFilter(config.modResults);
     config.modResults = addAccessibilityService(config.modResults);
     return config;

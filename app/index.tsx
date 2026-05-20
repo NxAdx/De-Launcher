@@ -36,9 +36,10 @@ export default function HomeScreen() {
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
   const allowedApps = React.useMemo(() => {
-    return installedApps.filter((app) =>
-      allowedPackages.includes(app.packageName)
-    );
+    const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
+    return allowedPackages
+      .map((pkg) => appsMap.get(pkg))
+      .filter((app): app is AppInfo => !!app);
   }, [installedApps, allowedPackages]);
 
   const handleAppPress = useCallback((app: AppInfo) => {
