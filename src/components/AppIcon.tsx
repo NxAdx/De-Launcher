@@ -17,7 +17,7 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, layout } from "@/src/theme/tokens";
 import { AppInfo } from "@/src/types/app";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { getIconFromPack, getCachedIcon } from "@/src/services/appManager";
+import { getIconFromPack, getCachedIcon, getSystemAppIcon, getCachedSystemIcon } from "@/src/services/appManager";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -72,6 +72,13 @@ export function AppIcon({
     }
     return null;
   });
+  const [systemIcon, setSystemIcon] = useState<string | null>(() => {
+    if (!activeIconPack) {
+      const cached = getCachedSystemIcon(app.packageName);
+      if (cached !== undefined) return cached;
+    }
+    return null;
+  });
   const [loadedPack, setLoadedPack] = useState<string | null>(activeIconPack ?? null);
 
   // Load custom icon from icon pack when pack changes
@@ -112,6 +119,36 @@ export function AppIcon({
 
     loadCustomIcon();
   }, [activeIconPack, app.packageName, loadedPack]);
+
+  // Load fallback system app icon lazily when active icon pack is disabled or not set
+  useEffect(() => {
+    if (activeIconPack) {
+      setSystemIcon(null);
+      return;
+    }
+
+    const cached = getCachedSystemIcon(app.packageName);
+    if (cached !== undefined) {
+      setSystemIcon(cached);
+      return;
+    }
+
+    let isMounted = true;
+    const loadSystemIcon = async () => {
+      try {
+        const icon = await getSystemAppIcon(app.packageName);
+        if (icon && isMounted) {
+          setSystemIcon(icon);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    };
+    loadSystemIcon();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeIconPack, app.packageName]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -158,6 +195,14 @@ export function AppIcon({
       {customIcon ? (
         <Image
           source={{ uri: customIcon }}
+          style={[
+            styles.icon,
+            { width: size, height: size, borderRadius: size * 0.22 },
+          ]}
+        />
+      ) : systemIcon ? (
+        <Image
+          source={{ uri: systemIcon }}
           style={[
             styles.icon,
             { width: size, height: size, borderRadius: size * 0.22 },

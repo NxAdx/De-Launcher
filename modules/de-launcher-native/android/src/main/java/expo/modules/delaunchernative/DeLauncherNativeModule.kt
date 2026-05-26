@@ -35,8 +35,7 @@ class DeLauncherNativeModule : Module() {
                 if (packageName == context.packageName) continue
 
                 val label = info.label.toString()
-                val drawable = info.getIcon(0)
-                val iconUri = drawableToUri(context, drawable, packageName)
+                val iconUri: String? = null
                 val isSystem = (info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
                 appList.add(
@@ -67,8 +66,7 @@ class DeLauncherNativeModule : Module() {
             if (packageName == context.packageName) continue
 
             val label = resolveInfo.loadLabel(pm).toString()
-            val drawable = resolveInfo.loadIcon(pm)
-            val iconUri = drawableToUri(context, drawable, packageName)
+            val iconUri: String? = null
             val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
             appList.add(
@@ -96,7 +94,11 @@ class DeLauncherNativeModule : Module() {
         }
 
         if (launchIntent != null) {
-          launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+          if (isSettings) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          } else {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+          }
           try {
             context.startActivity(launchIntent)
           } catch (e: Exception) {
@@ -209,6 +211,27 @@ class DeLauncherNativeModule : Module() {
       }
     }
 
+    AsyncFunction("getSystemAppIcon") { packageName: String ->
+      appContext.reactContext?.let { context ->
+        try {
+          val pm = context.packageManager
+          val cacheDir = context.cacheDir
+          val maxSize = 256
+          val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
+          if (iconFile.exists() && iconFile.length() > 0) {
+            "file://" + iconFile.absolutePath
+          } else {
+            val appInfo = pm.getApplicationInfo(packageName, 0)
+            val drawable = appInfo.loadIcon(pm)
+            drawableToUri(context, drawable, packageName)
+          }
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get system app icon for $packageName", e)
+          null
+        }
+      }
+    }
+
     AsyncFunction("allocateAppWidgetId") { ->
       appWidgetHost?.allocateAppWidgetId() ?: -1
     }
@@ -273,7 +296,8 @@ class DeLauncherNativeModule : Module() {
   private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String): String? {
     return try {
       val cacheDir = context.cacheDir
-      val iconFile = java.io.File(cacheDir, "app_icon_$packageName.png")
+      val maxSize = 256
+      val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
       
       if (iconFile.exists() && iconFile.length() > 0) {
         return "file://" + iconFile.absolutePath
@@ -290,9 +314,6 @@ class DeLauncherNativeModule : Module() {
         drawable.draw(canvas)
         newBitmap
       }
-      
-      // Downscale to prevent OOM but keep high density
-      val maxSize = 256
       val ratio = Math.min(maxSize.toFloat() / originalBitmap.width, maxSize.toFloat() / originalBitmap.height)
       val scaledBitmap = if (ratio < 1f) {
         Bitmap.createScaledBitmap(originalBitmap, (originalBitmap.width * ratio).toInt(), (originalBitmap.height * ratio).toInt(), true)

@@ -24,6 +24,7 @@ interface AppState {
   removeFromDock: (packageName: string) => void;
   reorderDock: (packages: string[]) => void;
   moveApp: (packageName: string, direction: "left" | "right") => void;
+  moveDockApp: (packageName: string, direction: "left" | "right") => void;
 
   // Computed helpers
   isAllowed: (packageName: string) => boolean;
@@ -85,6 +86,21 @@ export const useAppStore = create<AppState>()(
 
         set({ allowedPackages: current });
         updateWhitelist(current).catch(console.error);
+      },
+
+      moveDockApp: (packageName, direction) => {
+        const current = [...get().dockPackages];
+        const index = current.indexOf(packageName);
+        if (index === -1) return;
+
+        const newIndex = direction === "left" ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= current.length) return;
+
+        const temp = current[index];
+        current[index] = current[newIndex];
+        current[newIndex] = temp;
+
+        set({ dockPackages: current });
       },
 
       isAllowed: (packageName) => get().allowedPackages.includes(packageName),

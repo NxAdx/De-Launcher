@@ -13,6 +13,7 @@ import {
   getIconFromPack as nativeGetIconFromPack,
   promptSetDefaultLauncher as nativePromptSetDefaultLauncher,
   changeWallpaper as nativeChangeWallpaper,
+  getSystemAppIcon as nativeGetSystemAppIcon,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
@@ -174,6 +175,46 @@ export async function prefetchIcon(iconPackPackage: string, drawableName: string
  */
 export function clearIconPackCache(): void {
   iconPackCache.clear();
+}
+
+const systemIconCache = new Map<string, string | null>();
+
+/**
+ * Get system app icon (uses memory cache first, falls back to native getSystemAppIcon on-demand).
+ */
+export async function getSystemAppIcon(packageName: string): Promise<string | null> {
+  if (systemIconCache.has(packageName)) {
+    return systemIconCache.get(packageName) ?? null;
+  }
+  try {
+    const iconUri = await nativeGetSystemAppIcon(packageName);
+    systemIconCache.set(packageName, iconUri);
+    return iconUri;
+  } catch (error) {
+    console.error(`[AppManager] Error getting system icon for ${packageName}:`, error);
+    systemIconCache.set(packageName, null);
+    return null;
+  }
+}
+
+/**
+ * Synchronously check if a system icon is cached.
+ */
+export function getCachedSystemIcon(packageName: string): string | null | undefined {
+  return systemIconCache.get(packageName);
+}
+
+/**
+ * Prefetch a system app icon in the background and cache it.
+ */
+export async function prefetchSystemIcon(packageName: string): Promise<void> {
+  if (systemIconCache.has(packageName)) return;
+  try {
+    const iconUri = await nativeGetSystemAppIcon(packageName);
+    systemIconCache.set(packageName, iconUri);
+  } catch (e) {
+    systemIconCache.set(packageName, null);
+  }
 }
 
 /**

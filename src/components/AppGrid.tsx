@@ -75,7 +75,7 @@ function DraggableItem({
     : gridColumns;
   const rowOffset = ((gridColumns - itemsInRow) * itemWidth) / 2;
 
-  const targetX = col * itemWidth + rowOffset;
+  const targetX = spacing.xl + col * itemWidth + rowOffset;
   const targetY = row * ROW_HEIGHT + verticalOffset;
 
   const x = useSharedValue(targetX);
@@ -144,7 +144,7 @@ function DraggableItem({
           : gridColumns;
         const rowOffsetI = ((gridColumns - itemsInRowI) * itemWidth) / 2;
 
-        const centerCellX = colI * itemWidth + rowOffsetI + itemWidth / 2;
+        const centerCellX = spacing.xl + colI * itemWidth + rowOffsetI + itemWidth / 2;
         const centerCellY = rowI * ROW_HEIGHT + verticalOffset + ROW_HEIGHT / 2;
 
         const dx = centerX - centerCellX;

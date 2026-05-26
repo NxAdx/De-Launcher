@@ -44,6 +44,10 @@ export async function getIconFromPack(
   return await DeLauncherNativeModule.getIconFromPack(iconPackPackage, drawableName);
 }
 
+export async function getSystemAppIcon(packageName: string): Promise<string | null> {
+  return await DeLauncherNativeModule.getSystemAppIcon(packageName);
+}
+
 export async function allocateAppWidgetId(): Promise<number> {
   return await DeLauncherNativeModule.allocateAppWidgetId();
 }

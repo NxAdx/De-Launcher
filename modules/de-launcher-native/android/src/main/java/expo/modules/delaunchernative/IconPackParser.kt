@@ -25,6 +25,8 @@ class IconPackParser(private val context: Context) {
         private const val TAG = "IconPackParser"
         // Cache mapping from icon pack package name to its parsed appfilter mappings
         private val mappingsCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
+        // Cache scanned list of icon pack package names to bypass expensive scanners on settings screen reload
+        private var cachedIconPackPackages: Set<String>? = null
     }
 
     /**
@@ -35,70 +37,77 @@ class IconPackParser(private val context: Context) {
         val iconPacks = mutableListOf<IconPackInfo>()
         val iconPackPackages = mutableSetOf<String>()
 
-        val actions = listOf(
-            "org.adw.launcher.THEMES",
-            "com.novalauncher.THEME",
-            "com.anddoes.launcher.THEME",
-            "com.teslacoilsw.launcher.THEME",
-            "com.fede.launcher.THEME_ICONPACK",
-            "com.gau.go.launcherex.theme",
-            "com.dlto.atom.launcher.THEME",
-            "solo.launcher.THEME"
-        )
+        val cached = cachedIconPackPackages
+        if (cached != null) {
+            iconPackPackages.addAll(cached)
+        } else {
+            val actions = listOf(
+                "org.adw.launcher.THEMES",
+                "com.novalauncher.THEME",
+                "com.anddoes.launcher.THEME",
+                "com.teslacoilsw.launcher.THEME",
+                "com.fede.launcher.THEME_ICONPACK",
+                "com.gau.go.launcherex.theme",
+                "com.dlto.atom.launcher.THEME",
+                "solo.launcher.THEME"
+            )
 
-        for (action in actions) {
-            try {
-                val intent = Intent(action)
-                val resolveInfos = pm.queryIntentActivities(intent, 0)
-                for (ri in resolveInfos) {
-                    iconPackPackages.add(ri.activityInfo.packageName)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to query action $action: ${e.message}")
-            }
-        }
-
-        // Fallback: Scan all installed packages on the system to verify if they have appfilter XML resources
-        try {
-            val allPackages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-            for (pkgInfo in allPackages) {
-                val pkgName = pkgInfo.packageName
-                if (pkgName == context.packageName) continue
-                if (iconPackPackages.contains(pkgName)) continue // already added
-
+            for (action in actions) {
                 try {
-                    val appInfo = pm.getApplicationInfo(pkgName, PackageManager.GET_META_DATA)
-                    val resources = pm.getResourcesForApplication(appInfo.packageName)
-                    
-                    var hasAppFilter = false
-                    var appfilterResId = resources.getIdentifier("appfilter", "xml", pkgName)
-                    if (appfilterResId == 0) {
-                        appfilterResId = resources.getIdentifier("appfilter", "raw", pkgName)
-                    }
-                    
-                    if (appfilterResId > 0) {
-                        hasAppFilter = true
-                    } else {
-                        // Check assets
-                        try {
-                            resources.assets.open("appfilter.xml").use {
-                                hasAppFilter = true
-                            }
-                        } catch (e: Exception) {
-                            // Not in assets
-                        }
-                    }
-
-                    if (hasAppFilter) {
-                        iconPackPackages.add(pkgName)
-                        Log.d(TAG, "Found icon pack via fallback scanner: $pkgName")
+                    val intent = Intent(action)
+                    val resolveInfos = pm.queryIntentActivities(intent, 0)
+                    for (ri in resolveInfos) {
+                        iconPackPackages.add(ri.activityInfo.packageName)
                     }
                 } catch (e: Exception) {
-                    // Ignore
+                    Log.w(TAG, "Failed to query action $action: ${e.message}")
                 }
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Fallback scanner failed: ${e.message}")
+
+            // Fallback: Scan all installed packages on the system to verify if they have appfilter XML resources
+            try {
+                val allPackages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+                for (pkgInfo in allPackages) {
+                    val pkgName = pkgInfo.packageName
+                    if (pkgName == context.packageName) continue
+                    if (iconPackPackages.contains(pkgName)) continue // already added
+
+                    try {
+                        val appInfo = pm.getApplicationInfo(pkgName, PackageManager.GET_META_DATA)
+                        val resources = pm.getResourcesForApplication(appInfo.packageName)
+                        
+                        var hasAppFilter = false
+                        var appfilterResId = resources.getIdentifier("appfilter", "xml", pkgName)
+                        if (appfilterResId == 0) {
+                            appfilterResId = resources.getIdentifier("appfilter", "raw", pkgName)
+                        }
+                        
+                        if (appfilterResId > 0) {
+                            hasAppFilter = true
+                        } else {
+                            // Check assets
+                            try {
+                                resources.assets.open("appfilter.xml").use {
+                                    hasAppFilter = true
+                                }
+                            } catch (e: Exception) {
+                                // Not in assets
+                            }
+                        }
+
+                        if (hasAppFilter) {
+                            iconPackPackages.add(pkgName)
+                            Log.d(TAG, "Found icon pack via fallback scanner: $pkgName")
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Fallback scanner failed: ${e.message}")
+            }
+
+            cachedIconPackPackages = iconPackPackages
         }
 
         for (packageName in iconPackPackages) {
@@ -318,7 +327,7 @@ class IconPackParser(private val context: Context) {
     private fun drawableToUri(context: Context, drawable: Drawable, size: Int, iconPack: String, drawableName: String): String? {
         try {
             val cacheDir = context.cacheDir
-            val iconFile = java.io.File(cacheDir, "app_icon_${iconPack}_${drawableName}.png")
+            val iconFile = java.io.File(cacheDir, "app_icon_${iconPack}_${drawableName}_${size}.png")
             if (iconFile.exists() && iconFile.length() > 0) {
                 return "file://" + iconFile.absolutePath
             }

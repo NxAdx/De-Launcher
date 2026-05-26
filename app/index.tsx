@@ -20,7 +20,7 @@ import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { launchApp, prefetchIcon } from "@/src/services/appManager";
+import { launchApp, prefetchIcon, prefetchSystemIcon } from "@/src/services/appManager";
 import { AppInfo } from "@/src/types/app";
 
 export default function HomeScreen() {
@@ -31,6 +31,7 @@ export default function HomeScreen() {
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const moveApp = useAppStore((s) => s.moveApp);
+  const moveDockApp = useAppStore((s) => s.moveDockApp);
   const toggleAppAllowed = useAppStore((s) => s.toggleAppAllowed);
   const dockPackages = useAppStore((s) => s.dockPackages);
   const addToDock = useAppStore((s) => s.addToDock);
@@ -52,14 +53,16 @@ export default function HomeScreen() {
     setSelectedApp(app);
   }, []);
 
-  // Background preloader for custom icon pack icons to guarantee synchronous zero-flicker mounts
+  // Background preloader for icons to guarantee synchronous zero-flicker mounts
   const activeIconPack = useSettingsStore((s) => s.activeIconPack);
   React.useEffect(() => {
-    if (!activeIconPack) return;
     const preload = async () => {
       const allPkgs = Array.from(new Set([...allowedPackages, ...dockPackages]));
       for (const pkg of allPkgs) {
-        prefetchIcon(activeIconPack, pkg);
+        if (activeIconPack) {
+          prefetchIcon(activeIconPack, pkg);
+        }
+        prefetchSystemIcon(pkg);
       }
     };
     preload();
@@ -107,114 +110,171 @@ export default function HomeScreen() {
         <Dock onLongPress={handleAppLongPress} />
 
         {/* Long Press Context Menu */}
-        {selectedApp && (
-          <Modal
-            visible={!!selectedApp}
-            transparent
-            animationType="fade"
-            statusBarTranslucent
-            onRequestClose={() => setSelectedApp(null)}
-          >
-            <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
-              <Animated.View entering={FadeInDown.duration(250)} style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
-                {/* App Title inside Menu */}
-                <View style={styles.menuHeader}>
-                  <Text style={[styles.menuAppTitle, { color: colors.textPrimary }]}>
-                    {selectedApp.label}
-                  </Text>
-                  <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
-                    {selectedApp.packageName}
-                  </Text>
-                </View>
+        {selectedApp && (() => {
+          const isSelectedAppInDock = dockPackages.includes(selectedApp.packageName);
+          const isSelectedAppInHome = allowedPackages.includes(selectedApp.packageName);
+          return (
+            <Modal
+              visible={!!selectedApp}
+              transparent
+              animationType="fade"
+              statusBarTranslucent
+              onRequestClose={() => setSelectedApp(null)}
+            >
+              <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
+                <Animated.View entering={FadeInDown.duration(250)} style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
+                  {/* App Title inside Menu */}
+                  <View style={styles.menuHeader}>
+                    <Text style={[styles.menuAppTitle, { color: colors.textPrimary }]}>
+                      {selectedApp.label}
+                    </Text>
+                    <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
+                      {selectedApp.packageName}
+                    </Text>
+                  </View>
 
-                {/* Actions */}
-                <View style={styles.menuOptions}>
-                  {allowedApps.indexOf(selectedApp) > 0 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveApp(selectedApp.packageName, "left");
-                        setSelectedApp(null);
-                      }}
-                    >
-                      <ArrowLeft size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Left
-                      </Text>
-                    </Pressable>
-                  )}
+                  {/* Actions */}
+                  <View style={styles.menuOptions}>
+                    {/* Dock Actions */}
+                    {isSelectedAppInDock && (
+                      <>
+                        {dockPackages.indexOf(selectedApp.packageName) > 0 && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              moveDockApp(selectedApp.packageName, "left");
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <ArrowLeft size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Move Left in Dock
+                            </Text>
+                          </Pressable>
+                        )}
 
-                  {allowedApps.indexOf(selectedApp) < allowedApps.length - 1 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveApp(selectedApp.packageName, "right");
-                        setSelectedApp(null);
-                      }}
-                    >
-                      <ArrowRight size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Right
-                      </Text>
-                    </Pressable>
-                  )}
+                        {dockPackages.indexOf(selectedApp.packageName) < dockPackages.length - 1 && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              moveDockApp(selectedApp.packageName, "right");
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <ArrowRight size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Move Right in Dock
+                            </Text>
+                          </Pressable>
+                        )}
 
-                  {dockPackages.includes(selectedApp.packageName) ? (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        removeFromDock(selectedApp.packageName);
-                        setSelectedApp(null);
-                      }}
-                    >
-                      <Minus size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Remove from Dock
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    dockPackages.length < 5 && (
-                      <Pressable
-                        style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                        onPress={() => {
-                          addToDock(selectedApp.packageName);
-                          setSelectedApp(null);
-                        }}
-                      >
-                        <Plus size={18} color={colors.textPrimary} />
-                        <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                          Add to Dock
+                        <Pressable
+                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                          onPress={() => {
+                            removeFromDock(selectedApp.packageName);
+                            setSelectedApp(null);
+                          }}
+                        >
+                          <Minus size={18} color={colors.textPrimary} />
+                          <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                            Remove from Dock
+                          </Text>
+                        </Pressable>
+
+                        {!isSelectedAppInHome && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              toggleAppAllowed(selectedApp.packageName);
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <Plus size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Add to Home Screen
+                            </Text>
+                          </Pressable>
+                        )}
+                      </>
+                    )}
+
+                    {/* Homescreen Actions */}
+                    {isSelectedAppInHome && (
+                      <>
+                        {allowedPackages.indexOf(selectedApp.packageName) > 0 && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              moveApp(selectedApp.packageName, "left");
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <ArrowLeft size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Move Left on Home
+                            </Text>
+                          </Pressable>
+                        )}
+
+                        {allowedPackages.indexOf(selectedApp.packageName) < allowedPackages.length - 1 && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              moveApp(selectedApp.packageName, "right");
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <ArrowRight size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Move Right on Home
+                            </Text>
+                          </Pressable>
+                        )}
+
+                        {!isSelectedAppInDock && dockPackages.length < 5 && (
+                          <Pressable
+                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            onPress={() => {
+                              addToDock(selectedApp.packageName);
+                              setSelectedApp(null);
+                            }}
+                          >
+                            <Plus size={18} color={colors.textPrimary} />
+                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                              Add to Dock
+                            </Text>
+                          </Pressable>
+                        )}
+
+                        <Pressable
+                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                          onPress={() => {
+                            toggleAppAllowed(selectedApp.packageName);
+                            setSelectedApp(null);
+                          }}
+                        >
+                          <Trash size={18} color={colors.error} />
+                          <Text style={[styles.menuOptionText, { color: colors.error }]}>
+                            Remove from Home
                         </Text>
-                      </Pressable>
-                    )
-                  )}
+                        </Pressable>
+                      </>
+                    )}
 
-                  <Pressable
-                    style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                    onPress={() => {
-                      toggleAppAllowed(selectedApp.packageName);
-                      setSelectedApp(null);
-                    }}
-                  >
-                    <Trash size={18} color={colors.error} />
-                    <Text style={[styles.menuOptionText, { color: colors.error }]}>
-                      Remove from Home
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.menuOption, styles.cancelOption]}
-                    onPress={() => setSelectedApp(null)}
-                  >
-                    <Text style={[styles.menuOptionText, { color: colors.textTertiary, textAlign: "center", width: "100%" }]}>
-                      Cancel
-                    </Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
-            </Pressable>
-          </Modal>
-        )}
+                    <Pressable
+                      style={[styles.menuOption, styles.cancelOption]}
+                      onPress={() => setSelectedApp(null)}
+                    >
+                      <Text style={[styles.menuOptionText, { color: colors.textTertiary, textAlign: "center", width: "100%" }]}>
+                        Cancel
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              </Pressable>
+            </Modal>
+          );
+        })()}
       </View>
   );
 }

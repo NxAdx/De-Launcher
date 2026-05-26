@@ -26,6 +26,7 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   // Icon Packs
   getAvailableIconPacks(): Promise<IconPackInfo[]>;
   getIconFromPack(iconPackPackage: string, drawableName: string): Promise<string | null>;
+  getSystemAppIcon(packageName: string): Promise<string | null>;
   
   // Widget Support
   allocateAppWidgetId(): Promise<number>;
@@ -55,6 +56,7 @@ const expoGoFallback = {
   },
   getAvailableIconPacks: async () => [],
   getIconFromPack: async () => null,
+  getSystemAppIcon: async () => null,
   allocateAppWidgetId: async () => -1,
   startWidgetBindFlow: async () => -1,
 } as unknown as DeLauncherNativeModule;
