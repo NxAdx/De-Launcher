@@ -14,6 +14,7 @@ import {
   promptSetDefaultLauncher as nativePromptSetDefaultLauncher,
   changeWallpaper as nativeChangeWallpaper,
   getSystemAppIcon as nativeGetSystemAppIcon,
+  getSystemAppIcons as nativeGetSystemAppIcons,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
@@ -215,6 +216,56 @@ export async function prefetchSystemIcon(packageName: string): Promise<void> {
   } catch (e) {
     systemIconCache.set(packageName, null);
   }
+}
+
+/**
+ * Batch-load all system app icons in a single native bridge call.
+ * Populates the systemIconCache so AppIcon components mount with icons synchronously.
+ */
+export async function batchLoadSystemIcons(packageNames: string[]): Promise<void> {
+  // Filter out already-cached packages
+  const uncached = packageNames.filter((pkg) => !systemIconCache.has(pkg));
+  if (uncached.length === 0) return;
+  try {
+    const icons = await nativeGetSystemAppIcons(uncached);
+    for (const [pkg, uri] of Object.entries(icons)) {
+      systemIconCache.set(pkg, uri);
+    }
+  } catch (error) {
+    console.error("[AppManager] Batch icon loading failed:", error);
+    // Fallback: mark all as null so we don't retry endlessly
+    for (const pkg of uncached) {
+      if (!systemIconCache.has(pkg)) {
+        systemIconCache.set(pkg, null);
+      }
+    }
+  }
+}
+
+// Icon pack cache for settings pre-scan
+let cachedIconPacks: IconPackInfo[] | null = null;
+
+/**
+ * Pre-scan icon packs during boot so settings screen loads instantly.
+ */
+export async function preloadIconPacks(): Promise<IconPackInfo[]> {
+  if (cachedIconPacks !== null) return cachedIconPacks;
+  try {
+    const packs = await nativeGetAvailableIconPacks();
+    cachedIconPacks = packs;
+    return packs;
+  } catch (error) {
+    console.error("[AppManager] Preload icon packs failed:", error);
+    cachedIconPacks = [];
+    return [];
+  }
+}
+
+/**
+ * Get cached icon packs synchronously (returns null if not yet preloaded).
+ */
+export function getCachedIconPacks(): IconPackInfo[] | null {
+  return cachedIconPacks;
 }
 
 /**

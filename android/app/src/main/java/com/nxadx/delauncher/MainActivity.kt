@@ -63,12 +63,20 @@ class MainActivity : ReactActivity() {
       super.invokeDefaultOnBackPressed()
   }
 
+  private var lastHomePressedTime = 0L
+
   override fun onNewIntent(intent: android.content.Intent?) {
       super.onNewIntent(intent)
       intent?.let {
           if (it.hasCategory(android.content.Intent.CATEGORY_HOME)) {
-              val localIntent = android.content.Intent("com.nxadx.delauncher.HOME_PRESSED")
-              sendBroadcast(localIntent)
+              val now = System.currentTimeMillis()
+              // Debounce: only broadcast if >500ms since last, to avoid killing
+              // in-progress navigation transitions (e.g. pushing to /settings)
+              if (now - lastHomePressedTime > 500) {
+                  lastHomePressedTime = now
+                  val localIntent = android.content.Intent("com.nxadx.delauncher.HOME_PRESSED")
+                  sendBroadcast(localIntent)
+              }
           }
       }
   }

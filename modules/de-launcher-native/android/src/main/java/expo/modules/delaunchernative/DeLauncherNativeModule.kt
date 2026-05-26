@@ -86,41 +86,43 @@ class DeLauncherNativeModule : Module() {
     AsyncFunction("launchApp") { packageName: String ->
       appContext.reactContext?.let { context ->
         val pm = context.packageManager
-        val isSettings = packageName.contains("settings", ignoreCase = true)
-        val launchIntent = if (isSettings) {
-          Intent(android.provider.Settings.ACTION_SETTINGS)
-        } else {
-          pm.getLaunchIntentForPackage(packageName)
-        }
+
+        // Always try getLaunchIntentForPackage first — works for all apps including Settings on most OEMs
+        var launchIntent = pm.getLaunchIntentForPackage(packageName)
 
         if (launchIntent != null) {
-          if (isSettings) {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-          } else {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-          }
+          launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
           try {
             context.startActivity(launchIntent)
+            return@let
           } catch (e: Exception) {
-            android.util.Log.e("DeLauncherNative", "Error launching app: $packageName", e)
-            if (isSettings) {
-              try {
-                context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-              } catch (e2: Exception) {
-                android.util.Log.e("DeLauncherNative", "Error launching settings fallback", e2)
-              }
-            }
+            android.util.Log.w("DeLauncherNative", "getLaunchIntentForPackage failed for $packageName, trying fallbacks", e)
           }
-        } else if (isSettings) {
+        }
+
+        // Fallback for Settings-like packages
+        val isSettings = packageName.contains("settings", ignoreCase = true)
+        if (isSettings) {
           try {
             context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
               addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
+            return@let
           } catch (e: Exception) {
-            android.util.Log.e("DeLauncherNative", "Error launching settings fallback when intent null", e)
+            android.util.Log.e("DeLauncherNative", "ACTION_SETTINGS fallback also failed", e)
           }
+        }
+
+        // Final fallback: try to resolve any launchable activity for the package
+        try {
+          val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            setPackage(packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "All launch attempts failed for $packageName", e)
         }
       }
     }
@@ -230,6 +232,31 @@ class DeLauncherNativeModule : Module() {
           null
         }
       }
+    }
+
+    AsyncFunction("getSystemAppIcons") { packageNames: List<String> ->
+      appContext.reactContext?.let { context ->
+        val pm = context.packageManager
+        val cacheDir = context.cacheDir
+        val maxSize = 256
+        val result = mutableMapOf<String, String?>()
+        for (pkg in packageNames) {
+          try {
+            val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${maxSize}.png")
+            if (iconFile.exists() && iconFile.length() > 0) {
+              result[pkg] = "file://" + iconFile.absolutePath
+            } else {
+              val appInfo = pm.getApplicationInfo(pkg, 0)
+              val drawable = appInfo.loadIcon(pm)
+              result[pkg] = drawableToUri(context, drawable, pkg)
+            }
+          } catch (e: Exception) {
+            android.util.Log.w("DeLauncherNative", "Failed to load icon for $pkg", e)
+            result[pkg] = null
+          }
+        }
+        result
+      } ?: emptyMap<String, String?>()
     }
 
     AsyncFunction("allocateAppWidgetId") { ->

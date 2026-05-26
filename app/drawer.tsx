@@ -19,6 +19,7 @@ import { AppIcon } from "@/src/components/AppIcon";
 import { useAppStore } from "@/src/store/appStore";
 import { AppInfo } from "@/src/types/app";
 import { launchApp, KNOWN_DISTRACTION_PACKAGES } from "@/src/services/appManager";
+import { signalNavigation } from "./_layout";
 
 type FilterMode = "all" | "allowed" | "blocked";
 
@@ -57,6 +58,7 @@ export default function DrawerScreen() {
 
   const handleAppPress = useCallback((app: AppInfo) => {
     launchApp(app.packageName);
+    signalNavigation();
     router.back();
   }, []);
 
@@ -144,7 +146,7 @@ export default function DrawerScreen() {
         entering={FadeInDown.duration(300)}
         style={styles.header}
       >
-        <Pressable onPress={() => router.back()} hitSlop={16}>
+        <Pressable onPress={() => { signalNavigation(); router.back(); }} hitSlop={16}>
           <ChevronDown size={28} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.title, { color: colors.textPrimary }]}>

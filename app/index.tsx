@@ -20,7 +20,8 @@ import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { launchApp, prefetchIcon, prefetchSystemIcon } from "@/src/services/appManager";
+import { launchApp } from "@/src/services/appManager";
+import { signalNavigation } from "./_layout";
 import { AppInfo } from "@/src/types/app";
 
 export default function HomeScreen() {
@@ -53,20 +54,7 @@ export default function HomeScreen() {
     setSelectedApp(app);
   }, []);
 
-  // Background preloader for icons to guarantee synchronous zero-flicker mounts
-  const activeIconPack = useSettingsStore((s) => s.activeIconPack);
-  React.useEffect(() => {
-    const preload = async () => {
-      const allPkgs = Array.from(new Set([...allowedPackages, ...dockPackages]));
-      for (const pkg of allPkgs) {
-        if (activeIconPack) {
-          prefetchIcon(activeIconPack, pkg);
-        }
-        prefetchSystemIcon(pkg);
-      }
-    };
-    preload();
-  }, [activeIconPack, allowedPackages, dockPackages]);
+  // Background icon preloading is now done at boot time via batchLoadSystemIcons in _layout.tsx
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -76,7 +64,10 @@ export default function HomeScreen() {
           style={[styles.settingsButton, { top: statusBarHeight + spacing.sm }]}
         >
           <Pressable
-            onPress={() => router.push("/settings")}
+            onPress={() => {
+              signalNavigation();
+              router.push("/settings");
+            }}
             hitSlop={16}
             style={styles.settingsPressable}
           >

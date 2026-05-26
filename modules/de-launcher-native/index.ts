@@ -48,6 +48,10 @@ export async function getSystemAppIcon(packageName: string): Promise<string | nu
   return await DeLauncherNativeModule.getSystemAppIcon(packageName);
 }
 
+export async function getSystemAppIcons(packageNames: string[]): Promise<Record<string, string | null>> {
+  return await DeLauncherNativeModule.getSystemAppIcons(packageNames);
+}
+
 export async function allocateAppWidgetId(): Promise<number> {
   return await DeLauncherNativeModule.allocateAppWidgetId();
 }

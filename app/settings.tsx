@@ -36,7 +36,8 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
-import { getAvailableIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
+import { getAvailableIconPacks, getCachedIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
+import { signalNavigation } from "./_layout";
 import { IconPackInfo } from "@/modules/de-launcher-native";
 
 // ─── Setting Row Components ─────────────────────────────
@@ -134,16 +135,21 @@ export default function SettingsScreen() {
   } = useSettingsStore();
 
   useEffect(() => {
-    const loadIconPacks = async () => {
-      try {
-        const packs = await getAvailableIconPacks();
-        setIconPacks(packs);
-      } catch (error) {
-        console.error("Failed to load icon packs:", error);
-      }
-    };
-
-    loadIconPacks();
+    // Use pre-cached icon packs if available (from boot preload), else fetch
+    const cached = getCachedIconPacks();
+    if (cached !== null && cached.length > 0) {
+      setIconPacks(cached);
+    } else {
+      const loadIconPacks = async () => {
+        try {
+          const packs = await getAvailableIconPacks();
+          setIconPacks(packs);
+        } catch (error) {
+          console.error("Failed to load icon packs:", error);
+        }
+      };
+      loadIconPacks();
+    }
   }, []);
 
   const handleGridChange = useCallback(() => {
@@ -183,7 +189,7 @@ export default function SettingsScreen() {
         entering={FadeIn.duration(300)}
         style={styles.header}
       >
-        <Pressable onPress={() => router.back()} hitSlop={16}>
+        <Pressable onPress={() => { signalNavigation(); router.back(); }} hitSlop={16}>
           <ArrowLeft size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
@@ -454,11 +460,11 @@ export default function SettingsScreen() {
           label="App Selector"
           description="Manage allowed apps on your homescreen"
           right={
-            <Pressable onPress={() => router.push("/drawer")} style={styles.gridButton}>
+            <Pressable onPress={() => { signalNavigation(); router.push("/drawer"); }} style={styles.gridButton}>
               <LayoutGrid size={16} color={colors.accent} />
             </Pressable>
           }
-          onPress={() => router.push("/drawer")}
+          onPress={() => { signalNavigation(); router.push("/drawer"); }}
           colors={colors}
           isDark={isDark}
         />

@@ -5,7 +5,7 @@
  * Supports interactive drag-to-reorder custom gestures with smooth spring tilt/scale animations.
  */
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, StyleSheet, Dimensions, ScrollView } from "react-native";
+import { View, StyleSheet, Dimensions, ScrollView, StatusBar as RNStatusBar } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,8 +22,12 @@ import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 import { useTheme } from "@/src/theme/ThemeContext";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ROW_HEIGHT = 92;
+// Estimate available height for the grid (screen minus status bar, clock, dock)
+const STATUS_BAR_HEIGHT = RNStatusBar.currentHeight ?? 24;
+const CLOCK_HEIGHT = 120; // approximate clock widget height
+const DOCK_HEIGHT = 80;
 
 interface DraggableItemProps {
   app: AppInfo;
@@ -225,7 +229,10 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
   const isAnyDragging = useSharedValue(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [activePage, setActivePage] = useState(0);
-  const [gridHeight, setGridHeight] = useState(368); // Standard 4 rows default (4 * 92)
+  const [gridHeight, setGridHeight] = useState(() => {
+    // Deterministic initial height based on screen dimensions
+    return SCREEN_HEIGHT - STATUS_BAR_HEIGHT - CLOCK_HEIGHT - DOCK_HEIGHT - spacing.xl;
+  });
 
   // Synchronize dynamic updates from outer stores safely when drag gesture is inert
   useEffect(() => {
@@ -359,7 +366,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageContainer: {
-    paddingHorizontal: spacing.xl,
     position: "relative",
   },
   gridItem: {

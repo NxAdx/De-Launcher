@@ -9,8 +9,9 @@
  * - System UI configuration
  * - Splash screen management
  * - Error boundary
+ * - Navigation guard for HOME_PRESSED debounce
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Stack, ErrorBoundary, router } from "expo-router";
@@ -33,6 +34,8 @@ import { ThemeProvider, useTheme } from "@/src/theme/ThemeContext";
 import { useAppStore } from "@/src/store/appStore";
 import {
   getInstalledApps,
+  batchLoadSystemIcons,
+  preloadIconPacks,
   DEFAULT_DOCK_PACKAGES,
   DEFAULT_ALLOWED_PACKAGES,
 } from "@/src/services/appManager";
@@ -40,8 +43,25 @@ import {
 // Prevent splash auto-hide
 SplashScreen.preventAutoHideAsync();
 
-// Set system background to transparent to show system wallpaper
-// SystemUI.setBackgroundColorAsync("#000000");
+// ─── Navigation Guard ─────────────────────────────────────
+// Shared module-level guard that other screens can signal when navigating.
+// When active, onHomePressed events are ignored to prevent navigation resets
+// from killing in-progress route transitions (e.g. pushing to /settings).
+let _navigationGuardActive = false;
+let _navigationGuardTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Signal that a navigation is in progress. HOME_PRESSED events will be
+ * ignored for the specified duration (default 600ms).
+ */
+export function signalNavigation(durationMs = 600) {
+  _navigationGuardActive = true;
+  if (_navigationGuardTimer) clearTimeout(_navigationGuardTimer);
+  _navigationGuardTimer = setTimeout(() => {
+    _navigationGuardActive = false;
+    _navigationGuardTimer = null;
+  }, durationMs);
+}
 
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
@@ -57,6 +77,11 @@ function RootLayoutContent() {
   useEffect(() => {
     try {
       const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
+        // If navigation is in progress, ignore this HOME_PRESSED to avoid
+        // killing the transition (e.g. to /settings or /drawer)
+        if (_navigationGuardActive) {
+          return;
+        }
         // Pop/dismiss all navigation routes back to the root index screen "/"
         try {
           router.dismissAll();
@@ -90,6 +115,19 @@ function RootLayoutContent() {
         if (allowedPackages.length === 0) {
           setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
         }
+
+        // ── Boot-time preloading ──
+        // Batch-load all system app icons in one native bridge call.
+        // This populates the JS-side cache so AppIcon mounts synchronously.
+        const allPackages = apps.map((a) => a.packageName);
+        batchLoadSystemIcons(allPackages).catch((e) =>
+          console.warn("[RootLayout] Batch icon preload error:", e)
+        );
+
+        // Pre-scan icon packs in the background so settings opens instantly.
+        preloadIconPacks().catch((e) =>
+          console.warn("[RootLayout] Icon pack preload error:", e)
+        );
       } catch (err) {
         console.error("[RootLayout] Error loading apps:", err);
         // Fallback: still try to set defaults even if app loading fails
