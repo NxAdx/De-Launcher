@@ -198,7 +198,7 @@ class DeLauncherNativeModule : Module() {
           mapOf(
             "packageName" to pack.packageName,
             "label" to pack.label,
-            "mappingCount" to pack.mappingCount
+            "mappingCount" to pack.iconMappings.size
           )
         }
       } ?: emptyList<Map<String, Any?>>()
