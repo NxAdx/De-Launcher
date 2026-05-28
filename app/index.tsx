@@ -155,8 +155,8 @@ export default function HomeScreen() {
 
         {/* Long Press Context Menu */}
         {selectedApp && (() => {
-          const isSelectedAppInDock = dockPackages.includes(selectedApp.packageName);
-          const isSelectedAppInHome = allowedPackages.includes(selectedApp.packageName);
+          const isSelectedAppInDock = (dockPackages || []).includes(selectedApp.packageName);
+          const isSelectedAppInHome = (allowedPackages || []).includes(selectedApp.packageName);
           return (
             <Modal
               visible={!!selectedApp}
@@ -182,7 +182,7 @@ export default function HomeScreen() {
                     {/* Dock Actions */}
                     {isSelectedAppInDock && (
                       <>
-                        {dockPackages.indexOf(selectedApp.packageName) > 0 && (
+                        {(dockPackages || []).indexOf(selectedApp.packageName) > 0 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
@@ -198,7 +198,7 @@ export default function HomeScreen() {
                           </Pressable>
                         )}
 
-                        {dockPackages.indexOf(selectedApp.packageName) < dockPackages.length - 1 && (
+                        {(dockPackages || []).indexOf(selectedApp.packageName) < (dockPackages || []).length - 1 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
@@ -249,7 +249,7 @@ export default function HomeScreen() {
                     {/* Homescreen Actions */}
                     {isSelectedAppInHome && (
                       <>
-                        {allowedPackages.indexOf(selectedApp.packageName) > 0 && (
+                        {(allowedPackages || []).indexOf(selectedApp.packageName) > 0 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
@@ -265,7 +265,7 @@ export default function HomeScreen() {
                           </Pressable>
                         )}
 
-                        {allowedPackages.indexOf(selectedApp.packageName) < allowedPackages.length - 1 && (
+                        {(allowedPackages || []).indexOf(selectedApp.packageName) < (allowedPackages || []).length - 1 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
@@ -281,7 +281,7 @@ export default function HomeScreen() {
                           </Pressable>
                         )}
 
-                        {!isSelectedAppInDock && dockPackages.length < 5 && (
+                        {!isSelectedAppInDock && (dockPackages || []).length < 5 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}

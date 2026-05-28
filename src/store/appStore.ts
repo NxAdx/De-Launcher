@@ -83,7 +83,7 @@ export const useAppStore = create<AppState>()(
       },
 
       setAppFocusState: (packageName, state) => {
-        const { allowedPackages, intentPausePackages } = get();
+        const { allowedPackages = [], intentPausePackages = [] } = get();
         let newAllowed = allowedPackages.filter(p => p !== packageName);
         let newIntentPause = intentPausePackages.filter(p => p !== packageName);
 
@@ -128,7 +128,7 @@ export const useAppStore = create<AppState>()(
       },
 
       pruneExemptions: () => {
-        const currentExemptions = get().exemptions;
+        const currentExemptions = get().exemptions || {};
         const now = Date.now();
         let changed = false;
         const nextExemptions: Record<string, number> = {};
@@ -148,13 +148,14 @@ export const useAppStore = create<AppState>()(
       },
 
       getAppFocusState: (packageName) => {
-        if (get().allowedPackages.includes(packageName)) return "allowed";
-        if (get().intentPausePackages.includes(packageName)) return "intent_pause";
+        if ((get().allowedPackages || []).includes(packageName)) return "allowed";
+        if ((get().intentPausePackages || []).includes(packageName)) return "intent_pause";
         return "blocked";
       },
 
       hasActiveExemption: (packageName) => {
-        const expiry = get().exemptions[packageName];
+        const exemptions = get().exemptions || {};
+        const expiry = exemptions[packageName];
         return expiry !== undefined && expiry > Date.now();
       },
 
@@ -163,10 +164,10 @@ export const useAppStore = create<AppState>()(
         const now = Date.now();
         
         // Allowed apps
-        const whitelist = new Set(state.allowedPackages);
+        const whitelist = new Set(state.allowedPackages || []);
         
         // Active exemptions
-        for (const [pkg, expiry] of Object.entries(state.exemptions)) {
+        for (const [pkg, expiry] of Object.entries(state.exemptions || {})) {
           if (expiry > now) {
             whitelist.add(pkg);
           }
