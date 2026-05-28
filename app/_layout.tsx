@@ -1,9 +1,9 @@
 /**
  * Root Layout - De-Launcher
  *
+ * Owns font loading, providers, native HOME events, and launcher bootstrap.
  */
 import { useEffect, useState } from "react";
-import * as Sentry from "@sentry/react-native";
 import { InteractionManager, View, Text, AppState } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Stack, ErrorBoundary, router, Redirect } from "expo-router";
@@ -231,14 +231,6 @@ function RootLayoutContent() {
   );
 }
 
-Sentry.init({
-  dsn: 'https://a3ca8710e0fdb7eddee48cf5d070a6f3@o4510973886464000.ingest.de.sentry.io/4511468726255696',
-  tracesSampleRate: 1.0,
-  _experiments: {
-    profilesSampleRate: 1.0,
-  },
-});
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_100Thin,
@@ -279,4 +271,3 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
