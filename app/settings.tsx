@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
+import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import {
   ArrowLeft,
@@ -38,6 +39,7 @@ import { useAppStore } from "@/src/store/appStore";
 import { getAvailableIconPacks, getCachedIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { IconPackInfo } from "@/modules/de-launcher-native";
+import { AppInfo } from "@/src/types/app";
 
 // ─── Setting Row Components ─────────────────────────────
 
@@ -206,6 +208,61 @@ export default function SettingsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await changeWallpaper();
   }, []);
+
+  const renderDockAppItem = useCallback(({ item: app }: { item: AppInfo }) => {
+    const isDocked = dockPackages.includes(app.packageName);
+    return (
+      <View
+        style={[
+          styles.appRow,
+          {
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(0,0,0,0.02)",
+          },
+        ]}
+      >
+        <View style={styles.appInfo}>
+          <Image
+            source={{
+              uri: app.icon?.startsWith("data:") || app.icon?.startsWith("file:")
+                ? app.icon
+                : app.icon
+                  ? `data:image/png;base64,${app.icon}`
+                  : undefined
+            }}
+            style={styles.modalAppIcon}
+          />
+          <View style={styles.appTextContainer}>
+            <Text style={[styles.appLabel, { color: colors.textPrimary }]} numberOfLines={1}>
+              {app.label}
+            </Text>
+          </View>
+        </View>
+        <Switch
+          value={isDocked}
+          onValueChange={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (isDocked) {
+              removeFromDock(app.packageName);
+            } else {
+              if (dockPackages.length >= 5) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                return;
+              }
+              addToDock(app.packageName);
+            }
+          }}
+          disabled={!isDocked && dockPackages.length >= 5}
+          trackColor={{
+            false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            true: colors.accent,
+          }}
+          thumbColor="#FFFFFF"
+        />
+      </View>
+    );
+  }, [dockPackages, isDark, colors, removeFromDock, addToDock]);
 
   return (
     <View
@@ -590,63 +647,16 @@ export default function SettingsScreen() {
             Select up to 5 apps for the quick access dock.
           </Text>
 
-          <ScrollView style={styles.modalScrollView} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
-            {installedApps.map((app) => {
-              const isDocked = dockPackages.includes(app.packageName);
-              return (
-                <View
-                  key={app.packageName}
-                  style={[
-                    styles.appRow,
-                    {
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(0,0,0,0.02)",
-                    },
-                  ]}
-                >
-                  <View style={styles.appInfo}>
-                    <Image
-                      source={{
-                        uri: app.icon?.startsWith("data:") || app.icon?.startsWith("file:")
-                          ? app.icon
-                          : app.icon
-                            ? `data:image/png;base64,${app.icon}`
-                            : undefined
-                      }}
-                      style={styles.modalAppIcon}
-                    />
-                    <View style={styles.appTextContainer}>
-                      <Text style={[styles.appLabel, { color: colors.textPrimary }]} numberOfLines={1}>
-                        {app.label}
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={isDocked}
-                    onValueChange={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      if (isDocked) {
-                        removeFromDock(app.packageName);
-                      } else {
-                        if (dockPackages.length >= 5) {
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                          return;
-                        }
-                        addToDock(app.packageName);
-                      }
-                    }}
-                    disabled={!isDocked && dockPackages.length >= 5}
-                    trackColor={{
-                      false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                      true: colors.accent,
-                    }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.modalScrollView}>
+            <FlashList
+              data={installedApps}
+              renderItem={renderDockAppItem}
+              keyExtractor={(item) => item.packageName}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={false}
+              extraData={{ dockPackages, isDark, colors }}
+            />
+          </View>
         </View>
       </Modal>
     </View>
