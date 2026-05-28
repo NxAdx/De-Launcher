@@ -231,7 +231,15 @@ function RootLayoutContent() {
   );
 }
 
-function RootLayout() {
+Sentry.init({
+  dsn: 'https://a3ca8710e0fdb7eddee48cf5d070a6f3@o4510973886464000.ingest.de.sentry.io/4511468726255696',
+  tracesSampleRate: 1.0,
+  _experiments: {
+    profilesSampleRate: 1.0,
+  },
+});
+
+export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_100Thin,
     Inter_300Light,
@@ -272,11 +280,3 @@ function RootLayout() {
   );
 }
 
-Sentry.init({
-  dsn: 'https://a3ca8710e0fdb7eddee48cf5d070a6f3@o4510973886464000.ingest.de.sentry.io/4511468726255696',
-  // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-  // We recommend adjusting this value in production.
-  tracesSampleRate: 1.0,
-});
-
-export default Sentry.wrap(RootLayout);
