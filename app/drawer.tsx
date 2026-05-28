@@ -5,8 +5,8 @@
  * Presented as a modal (slide from bottom).
  */
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, Switch } from "react-native";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import { ChevronDown, ShieldOff, Settings } from "lucide-react-native";
@@ -30,8 +30,11 @@ export default function DrawerScreen() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
   const installedApps = useAppStore((s) => s.installedApps);
+  const getAppFocusState = useAppStore((s) => s.getAppFocusState);
+  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
-  const toggleAppAllowed = useAppStore((s) => s.toggleAppAllowed);
+
+  const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
   const filteredApps = useMemo(() => {
     let apps = installedApps;
@@ -62,12 +65,13 @@ export default function DrawerScreen() {
     router.back();
   }, []);
 
-  const handleToggle = useCallback(
-    (packageName: string) => {
+  const handleStateChange = useCallback(
+    (packageName: string, state: "allowed" | "intent_pause" | "blocked") => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      toggleAppAllowed(packageName);
+      setAppFocusState(packageName, state);
+      setSelectedApp(null);
     },
-    [toggleAppAllowed]
+    [setAppFocusState]
   );
 
   const isDistraction = useCallback(
@@ -77,7 +81,7 @@ export default function DrawerScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: AppInfo }) => {
-      const isAllowed = allowedPackages.includes(item.packageName);
+      const state = getAppFocusState(item.packageName);
       const distraction = isDistraction(item.packageName);
 
       return (
@@ -94,6 +98,10 @@ export default function DrawerScreen() {
           <Pressable
             style={styles.appInfo}
             onPress={() => handleAppPress(item)}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setSelectedApp(item);
+            }}
           >
             <AppIcon
               app={item}
@@ -108,29 +116,39 @@ export default function DrawerScreen() {
               >
                 {item.label}
               </Text>
-              {distraction && (
+              {(distraction || state === "intent_pause") && (
                 <View style={styles.distractionBadge}>
-                  <ShieldOff size={10} color={colors.warning} />
-                  <Text style={[styles.distractionText, { color: colors.warning }]}>
-                    Distraction
+                  {state === "intent_pause" ? (
+                    <ShieldOff size={10} color={colors.warning} />
+                  ) : (
+                    <ShieldOff size={10} color={colors.error} />
+                  )}
+                  <Text style={[styles.distractionText, { color: state === "intent_pause" ? colors.warning : colors.error }]}>
+                    {state === "intent_pause" ? "Intent Pause" : "Distraction"}
                   </Text>
                 </View>
               )}
             </View>
           </Pressable>
-          <Switch
-            value={isAllowed}
-            onValueChange={() => handleToggle(item.packageName)}
-            trackColor={{
-              false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-              true: colors.accent,
-            }}
-            thumbColor="#FFFFFF"
-          />
+          <Pressable
+            hitSlop={12}
+            onPress={() => setSelectedApp(item)}
+            style={styles.stateButton}
+          >
+            <Text style={[styles.stateButtonText, { 
+              color: state === "allowed" ? colors.accent 
+                   : state === "intent_pause" ? colors.warning 
+                   : colors.textTertiary 
+            }]}>
+              {state === "allowed" ? "Allowed" 
+               : state === "intent_pause" ? "Paused" 
+               : "Hidden"}
+            </Text>
+          </Pressable>
         </Animated.View>
       );
     },
-    [allowedPackages, colors, isDark, handleAppPress, handleToggle, isDistraction]
+    [getAppFocusState, colors, isDark, handleAppPress, isDistraction]
   );
 
   return (
@@ -230,6 +248,46 @@ export default function DrawerScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* State Picker Modal */}
+      {selectedApp && (
+        <Modal transparent animationType="fade" visible onRequestClose={() => setSelectedApp(null)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {selectedApp.label}
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                Choose how this app behaves.
+              </Text>
+
+              <Pressable
+                style={styles.modalOption}
+                onPress={() => handleStateChange(selectedApp.packageName, "allowed")}
+              >
+                <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Allowed</Text>
+                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Immediate access on home screen</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.modalOption}
+                onPress={() => handleStateChange(selectedApp.packageName, "intent_pause")}
+              >
+                <Text style={[styles.modalOptionTitle, { color: colors.warning }]}>Intent Pause</Text>
+                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Requires a 5-second breathing exercise to launch</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.modalOption}
+                onPress={() => handleStateChange(selectedApp.packageName, "blocked")}
+              >
+                <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Blocked</Text>
+                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Hidden from home screen</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -325,4 +383,46 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
   },
+  stateButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  stateButtonText: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    padding: spacing.xl,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+  },
+  modalTitle: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    marginBottom: spacing.xl,
+  },
+  modalOption: {
+    marginBottom: spacing.lg,
+  },
+  modalOptionTitle: {
+    fontFamily: typography.family.semiBold,
+    fontSize: typography.size.base,
+    marginBottom: 2,
+  },
+  modalOptionSub: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+  }
 });

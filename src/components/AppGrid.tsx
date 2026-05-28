@@ -206,14 +206,17 @@ function DraggableItem({
 }
 
 function AnimatedDot({ index, activePage }: { index: number; activePage: number }) {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const animatedStyle = useAnimatedStyle(() => {
     const isActive = index === activePage;
+    const width = withSpring(isActive ? 18 : 6, springs.snappy);
+    const opacity = withSpring(isActive ? 1 : 0.3, springs.snappy);
     return {
-      width: withSpring(isActive ? 18 : 6, springs.snappy),
-      backgroundColor: isActive ? "#94A3B8" : "rgba(255, 255, 255, 0.4)",
-      opacity: withSpring(isActive ? 1 : 0.3, springs.snappy),
+      width,
+      opacity,
+      backgroundColor: "rgba(255, 255, 255, 0.4)",
     };
-  });
+  }, [index, activePage, SCREEN_WIDTH]);
 
   return <Animated.View style={[styles.dot, animatedStyle]} />;
 }
@@ -225,7 +228,6 @@ interface AppGridProps {
 }
 
 export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
-  const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
@@ -252,7 +254,7 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
   const itemWidth = useMemo(() => {
     const totalPadding = spacing.xl * 2;
     return (SCREEN_WIDTH - totalPadding) / gridColumns;
-  }, [gridColumns]);
+  }, [gridColumns, SCREEN_WIDTH]);
 
   const handleSwap = useCallback((packageName: string, toIndex: number) => {
     const current = orderedAppsRef.current;

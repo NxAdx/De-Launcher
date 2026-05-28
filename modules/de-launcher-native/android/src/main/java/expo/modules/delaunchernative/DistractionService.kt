@@ -54,8 +54,12 @@ class DistractionService : AccessibilityService() {
 
             if (!whitelist.contains(packageName)) {
                 Log.d(TAG, "Package $packageName is NOT in whitelist. Blocking distraction.")
-                // Force return to home
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                val uri = android.net.Uri.parse("delauncher://?blocked_pkg=$packageName")
+                val launchIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    setPackage(applicationContext.packageName)
+                }
+                startActivity(launchIntent)
             }
         }
     }

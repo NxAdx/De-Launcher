@@ -86,6 +86,32 @@ function addQueries(androidManifest) {
     }
   }
 
+  // Add queries for Settings so DistractionService can resolve and whitelist them on Android 11+
+  const settingsActions = [
+    "android.settings.SETTINGS",
+    "android.settings.ACCESSIBILITY_SETTINGS",
+    "android.settings.HOME_SETTINGS",
+    "android.settings.MANAGE_DEFAULT_APPS_SETTINGS"
+  ];
+
+  for (const actionName of settingsActions) {
+    const hasActionQuery = androidManifest.manifest.queries.some(
+      (q) => q.intent && q.intent.some(
+        (i) => i.action?.[0]?.$?.["android:name"] === actionName
+      )
+    );
+
+    if (!hasActionQuery) {
+      androidManifest.manifest.queries.push({
+        intent: [
+          {
+            action: [{ $: { "android:name": actionName } }],
+          },
+        ],
+      });
+    }
+  }
+
   return androidManifest;
 }
 

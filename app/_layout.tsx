@@ -4,9 +4,9 @@
  * Owns font loading, providers, native HOME events, and launcher bootstrap.
  */
 import { useEffect, useState } from "react";
-import { InteractionManager, View, Text } from "react-native";
+import { InteractionManager, View, Text, AppState } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack, ErrorBoundary, router } from "expo-router";
+import { Stack, ErrorBoundary, router, Redirect } from "expo-router";
 import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,6 +22,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { ThemeProvider, useTheme } from "@/src/theme/ThemeContext";
 import { useAppStore } from "@/src/store/appStore";
+import { useSettingsStore } from "@/src/store/settingsStore";
 import {
   getInstalledApps,
   batchLoadSystemIcons,
@@ -50,9 +51,20 @@ export function signalNavigation(durationMs = 600) {
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
   const [error, setError] = useState<Error | null>(null);
+  const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const setInstalledApps = useAppStore((s) => s.setInstalledApps);
   const reorderDock = useAppStore((s) => s.reorderDock);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        useAppStore.getState().pruneExemptions();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     try {
@@ -138,6 +150,9 @@ function RootLayoutContent() {
     }
 
     loadApps();
+    useAppStore.getState().pruneExemptions();
+    setIsReady(true);
+
     return () => {
       cancelled = true;
       backgroundTask?.cancel();
@@ -155,6 +170,10 @@ function RootLayoutContent() {
         </Text>
       </View>
     );
+  }
+
+  if (!hasCompletedOnboarding || !isReady) {
+    return <Redirect href={"/onboarding" as any} />;
   }
 
   return (
@@ -178,7 +197,33 @@ function RootLayoutContent() {
         <Stack.Screen
           name="settings"
           options={{
-            animation: "slide_from_right",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="dock-settings"
+          options={{
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            animation: "fade",
+          }}
+        />
+        <Stack.Screen
+          name="search"
+          options={{
+            animation: "fade",
+            presentation: "transparentModal",
+          }}
+        />
+        <Stack.Screen
+          name="intent-pause"
+          options={{
+            animation: "fade",
+            presentation: "transparentModal",
           }}
         />
       </Stack>

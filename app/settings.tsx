@@ -4,7 +4,7 @@
  * Launcher configuration: theme, grid, labels, clock, dock management.
  * Designed with a clean, grouped section pattern.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,9 @@ import {
   ScrollView,
   Switch,
   Pressable,
-  Modal,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
-import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import {
   ArrowLeft,
@@ -29,17 +26,18 @@ import {
   Home,
   Image as ImageIcon,
   LayoutGrid,
+  Smartphone,
+  Shield,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import * as IntentLauncher from "expo-intent-launcher";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii, palette } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { useAppStore } from "@/src/store/appStore";
 import { getAvailableIconPacks, getCachedIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { IconPackInfo } from "@/modules/de-launcher-native";
-import { AppInfo } from "@/src/types/app";
 
 // ─── Setting Row Components ─────────────────────────────
 
@@ -135,12 +133,6 @@ export default function SettingsScreen() {
   const [isIconPacksLoading, setIsIconPacksLoading] = useState(
     () => getCachedIconPacks() === null
   );
-  const [isDockModalVisible, setIsDockModalVisible] = useState(false);
-
-  const installedApps = useAppStore((s) => s.installedApps);
-  const dockPackages = useAppStore((s) => s.dockPackages);
-  const addToDock = useAppStore((s) => s.addToDock);
-  const removeFromDock = useAppStore((s) => s.removeFromDock);
 
   const {
     gridColumns,
@@ -209,60 +201,14 @@ export default function SettingsScreen() {
     await changeWallpaper();
   }, []);
 
-  const renderDockAppItem = useCallback(({ item: app }: { item: AppInfo }) => {
-    const isDocked = dockPackages.includes(app.packageName);
-    return (
-      <View
-        style={[
-          styles.appRow,
-          {
-            backgroundColor: isDark
-              ? "rgba(255,255,255,0.02)"
-              : "rgba(0,0,0,0.02)",
-          },
-        ]}
-      >
-        <View style={styles.appInfo}>
-          <Image
-            source={{
-              uri: app.icon?.startsWith("data:") || app.icon?.startsWith("file:")
-                ? app.icon
-                : app.icon
-                  ? `data:image/png;base64,${app.icon}`
-                  : undefined
-            }}
-            style={styles.modalAppIcon}
-          />
-          <View style={styles.appTextContainer}>
-            <Text style={[styles.appLabel, { color: colors.textPrimary }]} numberOfLines={1}>
-              {app.label}
-            </Text>
-          </View>
-        </View>
-        <Switch
-          value={isDocked}
-          onValueChange={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            if (isDocked) {
-              removeFromDock(app.packageName);
-            } else {
-              if (dockPackages.length >= 5) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                return;
-              }
-              addToDock(app.packageName);
-            }
-          }}
-          disabled={!isDocked && dockPackages.length >= 5}
-          trackColor={{
-            false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-            true: colors.accent,
-          }}
-          thumbColor="#FFFFFF"
-        />
-      </View>
-    );
-  }, [dockPackages, isDark, colors, removeFromDock, addToDock]);
+  const openAndroidSettings = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.SETTINGS);
+    } catch (e) {
+      console.warn("Failed to open Android Settings", e);
+    }
+  }, []);
 
   return (
     <View
@@ -290,60 +236,158 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ─── System & Recovery ─── */}
+        <SectionHeader title="SYSTEM & RECOVERY" colors={colors} />
+        <SectionCard>
+          <SettingRow
+            icon={<Home size={20} color={colors.textSecondary} />}
+            label="Default Launcher"
+            description="Set De-Launcher as your default home screen"
+            right={
+              <Pressable onPress={handleSetDefaultLauncher} style={styles.gridButton}>
+                <Home size={16} color={colors.accent} />
+              </Pressable>
+            }
+            onPress={handleSetDefaultLauncher}
+            colors={colors}
+            isDark={isDark}
+          />
+          <SettingRow
+            icon={<Smartphone size={20} color={colors.textSecondary} />}
+            label="Android Settings"
+            description="Open device settings (fallback recovery)"
+            right={
+              <Pressable onPress={openAndroidSettings} style={styles.gridButton}>
+                <Smartphone size={16} color={colors.accent} />
+              </Pressable>
+            }
+            onPress={openAndroidSettings}
+            colors={colors}
+            isDark={isDark}
+          />
+        </SectionCard>
+
+        {/* ─── Home Layout ─── */}
+        <SectionHeader title="HOME LAYOUT" colors={colors} />
+        <SectionCard>
+          <SettingRow
+            icon={<Grid3x3 size={20} color={colors.textSecondary} />}
+            label="Grid Columns"
+            description={`${gridColumns} columns per row`}
+            right={
+              <Pressable onPress={handleGridChange} style={styles.gridButton}>
+                <Text style={[styles.gridButtonText, { color: colors.accent }]}>
+                  {gridColumns}
+                </Text>
+              </Pressable>
+            }
+            onPress={handleGridChange}
+            colors={colors}
+            isDark={isDark}
+          />
+          <SettingRow
+            icon={<LayoutGrid size={20} color={colors.textSecondary} />}
+            label="Configure Dock"
+            description="Manage and reorder your 5 dock apps"
+            right={
+              <Pressable onPress={() => { signalNavigation(); router.push("/dock-settings" as any); }} style={styles.gridButton}>
+                <LayoutGrid size={16} color={colors.accent} />
+              </Pressable>
+            }
+            onPress={() => { signalNavigation(); router.push("/dock-settings" as any); }}
+            colors={colors}
+            isDark={isDark}
+          />
+        </SectionCard>
+
+        {/* ─── Focus Mode ─── */}
+        <SectionHeader title="FOCUS MODE" colors={colors} />
+        <SectionCard>
+          <SettingRow
+            icon={<Shield size={20} color={colors.textSecondary} />}
+            label="Allowed Apps"
+            description="Manage apps visible on your homescreen"
+            right={
+              <Pressable onPress={() => { signalNavigation(); router.push("/drawer"); }} style={styles.gridButton}>
+                <Shield size={16} color={colors.accent} />
+              </Pressable>
+            }
+            onPress={() => { signalNavigation(); router.push("/drawer"); }}
+            colors={colors}
+            isDark={isDark}
+          />
+        </SectionCard>
+
         {/* ─── Appearance ─── */}
         <SectionHeader title="APPEARANCE" colors={colors} />
         <SectionCard>
-
-        <SettingRow
-          icon={<Grid3x3 size={20} color={colors.textSecondary} />}
-          label="Grid Columns"
-          description={`${gridColumns} columns per row`}
-          right={
-            <Pressable onPress={handleGridChange} style={styles.gridButton}>
-              <Text style={[styles.gridButtonText, { color: colors.accent }]}>
-                {gridColumns}
-              </Text>
-            </Pressable>
-          }
-          onPress={handleGridChange}
-          colors={colors}
-          isDark={isDark}
-        />
-
-        <SettingRow
-          icon={<ImageIcon size={20} color={colors.textSecondary} />}
-          label="Change Wallpaper"
-          description="Choose a system wallpaper"
-          right={
-            <Pressable onPress={handleChangeWallpaper} style={styles.gridButton}>
-              <ImageIcon size={16} color={colors.accent} />
-            </Pressable>
-          }
-          onPress={handleChangeWallpaper}
-          colors={colors}
-          isDark={isDark}
-        />
-
-        </SectionCard>
-
-        {/* ─── Dock Customization ─── */}
-        <SectionHeader title="DOCK" colors={colors} />
-        <SectionCard>
-
-        <SettingRow
-          icon={<LayoutGrid size={20} color={colors.textSecondary} />}
-          label="Configure Dock"
-          description={`${dockPackages.length} of 5 apps configured`}
-          right={
-            <Pressable onPress={() => setIsDockModalVisible(true)} style={styles.gridButton}>
-              <LayoutGrid size={16} color={colors.accent} />
-            </Pressable>
-          }
-          onPress={() => setIsDockModalVisible(true)}
-          colors={colors}
-          isDark={isDark}
-        />
-
+          <SettingRow
+            icon={<ImageIcon size={20} color={colors.textSecondary} />}
+            label="Change Wallpaper"
+            description="Choose a system wallpaper"
+            right={
+              <Pressable onPress={handleChangeWallpaper} style={styles.gridButton}>
+                <ImageIcon size={16} color={colors.accent} />
+              </Pressable>
+            }
+            onPress={handleChangeWallpaper}
+            colors={colors}
+            isDark={isDark}
+          />
+          <SettingRow
+            icon={<Type size={20} color={colors.textSecondary} />}
+            label="App Labels"
+            description="Show names below app icons"
+            right={
+              <Switch
+                value={showLabels}
+                onValueChange={setShowLabels}
+                trackColor={{
+                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                  true: colors.accent,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            }
+            colors={colors}
+            isDark={isDark}
+          />
+          <SettingRow
+            icon={<ClockIcon size={20} color={colors.textSecondary} />}
+            label="Clock Widget"
+            description="Show clock on homescreen"
+            right={
+              <Switch
+                value={showClock}
+                onValueChange={setShowClock}
+                trackColor={{
+                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                  true: colors.accent,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            }
+            colors={colors}
+            isDark={isDark}
+          />
+          <SettingRow
+            icon={<Vibrate size={20} color={colors.textSecondary} />}
+            label="Haptic Feedback"
+            description="Vibrate on interaction"
+            right={
+              <Switch
+                value={hapticFeedback}
+                onValueChange={setHapticFeedback}
+                trackColor={{
+                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                  true: colors.accent,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            }
+            colors={colors}
+            isDark={isDark}
+          />
         </SectionCard>
 
         {/* ─── Icon Packs ─── */}
@@ -497,106 +541,8 @@ export default function SettingsScreen() {
         )}
         </SectionCard>
 
-        {/* ─── Display ─── */}
-        <SectionHeader title="DISPLAY" colors={colors} />
-        <SectionCard>
-
-        <SettingRow
-          icon={<Type size={20} color={colors.textSecondary} />}
-          label="App Labels"
-          description="Show names below app icons"
-          right={
-            <Switch
-              value={showLabels}
-              onValueChange={setShowLabels}
-              trackColor={{
-                false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                true: colors.accent,
-              }}
-              thumbColor="#FFFFFF"
-            />
-          }
-          colors={colors}
-          isDark={isDark}
-        />
-
-        <SettingRow
-          icon={<ClockIcon size={20} color={colors.textSecondary} />}
-          label="Clock Widget"
-          description="Show clock on homescreen"
-          right={
-            <Switch
-              value={showClock}
-              onValueChange={setShowClock}
-              trackColor={{
-                false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                true: colors.accent,
-              }}
-              thumbColor="#FFFFFF"
-            />
-          }
-          colors={colors}
-          isDark={isDark}
-        />
-
-        <SettingRow
-          icon={<Vibrate size={20} color={colors.textSecondary} />}
-          label="Haptic Feedback"
-          description="Vibrate on interaction"
-          right={
-            <Switch
-              value={hapticFeedback}
-              onValueChange={setHapticFeedback}
-              trackColor={{
-                false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                true: colors.accent,
-              }}
-              thumbColor="#FFFFFF"
-            />
-          }
-          colors={colors}
-          isDark={isDark}
-        />
-
-        </SectionCard>
-
-        {/* ─── System ─── */}
-        <SectionHeader title="SYSTEM" colors={colors} />
-        <SectionCard>
-
-        <SettingRow
-          icon={<Home size={20} color={colors.textSecondary} />}
-          label="Default Launcher"
-          description="Set De-Launcher as your default home screen"
-          right={
-            <Pressable onPress={handleSetDefaultLauncher} style={styles.gridButton}>
-              <Home size={16} color={colors.accent} />
-            </Pressable>
-          }
-          onPress={handleSetDefaultLauncher}
-          colors={colors}
-          isDark={isDark}
-        />
-
-        <SettingRow
-          icon={<LayoutGrid size={20} color={colors.textSecondary} />}
-          label="App Selector"
-          description="Manage allowed apps on your homescreen"
-          right={
-            <Pressable onPress={() => { signalNavigation(); router.push("/drawer"); }} style={styles.gridButton}>
-              <LayoutGrid size={16} color={colors.accent} />
-            </Pressable>
-          }
-          onPress={() => { signalNavigation(); router.push("/drawer"); }}
-          colors={colors}
-          isDark={isDark}
-        />
-
-        </SectionCard>
-
         {/* ─── About ─── */}
         <SectionHeader title="ABOUT" colors={colors} />
-
         <Animated.View
           entering={FadeInRight.delay(200)}
           style={[
@@ -623,42 +569,6 @@ export default function SettingsScreen() {
           </Text>
         </Animated.View>
       </ScrollView>
-
-      {/* Dock Customizer Modal */}
-      <Modal
-        visible={isDockModalVisible}
-        transparent
-        animationType="slide"
-        statusBarTranslucent
-        onRequestClose={() => setIsDockModalVisible(false)}
-      >
-        <View style={[styles.modalContainer, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-          <View style={styles.header}>
-            <Pressable onPress={() => setIsDockModalVisible(false)} hitSlop={16}>
-              <ArrowLeft size={24} color={colors.textPrimary} />
-            </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Configure Dock
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-            Select up to 5 apps for the quick access dock.
-          </Text>
-
-          <View style={styles.modalScrollView}>
-            <FlashList
-              data={installedApps}
-              renderItem={renderDockAppItem}
-              keyExtractor={(item) => item.packageName}
-              contentContainerStyle={styles.modalScrollContent}
-              showsVerticalScrollIndicator={false}
-              extraData={{ dockPackages, isDark, colors }}
-            />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -791,48 +701,5 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalSubtitle: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  modalScrollView: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing["4xl"],
-  },
-  modalAppIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-  },
-  appRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.lg,
-    marginBottom: spacing.xs,
-  },
-  appInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: spacing.md,
-  },
-  appTextContainer: {
-    flex: 1,
-  },
-  appLabel: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.md,
   },
 });

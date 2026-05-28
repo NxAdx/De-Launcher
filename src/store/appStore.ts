@@ -10,24 +10,34 @@ import { mmkvStorage } from "./storage";
 import { AppInfo } from "@/src/types/app";
 import { updateWhitelist } from "../../modules/de-launcher-native";
 
+export type AppFocusState = "allowed" | "intent_pause" | "blocked";
+
 interface AppState {
   // Data
   installedApps: AppInfo[];
   allowedPackages: string[];
   dockPackages: string[];
+  intentPausePackages: string[];
+  exemptions: Record<string, number>; // packageName -> expiry timestamp (ms)
 
   // Actions
   setInstalledApps: (apps: AppInfo[]) => void;
-  toggleAppAllowed: (packageName: string) => void;
+  setAppFocusState: (packageName: string, state: AppFocusState) => void;
   setAllowedPackages: (packages: string[]) => void;
   addToDock: (packageName: string) => void;
   removeFromDock: (packageName: string) => void;
   reorderDock: (packages: string[]) => void;
   moveApp: (packageName: string, direction: "left" | "right") => void;
   moveDockApp: (packageName: string, direction: "left" | "right") => void;
-
+  
+  // Focus Rule Actions
+  grantExemption: (packageName: string, durationMs: number) => void;
+  pruneExemptions: () => void;
+  
   // Computed helpers
-  isAllowed: (packageName: string) => boolean;
+  getAppFocusState: (packageName: string) => AppFocusState;
+  hasActiveExemption: (packageName: string) => boolean;
+  syncNativeWhitelist: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -36,41 +46,10 @@ export const useAppStore = create<AppState>()(
       installedApps: [],
       allowedPackages: [],
       dockPackages: [],
+      intentPausePackages: [],
+      exemptions: {},
 
       setInstalledApps: (apps) => set({ installedApps: apps }),
-
-      toggleAppAllowed: (packageName) => {
-        const current = get().allowedPackages;
-        let newPackages;
-        if (current.includes(packageName)) {
-          newPackages = current.filter((p) => p !== packageName);
-        } else {
-          newPackages = [...current, packageName];
-        }
-        set({ allowedPackages: newPackages });
-        updateWhitelist(newPackages).catch(console.error);
-      },
-
-      setAllowedPackages: (packages) => {
-        set({ allowedPackages: packages });
-        updateWhitelist(packages).catch(console.error);
-      },
-
-      addToDock: (packageName) => {
-        const current = get().dockPackages;
-        if (current.length >= 5) return; // Max 5 dock apps
-        if (!current.includes(packageName)) {
-          set({ dockPackages: [...current, packageName] });
-        }
-      },
-
-      removeFromDock: (packageName) => {
-        set({
-          dockPackages: get().dockPackages.filter((p) => p !== packageName),
-        });
-      },
-
-      reorderDock: (packages) => set({ dockPackages: packages }),
 
       moveApp: (packageName, direction) => {
         const current = [...get().allowedPackages];
@@ -85,7 +64,7 @@ export const useAppStore = create<AppState>()(
         current[newIndex] = temp;
 
         set({ allowedPackages: current });
-        updateWhitelist(current).catch(console.error);
+        get().syncNativeWhitelist();
       },
 
       moveDockApp: (packageName, direction) => {
@@ -103,7 +82,98 @@ export const useAppStore = create<AppState>()(
         set({ dockPackages: current });
       },
 
-      isAllowed: (packageName) => get().allowedPackages.includes(packageName),
+      setAppFocusState: (packageName, state) => {
+        const { allowedPackages, intentPausePackages } = get();
+        let newAllowed = allowedPackages.filter(p => p !== packageName);
+        let newIntentPause = intentPausePackages.filter(p => p !== packageName);
+
+        if (state === "allowed") {
+          newAllowed.push(packageName);
+        } else if (state === "intent_pause") {
+          newIntentPause.push(packageName);
+        }
+
+        set({ allowedPackages: newAllowed, intentPausePackages: newIntentPause });
+        get().syncNativeWhitelist();
+      },
+
+      setAllowedPackages: (packages) => {
+        set({ allowedPackages: packages });
+        get().syncNativeWhitelist();
+      },
+
+      addToDock: (packageName) => {
+        const current = get().dockPackages;
+        if (current.length >= 5) return; // Max 5 dock apps
+        if (!current.includes(packageName)) {
+          set({ dockPackages: [...current, packageName] });
+          // Note: we don't automatically add it to whitelist. 
+          // If a user puts an intent-pause app in the dock, it still pauses.
+        }
+      },
+
+      removeFromDock: (packageName) => {
+        set({
+          dockPackages: get().dockPackages.filter((p) => p !== packageName),
+        });
+      },
+
+      reorderDock: (packages) => set({ dockPackages: packages }),
+
+      grantExemption: (packageName, durationMs) => {
+        const currentExemptions = { ...get().exemptions };
+        currentExemptions[packageName] = Date.now() + durationMs;
+        set({ exemptions: currentExemptions });
+        get().syncNativeWhitelist();
+      },
+
+      pruneExemptions: () => {
+        const currentExemptions = get().exemptions;
+        const now = Date.now();
+        let changed = false;
+        const nextExemptions: Record<string, number> = {};
+
+        for (const [pkg, expiry] of Object.entries(currentExemptions)) {
+          if (expiry > now) {
+            nextExemptions[pkg] = expiry;
+          } else {
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          set({ exemptions: nextExemptions });
+          get().syncNativeWhitelist();
+        }
+      },
+
+      getAppFocusState: (packageName) => {
+        if (get().allowedPackages.includes(packageName)) return "allowed";
+        if (get().intentPausePackages.includes(packageName)) return "intent_pause";
+        return "blocked";
+      },
+
+      hasActiveExemption: (packageName) => {
+        const expiry = get().exemptions[packageName];
+        return expiry !== undefined && expiry > Date.now();
+      },
+
+      syncNativeWhitelist: () => {
+        const state = get();
+        const now = Date.now();
+        
+        // Allowed apps
+        const whitelist = new Set(state.allowedPackages);
+        
+        // Active exemptions
+        for (const [pkg, expiry] of Object.entries(state.exemptions)) {
+          if (expiry > now) {
+            whitelist.add(pkg);
+          }
+        }
+
+        updateWhitelist(Array.from(whitelist)).catch(console.error);
+      }
     }),
     {
       name: "app-store",
@@ -111,6 +181,8 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         allowedPackages: state.allowedPackages,
         dockPackages: state.dockPackages,
+        intentPausePackages: state.intentPausePackages,
+        exemptions: state.exemptions,
       }),
     }
   )

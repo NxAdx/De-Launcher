@@ -10,9 +10,11 @@
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } from "react-native";
 import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
-import { router } from "expo-router";
-import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus } from "lucide-react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Haptics from "expo-haptics";
+import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus, ShieldAlert, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, layout } from "@/src/theme/tokens";
 import { Clock } from "@/src/components/Clock";
@@ -33,11 +35,40 @@ export default function HomeScreen() {
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const moveApp = useAppStore((s) => s.moveApp);
   const moveDockApp = useAppStore((s) => s.moveDockApp);
-  const toggleAppAllowed = useAppStore((s) => s.toggleAppAllowed);
+  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const dockPackages = useAppStore((s) => s.dockPackages);
   const addToDock = useAppStore((s) => s.addToDock);
   const removeFromDock = useAppStore((s) => s.removeFromDock);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
+  const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
+  const [showBlockedBanner, setShowBlockedBanner] = useState(false);
+  const [blockedAppLabel, setBlockedAppLabel] = useState("");
+
+  // Listen for blocked app deep links
+  React.useEffect(() => {
+    if (blocked_pkg && typeof blocked_pkg === "string" && installedApps.length > 0) {
+      const focusState = useAppStore.getState().getAppFocusState(blocked_pkg);
+      if (focusState === "intent_pause") {
+        router.push(`/intent-pause?pkg=${blocked_pkg}` as any);
+      } else {
+        const app = installedApps.find((a) => a.packageName === blocked_pkg);
+        setBlockedAppLabel(app?.label || blocked_pkg);
+        setShowBlockedBanner(true);
+        const timer = setTimeout(() => setShowBlockedBanner(false), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [blocked_pkg, installedApps]);
+
+  const panGesture = React.useMemo(() => {
+    return Gesture.Pan()
+      .activeOffsetY(20)
+      .onEnd((e) => {
+        if (e.velocityY > 500 || e.translationY > 50) {
+          router.push("/search" as any);
+        }
+      });
+  }, []);
 
   const allowedApps = React.useMemo(() => {
     const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
@@ -54,10 +85,22 @@ export default function HomeScreen() {
     setSelectedApp(app);
   }, []);
 
-  // Background icon preloading is now done at boot time via batchLoadSystemIcons in _layout.tsx
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <GestureDetector gesture={panGesture}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        {/* Blocked App Banner */}
+        {showBlockedBanner && (
+          <Animated.View
+            entering={FadeInUp.duration(300).springify()}
+            style={[styles.blockedBanner, { top: statusBarHeight + spacing.sm, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.error }]}
+          >
+            <ShieldAlert size={20} color={colors.error} />
+            <Text style={[styles.blockedBannerText, { color: colors.textPrimary }]}>
+              <Text style={{ fontFamily: typography.family.bold }}>{blockedAppLabel}</Text> is not in Focus apps
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Clock */}
         {showClock && (
           <View style={{ paddingTop: statusBarHeight }}>
@@ -83,20 +126,30 @@ export default function HomeScreen() {
         {/* Dock */}
         <Dock onLongPress={handleAppLongPress} />
 
-        {/* Settings gear */}
+        {/* Top Right Controls */}
         <Animated.View
           entering={FadeIn.delay(400)}
-          style={[styles.settingsButton, { top: statusBarHeight + spacing.sm, elevation: 10 }]}
+          style={[styles.topControls, { top: statusBarHeight + spacing.sm, elevation: 10 }]}
         >
+          <Pressable
+            onPress={() => {
+              signalNavigation();
+              router.push("/search" as any);
+            }}
+            hitSlop={12}
+            style={styles.iconPressable}
+          >
+            <Search size={22} color={colors.textTertiary} />
+          </Pressable>
           <Pressable
             onPress={() => {
               signalNavigation();
               router.push("/settings");
             }}
-            hitSlop={24}
-            style={styles.settingsPressable}
+            hitSlop={12}
+            style={styles.iconPressable}
           >
-            <Settings size={20} color={colors.textTertiary} />
+            <Settings size={22} color={colors.textTertiary} />
           </Pressable>
         </Animated.View>
 
@@ -180,7 +233,7 @@ export default function HomeScreen() {
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                             android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
-                              toggleAppAllowed(selectedApp.packageName);
+                              setAppFocusState(selectedApp.packageName, "allowed");
                               setSelectedApp(null);
                             }}
                           >
@@ -245,17 +298,34 @@ export default function HomeScreen() {
                         )}
 
                         <Pressable
+                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSelectedApp(null);
+                            setTimeout(() => {
+                              setAppFocusState(selectedApp.packageName, "intent_pause");
+                            }, 150);
+                          }}
+                        >
+                          <ShieldAlert size={18} color={colors.warning} />
+                          <Text style={[styles.menuOptionText, { color: colors.warning }]}>
+                            Require Intent Pause
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
                           style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: 'rgba(239, 68, 68, 0.06)' }]}
                           android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                           onPress={() => {
-                            toggleAppAllowed(selectedApp.packageName);
+                            setAppFocusState(selectedApp.packageName, "blocked");
                             setSelectedApp(null);
                           }}
                         >
                           <Trash size={18} color={colors.error} />
                           <Text style={[styles.menuOptionText, { color: colors.error }]}>
                             Remove from Home
-                        </Text>
+                          </Text>
                         </Pressable>
                       </>
                     )}
@@ -276,6 +346,7 @@ export default function HomeScreen() {
           );
         })()}
       </View>
+    </GestureDetector>
   );
 }
 
@@ -283,13 +354,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  settingsButton: {
+  blockedBanner: {
+    position: "absolute",
+    left: spacing.xl,
+    right: spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: spacing.sm,
+    zIndex: 20,
+    elevation: 5,
+  },
+  blockedBannerText: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+  },
+  topControls: {
     position: "absolute",
     right: spacing.xl,
+    flexDirection: "row",
+    gap: spacing.md,
     zIndex: 10,
   },
-  settingsPressable: {
-    padding: spacing.sm,
+  iconPressable: {
+    padding: spacing.xs,
     borderRadius: 999,
   },
   gridContainer: {

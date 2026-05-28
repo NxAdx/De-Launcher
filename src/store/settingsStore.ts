@@ -15,6 +15,7 @@ interface SettingsState {
   showClock: boolean;
   hapticFeedback: boolean;
   activeIconPack: string | null; // packageName of selected icon pack
+  hasCompletedOnboarding: boolean;
 
   // Actions
   setTheme: (theme: ThemeMode) => void;
@@ -23,6 +24,7 @@ interface SettingsState {
   setShowClock: (show: boolean) => void;
   setHapticFeedback: (enabled: boolean) => void;
   setActiveIconPack: (packageName: string | null) => void;
+  setHasCompletedOnboarding: (completed: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -35,6 +37,7 @@ export const useSettingsStore = create<SettingsState>()(
       showClock: true,
       hapticFeedback: true,
       activeIconPack: null,
+      hasCompletedOnboarding: false,
 
       // Actions
       setTheme: (theme) => set({ theme }),
@@ -43,6 +46,7 @@ export const useSettingsStore = create<SettingsState>()(
       setShowClock: (showClock) => set({ showClock }),
       setHapticFeedback: (hapticFeedback) => set({ hapticFeedback }),
       setActiveIconPack: (activeIconPack) => set({ activeIconPack }),
+      setHasCompletedOnboarding: (hasCompletedOnboarding) => set({ hasCompletedOnboarding }),
     }),
     {
       name: "settings-store",
