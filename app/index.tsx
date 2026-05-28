@@ -10,7 +10,7 @@
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } from "react-native";
 import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, Redirect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus, ShieldAlert, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +20,7 @@ import { typography, spacing, layout } from "@/src/theme/tokens";
 import { Clock } from "@/src/components/Clock";
 import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
+import { ContextMenu } from "@/src/components/ContextMenu";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { launchApp } from "@/src/services/appManager";
@@ -31,14 +32,13 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const statusBarHeight = RNStatusBar.currentHeight ?? insets.top ?? 24;
   const showClock = useSettingsStore((s) => s.showClock);
+  const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const moveApp = useAppStore((s) => s.moveApp);
   const moveDockApp = useAppStore((s) => s.moveDockApp);
   const setAppFocusState = useAppStore((s) => s.setAppFocusState);
-  const dockPackages = useAppStore((s) => s.dockPackages);
-  const addToDock = useAppStore((s) => s.addToDock);
-  const removeFromDock = useAppStore((s) => s.removeFromDock);
+  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
   const [showBlockedBanner, setShowBlockedBanner] = useState(false);
@@ -59,6 +59,10 @@ export default function HomeScreen() {
       }
     }
   }, [blocked_pkg, installedApps]);
+
+  if (!hasCompletedOnboarding) {
+    return <Redirect href={"/onboarding" as any} />;
+  }
 
   const panGesture = React.useMemo(() => {
     return Gesture.Pan()
@@ -154,197 +158,10 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Long Press Context Menu */}
-        {selectedApp && (() => {
-          const isSelectedAppInDock = (dockPackages || []).includes(selectedApp.packageName);
-          const isSelectedAppInHome = (allowedPackages || []).includes(selectedApp.packageName);
-          return (
-            <Modal
-              visible={!!selectedApp}
-              transparent
-              animationType="fade"
-              statusBarTranslucent
-              onRequestClose={() => setSelectedApp(null)}
-            >
-              <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
-                <Animated.View entering={FadeInDown.duration(250)} style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
-                  {/* App Title inside Menu */}
-                  <View style={styles.menuHeader}>
-                    <Text style={[styles.menuAppTitle, { color: colors.textPrimary }]}>
-                      {selectedApp.label}
-                    </Text>
-                    <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
-                      {selectedApp.packageName}
-                    </Text>
-                  </View>
-
-                  {/* Actions */}
-                  <View style={styles.menuOptions}>
-                    {/* Dock Actions */}
-                    {isSelectedAppInDock && (
-                      <>
-                        {(dockPackages || []).indexOf(selectedApp.packageName) > 0 && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              moveDockApp(selectedApp.packageName, "left");
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <ArrowLeft size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Move Left in Dock
-                            </Text>
-                          </Pressable>
-                        )}
-
-                        {(dockPackages || []).indexOf(selectedApp.packageName) < (dockPackages || []).length - 1 && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              moveDockApp(selectedApp.packageName, "right");
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <ArrowRight size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Move Right in Dock
-                            </Text>
-                          </Pressable>
-                        )}
-
-                        <Pressable
-                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                          onPress={() => {
-                            removeFromDock(selectedApp.packageName);
-                            setSelectedApp(null);
-                          }}
-                        >
-                          <Minus size={18} color={colors.textPrimary} />
-                          <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                            Remove from Dock
-                          </Text>
-                        </Pressable>
-
-                        {!isSelectedAppInHome && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              setAppFocusState(selectedApp.packageName, "allowed");
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <Plus size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Add to Home Screen
-                            </Text>
-                          </Pressable>
-                        )}
-                      </>
-                    )}
-
-                    {/* Homescreen Actions */}
-                    {isSelectedAppInHome && (
-                      <>
-                        {(allowedPackages || []).indexOf(selectedApp.packageName) > 0 && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              moveApp(selectedApp.packageName, "left");
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <ArrowLeft size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Move Left on Home
-                            </Text>
-                          </Pressable>
-                        )}
-
-                        {(allowedPackages || []).indexOf(selectedApp.packageName) < (allowedPackages || []).length - 1 && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              moveApp(selectedApp.packageName, "right");
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <ArrowRight size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Move Right on Home
-                            </Text>
-                          </Pressable>
-                        )}
-
-                        {!isSelectedAppInDock && (dockPackages || []).length < 5 && (
-                          <Pressable
-                            style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                            onPress={() => {
-                              addToDock(selectedApp.packageName);
-                              setSelectedApp(null);
-                            }}
-                          >
-                            <Plus size={18} color={colors.textPrimary} />
-                            <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                              Add to Dock
-                            </Text>
-                          </Pressable>
-                        )}
-
-                        <Pressable
-                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setSelectedApp(null);
-                            setTimeout(() => {
-                              setAppFocusState(selectedApp.packageName, "intent_pause");
-                            }, 150);
-                          }}
-                        >
-                          <ShieldAlert size={18} color={colors.warning} />
-                          <Text style={[styles.menuOptionText, { color: colors.warning }]}>
-                            Require Intent Pause
-                          </Text>
-                        </Pressable>
-
-                        <Pressable
-                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: 'rgba(239, 68, 68, 0.06)' }]}
-                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                          onPress={() => {
-                            setAppFocusState(selectedApp.packageName, "blocked");
-                            setSelectedApp(null);
-                          }}
-                        >
-                          <Trash size={18} color={colors.error} />
-                          <Text style={[styles.menuOptionText, { color: colors.error }]}>
-                            Remove from Home
-                          </Text>
-                        </Pressable>
-                      </>
-                    )}
-
-                    <Pressable
-                      style={[styles.menuOption, styles.cancelOption]}
-                      android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
-                      onPress={() => setSelectedApp(null)}
-                    >
-                      <Text style={[styles.menuOptionText, { color: colors.textTertiary, textAlign: "center", width: "100%" }]}>
-                        Cancel
-                      </Text>
-                    </Pressable>
-                  </View>
-                </Animated.View>
-              </Pressable>
-            </Modal>
-          );
-        })()}
+        <ContextMenu 
+          selectedApp={selectedApp} 
+          onClose={() => setSelectedApp(null)} 
+        />
       </View>
     </GestureDetector>
   );
@@ -385,52 +202,5 @@ const styles = StyleSheet.create({
   gridContainer: {
     flex: 1,
     marginBottom: layout.dockHeight,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
-    justifyContent: "flex-end",
-  },
-  menuContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.xl,
-    paddingBottom: spacing["3xl"],
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-  },
-  menuHeader: {
-    alignItems: "center",
-    marginBottom: spacing.lg,
-  },
-  menuAppTitle: {
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
-  },
-  menuAppSubtitle: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    marginTop: 2,
-  },
-  menuOptions: {
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  menuOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.base,
-    gap: spacing.md,
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
-  },
-  menuOptionText: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.md,
-  },
-  cancelOption: {
-    marginTop: spacing.sm,
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderRadius: 14,
   },
 });

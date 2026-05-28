@@ -12,6 +12,8 @@ import { updateWhitelist } from "../../modules/de-launcher-native";
 
 export type AppFocusState = "allowed" | "intent_pause" | "blocked";
 
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+
 interface AppState {
   // Data
   installedApps: AppInfo[];
@@ -49,7 +51,32 @@ export const useAppStore = create<AppState>()(
       intentPausePackages: [],
       exemptions: {},
 
-      setInstalledApps: (apps) => set({ installedApps: apps }),
+      setInstalledApps: (apps) => {
+        const installedPackageNames = new Set(apps.map((a) => a.packageName));
+        const current = get();
+
+        // Sanitize existing lists by removing apps that are no longer installed
+        const sanitizedAllowed = current.allowedPackages.filter((pkg) => installedPackageNames.has(pkg));
+        const sanitizedDock = current.dockPackages.filter((pkg) => installedPackageNames.has(pkg));
+        const sanitizedIntentPause = current.intentPausePackages.filter((pkg) => installedPackageNames.has(pkg));
+        
+        const sanitizedExemptions = { ...current.exemptions };
+        let exemptionsChanged = false;
+        for (const pkg of Object.keys(sanitizedExemptions)) {
+          if (!installedPackageNames.has(pkg)) {
+            delete sanitizedExemptions[pkg];
+            exemptionsChanged = true;
+          }
+        }
+
+        set({ 
+          installedApps: apps,
+          allowedPackages: sanitizedAllowed,
+          dockPackages: sanitizedDock,
+          intentPausePackages: sanitizedIntentPause,
+          ...(exemptionsChanged && { exemptions: sanitizedExemptions })
+        });
+      },
 
       moveApp: (packageName, direction) => {
         const current = [...get().allowedPackages];
@@ -173,7 +200,13 @@ export const useAppStore = create<AppState>()(
           }
         }
 
-        updateWhitelist(Array.from(whitelist)).catch(console.error);
+        if (syncTimeout) {
+          clearTimeout(syncTimeout);
+        }
+        
+        syncTimeout = setTimeout(() => {
+          updateWhitelist(Array.from(whitelist)).catch(console.error);
+        }, 500);
       }
     }),
     {

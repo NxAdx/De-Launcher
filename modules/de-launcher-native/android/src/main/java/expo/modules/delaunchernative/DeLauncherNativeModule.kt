@@ -218,14 +218,16 @@ class DeLauncherNativeModule : Module() {
         try {
           val pm = context.packageManager
           val cacheDir = context.cacheDir
+          val appInfo = pm.getApplicationInfo(packageName, 0)
+          val packageInfo = pm.getPackageInfo(packageName, 0)
+          val lastUpdateTime = packageInfo.lastUpdateTime
           val maxSize = 384
-          val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
+          val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
           if (iconFile.exists() && iconFile.length() > 0) {
             "file://" + iconFile.absolutePath
           } else {
-            val appInfo = pm.getApplicationInfo(packageName, 0)
             val drawable = appInfo.loadIcon(pm)
-            drawableToUri(context, drawable, packageName)
+            drawableToUri(context, drawable, packageName, lastUpdateTime)
           }
         } catch (e: Exception) {
           android.util.Log.e("DeLauncherNative", "Failed to get system app icon for $packageName", e)
@@ -242,13 +244,15 @@ class DeLauncherNativeModule : Module() {
         val result = mutableMapOf<String, String?>()
         for (pkg in packageNames) {
           try {
-            val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${maxSize}.png")
+            val appInfo = pm.getApplicationInfo(pkg, 0)
+            val packageInfo = pm.getPackageInfo(pkg, 0)
+            val lastUpdateTime = packageInfo.lastUpdateTime
+            val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${lastUpdateTime}_${maxSize}.png")
             if (iconFile.exists() && iconFile.length() > 0) {
               result[pkg] = "file://" + iconFile.absolutePath
             } else {
-              val appInfo = pm.getApplicationInfo(pkg, 0)
               val drawable = appInfo.loadIcon(pm)
-              result[pkg] = drawableToUri(context, drawable, pkg)
+              result[pkg] = drawableToUri(context, drawable, pkg, lastUpdateTime)
             }
           } catch (e: Exception) {
             android.util.Log.w("DeLauncherNative", "Failed to load icon for $pkg", e)
@@ -283,15 +287,15 @@ class DeLauncherNativeModule : Module() {
 
           // Register BroadcastReceiver for Home button presses
           val filter = android.content.IntentFilter("com.nxadx.delauncher.HOME_PRESSED")
-          val receiver = object : android.content.BroadcastReceiver() {
+          homePressedReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(c: android.content.Context?, intent: android.content.Intent?) {
               this@DeLauncherNativeModule.sendEvent("onHomePressed", mapOf<String, Any?>())
             }
           }
           if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            context.registerReceiver(homePressedReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
           } else {
-            context.registerReceiver(receiver, filter)
+            context.registerReceiver(homePressedReceiver, filter)
           }
         }
       } catch (t: Throwable) {
@@ -302,6 +306,12 @@ class DeLauncherNativeModule : Module() {
     OnDestroy {
       try {
         appWidgetHost?.stopListening()
+        appContext.reactContext?.let { context ->
+          homePressedReceiver?.let {
+            context.unregisterReceiver(it)
+            homePressedReceiver = null
+          }
+        }
       } catch (e: Exception) {
         android.util.Log.e("DeLauncherNative", "Error in OnDestroy", e)
       }
@@ -318,13 +328,14 @@ class DeLauncherNativeModule : Module() {
 
   private var appWidgetManager: android.appwidget.AppWidgetManager? = null
   private var appWidgetHost: android.appwidget.AppWidgetHost? = null
+  private var homePressedReceiver: android.content.BroadcastReceiver? = null
   private val APPWIDGET_HOST_ID = 1024
 
-  private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String): String? {
+  private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String, lastUpdateTime: Long = 0L): String? {
     return try {
       val cacheDir = context.cacheDir
       val maxSize = 384
-      val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
+      val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
       
       if (iconFile.exists() && iconFile.length() > 0) {
         return "file://" + iconFile.absolutePath
@@ -333,8 +344,8 @@ class DeLauncherNativeModule : Module() {
       val originalBitmap: Bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
         drawable.bitmap
       } else {
-        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 1
-        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 1
+        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 108
+        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 108
         val newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(newBitmap)
         drawable.setBounds(0, 0, canvas.width, canvas.height)

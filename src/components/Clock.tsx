@@ -5,7 +5,7 @@
  * Updates every minute. Typography-first design with contextual greeting.
  */
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, AppState, AppStateStatus } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
@@ -62,6 +62,15 @@ export function Clock() {
         clearInterval(interval);
       }
     };
+  }, [tick]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        tick();
+      }
+    });
+    return () => subscription.remove();
   }, [tick]);
 
   return (

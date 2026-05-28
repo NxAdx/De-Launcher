@@ -215,6 +215,7 @@ export async function getSystemAppIcon(packageName: string): Promise<string | nu
     })
     .catch((error) => {
       console.error(`[AppManager] Error getting system icon for ${packageName}:`, error);
+      systemIconCache.set(packageName, null);
       return null;
     })
     .finally(() => {
@@ -262,6 +263,7 @@ export async function batchLoadSystemIcons(packageNames: string[]): Promise<void
         })
         .catch((error) => {
           console.error("[AppManager] Batch icon loading failed:", error);
+          systemIconCache.set(pkg, null);
           return null;
         })
         .finally(() => {

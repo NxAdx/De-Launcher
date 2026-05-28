@@ -91,6 +91,7 @@ function DraggableItem({
 
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
+  const lastSwappedIndex = useSharedValue(-1);
 
   // Synchronize target positions dynamically when indices/layouts update
   useEffect(() => {
@@ -106,9 +107,10 @@ function DraggableItem({
     }
   };
 
-  const panGesture = Gesture.Pan()
-    .activateAfterLongPress(400) // 400ms long press lifts the item
-    .onStart(() => {
+  const panGesture = useMemo(() => {
+    return Gesture.Pan()
+      .activateAfterLongPress(400) // 400ms long press lifts the item
+      .onStart(() => {
       isDragging.value = true;
       isAnyDragging.value = true;
       runOnJS(setScrollEnabled)(false);
@@ -155,10 +157,14 @@ function DraggableItem({
 
       // Swap threshold is 45% of item width to eliminate oscillation
       if (closestIndex !== -1 && minDistance < itemWidth * 0.45) {
-        runOnJS(onSwap)(app.packageName, closestIndex);
+        if (lastSwappedIndex.value !== closestIndex) {
+          lastSwappedIndex.value = closestIndex;
+          runOnJS(onSwap)(app.packageName, closestIndex);
+        }
       }
     })
     .onEnd((event) => {
+      lastSwappedIndex.value = -1;
       isDragging.value = false;
       isAnyDragging.value = false;
       runOnJS(setScrollEnabled)(true);
@@ -178,6 +184,7 @@ function DraggableItem({
         runOnJS(onDragEnd)();
       }
     });
+  }, [app, itemWidth, pageStart, pageEnd, pageSize, gridColumns, pageRows, pageAppsCount, verticalOffset, onSwap, onDragEnd, onLongPress, setScrollEnabled, triggerHaptic, isAnyDragging, x, y, startX, startY, isDragging, scale, rotation, zIndex, lastSwappedIndex, targetX, targetY]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

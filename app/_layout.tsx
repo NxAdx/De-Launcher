@@ -172,8 +172,8 @@ function RootLayoutContent() {
     );
   }
 
-  if (!hasCompletedOnboarding || !isReady) {
-    return <Redirect href={"/onboarding" as any} />;
+  if (!isReady) {
+    return null; // Let Splash screen handle this phase
   }
 
   return (

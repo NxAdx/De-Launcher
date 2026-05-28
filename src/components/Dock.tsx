@@ -54,6 +54,7 @@ function DraggableDockIcon({
   const isDragging = useSharedValue(false);
   const didActivate = useSharedValue(false);
   const hasMoved = useSharedValue(false);
+  const lastSwappedIndex = useSharedValue(-1);
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(1);
 
@@ -69,9 +70,10 @@ function DraggableDockIcon({
     }
   }, [hapticEnabled]);
 
-  const panGesture = Gesture.Pan()
-    .activateAfterLongPress(layout.longPressDelay)
-    .onStart(() => {
+  const panGesture = React.useMemo(() => {
+    return Gesture.Pan()
+      .activateAfterLongPress(layout.longPressDelay)
+      .onStart(() => {
       didActivate.value = true;
       isDragging.value = true;
       hasMoved.value = false;
@@ -90,11 +92,13 @@ function DraggableDockIcon({
         0,
         Math.min(4, Math.round(x.value / slotWidth))
       );
-      if (targetIndex !== index) {
+      if (targetIndex !== index && targetIndex !== lastSwappedIndex.value) {
+        lastSwappedIndex.value = targetIndex;
         runOnJS(onMove)(app.packageName, targetIndex);
       }
     })
     .onFinalize(() => {
+      lastSwappedIndex.value = -1;
       if (!didActivate.value) return;
       didActivate.value = false;
       isDragging.value = false;
@@ -108,6 +112,7 @@ function DraggableDockIcon({
         runOnJS(onLongPress)(app);
       }
     });
+  }, [app, index, slotWidth, onMove, onDrop, onLongPress, triggerLiftHaptic, layout.longPressDelay, x, dragStartX, isDragging, didActivate, hasMoved, scale, zIndex, lastSwappedIndex, targetX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: slotWidth,
