@@ -57,6 +57,8 @@ jobs:
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
 
       # ── JS layer ──
       - name: Install dependencies
@@ -75,12 +77,13 @@ jobs:
           GRADLE_OPTS: >-
             -Dorg.gradle.daemon=false
             -Dorg.gradle.jvmargs=-Xmx4096m
-            -Dorg.gradle.caching=true
+            -Dorg.gradle.caching=false
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease \
             -PreactNativeArchitectures=arm64-v8a \
-            --build-cache \
+            --no-build-cache \
+            --rerun-tasks \
             --parallel \
             --no-daemon \
             --console=plain
