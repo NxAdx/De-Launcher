@@ -38,7 +38,6 @@ export default function HomeScreen() {
   const moveApp = useAppStore((s) => s.moveApp);
   const moveDockApp = useAppStore((s) => s.moveDockApp);
   const setAppFocusState = useAppStore((s) => s.setAppFocusState);
-  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
   const [showBlockedBanner, setShowBlockedBanner] = useState(false);
