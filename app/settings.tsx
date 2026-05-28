@@ -4,7 +4,7 @@
  * Launcher configuration: theme, grid, labels, clock, dock management.
  * Designed with a clean, grouped section pattern.
  */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -14,13 +14,12 @@ import {
   Pressable,
   Modal,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
 import { router } from "expo-router";
 import {
   ArrowLeft,
-  Sun,
-  Moon,
   Grid3x3,
   Type,
   Clock as ClockIcon,
@@ -33,7 +32,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, radii } from "@/src/theme/tokens";
+import { typography, spacing, radii, palette } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 import { getAvailableIconPacks, getCachedIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
@@ -108,12 +107,32 @@ function SectionHeader({
   );
 }
 
+/** Card wrapper that groups related setting rows with dividers between them */
+function SectionCard({ children }: { children: React.ReactNode }) {
+  const childArray = React.Children.toArray(children);
+  return (
+    <View style={styles.sectionCard}>
+      {childArray.map((child, index) => (
+        <React.Fragment key={index}>
+          {child}
+          {index < childArray.length - 1 && <View style={styles.sectionDivider} />}
+        </React.Fragment>
+      ))}
+    </View>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [iconPacks, setIconPacks] = useState<IconPackInfo[]>([]);
+  const [iconPacks, setIconPacks] = useState<IconPackInfo[]>(
+    () => getCachedIconPacks() ?? []
+  );
+  const [isIconPacksLoading, setIsIconPacksLoading] = useState(
+    () => getCachedIconPacks() === null
+  );
   const [isDockModalVisible, setIsDockModalVisible] = useState(false);
 
   const installedApps = useAppStore((s) => s.installedApps);
@@ -135,21 +154,32 @@ export default function SettingsScreen() {
   } = useSettingsStore();
 
   useEffect(() => {
-    // Use pre-cached icon packs if available (from boot preload), else fetch
+    let isMounted = true;
     const cached = getCachedIconPacks();
-    if (cached !== null && cached.length > 0) {
+    if (cached !== null) {
       setIconPacks(cached);
-    } else {
-      const loadIconPacks = async () => {
-        try {
-          const packs = await getAvailableIconPacks();
-          setIconPacks(packs);
-        } catch (error) {
-          console.error("Failed to load icon packs:", error);
-        }
-      };
-      loadIconPacks();
+      setIsIconPacksLoading(false);
+      return;
     }
+
+    const loadIconPacks = async () => {
+      try {
+        const packs = await getAvailableIconPacks();
+        if (isMounted) {
+          setIconPacks(packs);
+        }
+      } catch (error) {
+        console.error("Failed to load icon packs:", error);
+      } finally {
+        if (isMounted) {
+          setIsIconPacksLoading(false);
+        }
+      }
+    };
+    loadIconPacks();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleGridChange = useCallback(() => {
@@ -205,6 +235,7 @@ export default function SettingsScreen() {
       >
         {/* ─── Appearance ─── */}
         <SectionHeader title="APPEARANCE" colors={colors} />
+        <SectionCard>
 
         <SettingRow
           icon={<Grid3x3 size={20} color={colors.textSecondary} />}
@@ -236,8 +267,11 @@ export default function SettingsScreen() {
           isDark={isDark}
         />
 
+        </SectionCard>
+
         {/* ─── Dock Customization ─── */}
         <SectionHeader title="DOCK" colors={colors} />
+        <SectionCard>
 
         <SettingRow
           icon={<LayoutGrid size={20} color={colors.textSecondary} />}
@@ -253,9 +287,34 @@ export default function SettingsScreen() {
           isDark={isDark}
         />
 
+        </SectionCard>
+
         {/* ─── Icon Packs ─── */}
         <SectionHeader title="ICON PACKS" colors={colors} />
-        {iconPacks.length > 0 ? (
+        <SectionCard>
+        {isIconPacksLoading ? (
+          <View
+            style={[
+              styles.infoCard,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(0,0,0,0.03)",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <ActivityIndicator color={colors.accent} style={styles.infoCardIcon} />
+            <View style={styles.infoCardTextContainer}>
+              <Text style={[styles.infoCardTitle, { color: colors.textPrimary }]}>
+                Finding Icon Packs
+              </Text>
+              <Text style={[styles.infoCardDescription, { color: colors.textSecondary }]}>
+                Installed themes will appear here.
+              </Text>
+            </View>
+          </View>
+        ) : iconPacks.length > 0 ? (
           <>
             <Pressable
               onPress={() => handleIconPackSelect(null)}
@@ -280,7 +339,7 @@ export default function SettingsScreen() {
                       {
                         color:
                           activeIconPack === null
-                            ? "#000000"
+                            ? palette.dark.surface
                             : colors.textPrimary,
                       },
                     ]}
@@ -293,7 +352,7 @@ export default function SettingsScreen() {
                       {
                         color:
                           activeIconPack === null
-                            ? "rgba(0,0,0,0.6)"
+                            ? palette.textLight.secondary
                             : colors.textTertiary,
                       },
                     ]}
@@ -329,7 +388,7 @@ export default function SettingsScreen() {
                         {
                           color:
                             activeIconPack === pack.packageName
-                              ? "#000000"
+                              ? palette.dark.surface
                               : colors.textPrimary,
                         },
                       ]}
@@ -342,12 +401,14 @@ export default function SettingsScreen() {
                         {
                           color:
                             activeIconPack === pack.packageName
-                              ? "rgba(0,0,0,0.6)"
+                              ? palette.textLight.secondary
                               : colors.textTertiary,
                         },
                       ]}
                     >
-                      {pack.mappingCount} custom icons
+                      {pack.mappingCount === null
+                        ? "Available - icons load when selected"
+                        : `${pack.mappingCount} custom icons`}
                     </Text>
                   </View>
                 </View>
@@ -377,9 +438,11 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+        </SectionCard>
 
         {/* ─── Display ─── */}
         <SectionHeader title="DISPLAY" colors={colors} />
+        <SectionCard>
 
         <SettingRow
           icon={<Type size={20} color={colors.textSecondary} />}
@@ -438,8 +501,11 @@ export default function SettingsScreen() {
           isDark={isDark}
         />
 
+        </SectionCard>
+
         {/* ─── System ─── */}
         <SectionHeader title="SYSTEM" colors={colors} />
+        <SectionCard>
 
         <SettingRow
           icon={<Home size={20} color={colors.textSecondary} />}
@@ -468,6 +534,8 @@ export default function SettingsScreen() {
           colors={colors}
           isDark={isDark}
         />
+
+        </SectionCard>
 
         {/* ─── About ─── */}
         <SectionHeader title="ABOUT" colors={colors} />
@@ -614,14 +682,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
+  sectionCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    marginBottom: spacing.base,
+    overflow: 'hidden',
+  },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginHorizontal: spacing.base,
+  },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.base,
-    borderRadius: radii.lg,
-    marginBottom: spacing.sm,
+    borderRadius: 0,
+    marginBottom: 0,
   },
   settingLeft: {
     flexDirection: "row",
@@ -648,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   gridButtonText: {
     fontFamily: typography.family.bold,

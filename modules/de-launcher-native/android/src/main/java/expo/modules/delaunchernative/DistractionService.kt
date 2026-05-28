@@ -3,20 +3,47 @@ package expo.modules.delaunchernative
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
 class DistractionService : AccessibilityService() {
     companion object {
         private const val TAG = "DistractionService"
+        private val ALWAYS_ALLOWED_SYSTEM_PACKAGES = setOf(
+            "android",
+            "com.android.systemui",
+            "com.android.settings",
+            "com.android.permissioncontroller",
+            "com.google.android.permissioncontroller",
+            "com.android.packageinstaller",
+            "com.google.android.packageinstaller"
+        )
+    }
+
+    private val configurationPackages: Set<String> by lazy {
+        val packages = ALWAYS_ALLOWED_SYSTEM_PACKAGES.toMutableSet()
+        listOf(
+            Settings.ACTION_SETTINGS,
+            Settings.ACTION_ACCESSIBILITY_SETTINGS,
+            Settings.ACTION_HOME_SETTINGS,
+            Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS
+        ).forEach { action ->
+            packageManager.resolveActivity(
+                Intent(action),
+                PackageManager.MATCH_DEFAULT_ONLY
+            )?.activityInfo?.packageName?.let(packages::add)
+        }
+        packages
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: return
             
-            // Allow system UI and our own launcher
-            if (packageName == "com.android.systemui" || packageName == applicationContext.packageName) {
+            // Never block the routes required to configure or leave the launcher.
+            if (packageName == applicationContext.packageName || configurationPackages.contains(packageName)) {
                 return
             }
 

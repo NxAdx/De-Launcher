@@ -2,11 +2,11 @@
  * Clock Component
  *
  * Large, minimal time display for the homescreen.
- * Updates every minute. Typography-first design.
+ * Updates every minute. Typography-first design with contextual greeting.
  */
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 
@@ -29,6 +29,14 @@ function formatDate(date: Date): string {
   });
 }
 
+/** Returns a contextual greeting based on the hour of day. */
+function getGreeting(date: Date): string {
+  const h = date.getHours();
+  if (h >= 5 && h <= 11) return "Good morning";
+  if (h >= 12 && h <= 16) return "Good afternoon";
+  return "Good evening";
+}
+
 export function Clock() {
   const { colors } = useTheme();
   const [now, setNow] = useState(new Date());
@@ -36,8 +44,11 @@ export function Clock() {
   const tick = useCallback(() => setNow(new Date()), []);
 
   useEffect(() => {
-    // Align to the next minute boundary for efficiency
-    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    // Compute delay from a fresh Date so we don't re-fire on every render
+    const fresh = new Date();
+    const msToNextMinute =
+      (60 - fresh.getSeconds()) * 1000 - fresh.getMilliseconds();
+
     let interval: ReturnType<typeof setInterval> | undefined;
     const alignTimeout = setTimeout(() => {
       tick();
@@ -51,22 +62,40 @@ export function Clock() {
         clearInterval(interval);
       }
     };
-  }, [now, tick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
 
   return (
-    <Animated.View entering={FadeIn.duration(600)} style={styles.container}>
-      <View style={styles.timeRow}>
+    <View style={styles.container}>
+      {/* Greeting — staggered entrance */}
+      <Animated.Text
+        entering={FadeInUp.duration(400)}
+        style={[styles.greeting, { color: colors.textTertiary }]}
+      >
+        {getGreeting(now)}
+      </Animated.Text>
+
+      {/* Time row */}
+      <Animated.View
+        entering={FadeInUp.duration(400).delay(60)}
+        style={styles.timeRow}
+      >
         <Text style={[styles.time, { color: colors.textPrimary }]}>
           {formatTime(now)}
         </Text>
         <Text style={[styles.period, { color: colors.textTertiary }]}>
           {formatPeriod(now)}
         </Text>
-      </View>
-      <Text style={[styles.date, { color: colors.textSecondary }]}>
+      </Animated.View>
+
+      {/* Date */}
+      <Animated.Text
+        entering={FadeInUp.duration(400).delay(120)}
+        style={[styles.date, { color: colors.textSecondary }]}
+      >
         {formatDate(now)}
-      </Text>
-    </Animated.View>
+      </Animated.Text>
+    </View>
   );
 }
 
@@ -75,6 +104,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing["3xl"],
     paddingBottom: spacing.lg,
+  },
+  greeting: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: spacing.xs,
   },
   timeRow: {
     flexDirection: "row",
@@ -90,7 +126,7 @@ const styles = StyleSheet.create({
   period: {
     fontFamily: typography.family.light,
     fontSize: typography.size.lg,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   date: {
     fontFamily: typography.family.light,

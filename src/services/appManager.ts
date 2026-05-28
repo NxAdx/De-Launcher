@@ -113,16 +113,31 @@ export async function launchApp(packageName: string): Promise<void> {
 /**
  * Get all available icon packs installed on the device.
  */
+let cachedIconPacks: IconPackInfo[] | null = null;
+let iconPackListRequest: Promise<IconPackInfo[]> | null = null;
+
 export async function getAvailableIconPacks(): Promise<IconPackInfo[]> {
-  try {
-    return await nativeGetAvailableIconPacks();
-  } catch (error) {
-    console.error("[AppManager] Error fetching icon packs:", error);
-    return [];
-  }
+  if (cachedIconPacks !== null) return cachedIconPacks;
+  if (iconPackListRequest !== null) return iconPackListRequest;
+
+  iconPackListRequest = nativeGetAvailableIconPacks()
+    .then((packs) => {
+      cachedIconPacks = packs;
+      return packs;
+    })
+    .catch((error) => {
+      console.error("[AppManager] Error fetching icon packs:", error);
+      cachedIconPacks = [];
+      return [];
+    })
+    .finally(() => {
+      iconPackListRequest = null;
+    });
+  return iconPackListRequest;
 }
 
 const iconPackCache = new Map<string, string | null>();
+const iconPackRequests = new Map<string, Promise<string | null>>();
 
 /**
  * Get an icon from a specific icon pack (uses memory cache first).
@@ -135,18 +150,27 @@ export async function getIconFromPack(
   if (iconPackCache.has(cacheKey)) {
     return iconPackCache.get(cacheKey) ?? null;
   }
-  try {
-    const iconUri = await nativeGetIconFromPack(iconPackPackage, drawableName);
-    iconPackCache.set(cacheKey, iconUri);
-    return iconUri;
-  } catch (error) {
-    console.error(
-      `[AppManager] Error getting icon from pack ${iconPackPackage}:`,
-      error
-    );
-    iconPackCache.set(cacheKey, null);
-    return null;
-  }
+  const pendingRequest = iconPackRequests.get(cacheKey);
+  if (pendingRequest) return pendingRequest;
+
+  const request = nativeGetIconFromPack(iconPackPackage, drawableName)
+    .then((iconUri) => {
+      iconPackCache.set(cacheKey, iconUri);
+      return iconUri;
+    })
+    .catch((error) => {
+      console.error(
+        `[AppManager] Error getting icon from pack ${iconPackPackage}:`,
+        error
+      );
+      iconPackCache.set(cacheKey, null);
+      return null;
+    })
+    .finally(() => {
+      iconPackRequests.delete(cacheKey);
+    });
+  iconPackRequests.set(cacheKey, request);
+  return request;
 }
 
 /**
@@ -161,14 +185,7 @@ export function getCachedIcon(iconPackPackage: string, drawableName: string): st
  * Prefetch a custom icon into cache.
  */
 export async function prefetchIcon(iconPackPackage: string, drawableName: string): Promise<void> {
-  const cacheKey = `${iconPackPackage}:${drawableName}`;
-  if (iconPackCache.has(cacheKey)) return;
-  try {
-    const iconUri = await nativeGetIconFromPack(iconPackPackage, drawableName);
-    iconPackCache.set(cacheKey, iconUri);
-  } catch (e) {
-    iconPackCache.set(cacheKey, null);
-  }
+  await getIconFromPack(iconPackPackage, drawableName);
 }
 
 /**
@@ -179,6 +196,7 @@ export function clearIconPackCache(): void {
 }
 
 const systemIconCache = new Map<string, string | null>();
+const systemIconRequests = new Map<string, Promise<string | null>>();
 
 /**
  * Get system app icon (uses memory cache first, falls back to native getSystemAppIcon on-demand).
@@ -187,15 +205,23 @@ export async function getSystemAppIcon(packageName: string): Promise<string | nu
   if (systemIconCache.has(packageName)) {
     return systemIconCache.get(packageName) ?? null;
   }
-  try {
-    const iconUri = await nativeGetSystemAppIcon(packageName);
-    systemIconCache.set(packageName, iconUri);
-    return iconUri;
-  } catch (error) {
-    console.error(`[AppManager] Error getting system icon for ${packageName}:`, error);
-    systemIconCache.set(packageName, null);
-    return null;
-  }
+  const pendingRequest = systemIconRequests.get(packageName);
+  if (pendingRequest) return pendingRequest;
+
+  const request = nativeGetSystemAppIcon(packageName)
+    .then((iconUri) => {
+      systemIconCache.set(packageName, iconUri);
+      return iconUri;
+    })
+    .catch((error) => {
+      console.error(`[AppManager] Error getting system icon for ${packageName}:`, error);
+      return null;
+    })
+    .finally(() => {
+      systemIconRequests.delete(packageName);
+    });
+  systemIconRequests.set(packageName, request);
+  return request;
 }
 
 /**
@@ -209,13 +235,7 @@ export function getCachedSystemIcon(packageName: string): string | null | undefi
  * Prefetch a system app icon in the background and cache it.
  */
 export async function prefetchSystemIcon(packageName: string): Promise<void> {
-  if (systemIconCache.has(packageName)) return;
-  try {
-    const iconUri = await nativeGetSystemAppIcon(packageName);
-    systemIconCache.set(packageName, iconUri);
-  } catch (e) {
-    systemIconCache.set(packageName, null);
-  }
+  await getSystemAppIcon(packageName);
 }
 
 /**
@@ -223,42 +243,43 @@ export async function prefetchSystemIcon(packageName: string): Promise<void> {
  * Populates the systemIconCache so AppIcon components mount with icons synchronously.
  */
 export async function batchLoadSystemIcons(packageNames: string[]): Promise<void> {
-  // Filter out already-cached packages
-  const uncached = packageNames.filter((pkg) => !systemIconCache.has(pkg));
-  if (uncached.length === 0) return;
-  try {
-    const icons = await nativeGetSystemAppIcons(uncached);
-    for (const [pkg, uri] of Object.entries(icons)) {
-      systemIconCache.set(pkg, uri);
-    }
-  } catch (error) {
-    console.error("[AppManager] Batch icon loading failed:", error);
-    // Fallback: mark all as null so we don't retry endlessly
+  const uniquePackages = [...new Set(packageNames)];
+  const pending = uniquePackages
+    .map((pkg) => systemIconRequests.get(pkg))
+    .filter((request): request is Promise<string | null> => request !== undefined);
+  const uncached = uniquePackages.filter(
+    (pkg) => !systemIconCache.has(pkg) && !systemIconRequests.has(pkg)
+  );
+
+  if (uncached.length > 0) {
+    const batchRequest = nativeGetSystemAppIcons(uncached);
     for (const pkg of uncached) {
-      if (!systemIconCache.has(pkg)) {
-        systemIconCache.set(pkg, null);
-      }
+      const request = batchRequest
+        .then((icons) => {
+          const iconUri = icons[pkg] ?? null;
+          systemIconCache.set(pkg, iconUri);
+          return iconUri;
+        })
+        .catch((error) => {
+          console.error("[AppManager] Batch icon loading failed:", error);
+          return null;
+        })
+        .finally(() => {
+          systemIconRequests.delete(pkg);
+        });
+      systemIconRequests.set(pkg, request);
+      pending.push(request);
     }
   }
-}
 
-// Icon pack cache for settings pre-scan
-let cachedIconPacks: IconPackInfo[] | null = null;
+  await Promise.all(pending);
+}
 
 /**
  * Pre-scan icon packs during boot so settings screen loads instantly.
  */
 export async function preloadIconPacks(): Promise<IconPackInfo[]> {
-  if (cachedIconPacks !== null) return cachedIconPacks;
-  try {
-    const packs = await nativeGetAvailableIconPacks();
-    cachedIconPacks = packs;
-    return packs;
-  } catch (error) {
-    console.error("[AppManager] Preload icon packs failed:", error);
-    cachedIconPacks = [];
-    return [];
-  }
+  return getAvailableIconPacks();
 }
 
 /**

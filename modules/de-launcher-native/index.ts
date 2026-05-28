@@ -10,7 +10,7 @@ export type AppInfo = {
 export type IconPackInfo = {
   packageName: string;
   label: string;
-  mappingCount: number;
+  mappingCount: number | null;
 };
 
 export async function getInstalledApps(): Promise<AppInfo[]> {

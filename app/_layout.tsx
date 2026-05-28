@@ -1,26 +1,16 @@
 /**
- * Root Layout — De-Launcher
+ * Root Layout - De-Launcher
  *
- * Wraps the entire app with:
- * - Font loading (Inter family)
- * - Theme provider
- * - Gesture handler root
- * - Safe area provider
- * - System UI configuration
- * - Splash screen management
- * - Error boundary
- * - Navigation guard for HOME_PRESSED debounce
+ * Owns font loading, providers, native HOME events, and launcher bootstrap.
  */
-import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text } from "react-native";
+import { useEffect, useState } from "react";
+import { InteractionManager, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Stack, ErrorBoundary, router } from "expo-router";
 import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
-export { ErrorBoundary };
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
-import * as SystemUI from "expo-system-ui";
 import {
   useFonts,
   Inter_100Thin,
@@ -40,120 +30,120 @@ import {
   DEFAULT_ALLOWED_PACKAGES,
 } from "@/src/services/appManager";
 
-// Prevent splash auto-hide
+export { ErrorBoundary };
+
 SplashScreen.preventAutoHideAsync();
 
-// ─── Navigation Guard ─────────────────────────────────────
-// Shared module-level guard that other screens can signal when navigating.
-// When active, onHomePressed events are ignored to prevent navigation resets
-// from killing in-progress route transitions (e.g. pushing to /settings).
-let _navigationGuardActive = false;
-let _navigationGuardTimer: ReturnType<typeof setTimeout> | null = null;
+// Ignore a HOME event briefly while an intentional in-app transition runs.
+let navigationGuardActive = false;
+let navigationGuardTimer: ReturnType<typeof setTimeout> | null = null;
 
-/**
- * Signal that a navigation is in progress. HOME_PRESSED events will be
- * ignored for the specified duration (default 600ms).
- */
 export function signalNavigation(durationMs = 600) {
-  _navigationGuardActive = true;
-  if (_navigationGuardTimer) clearTimeout(_navigationGuardTimer);
-  _navigationGuardTimer = setTimeout(() => {
-    _navigationGuardActive = false;
-    _navigationGuardTimer = null;
+  navigationGuardActive = true;
+  if (navigationGuardTimer) clearTimeout(navigationGuardTimer);
+  navigationGuardTimer = setTimeout(() => {
+    navigationGuardActive = false;
+    navigationGuardTimer = null;
   }, durationMs);
 }
 
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
   const [error, setError] = useState<Error | null>(null);
-  const {
-    setInstalledApps,
-    dockPackages,
-    reorderDock,
-    allowedPackages,
-    setAllowedPackages,
-  } = useAppStore();
+  const setInstalledApps = useAppStore((s) => s.setInstalledApps);
+  const reorderDock = useAppStore((s) => s.reorderDock);
+  const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
   useEffect(() => {
     try {
       const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
-        // If navigation is in progress, ignore this HOME_PRESSED to avoid
-        // killing the transition (e.g. to /settings or /drawer)
-        if (_navigationGuardActive) {
-          return;
-        }
-        // Pop/dismiss all navigation routes back to the root index screen "/"
+        if (navigationGuardActive) return;
+
         try {
           router.dismissAll();
-        } catch (e) {
-          // Ignore
+        } catch {
+          // There may be no modal route to dismiss.
         }
         try {
           router.replace("/");
-        } catch (e) {
-          console.warn("Failed to reset route to home index:", e);
+        } catch (eventError) {
+          console.warn("Failed to reset route to home index:", eventError);
         }
       });
-      return () => {
-        subscription.remove();
-      };
-    } catch (e) {
-      console.warn("Failed to subscribe to onHomePressed event:", e);
+      return () => subscription.remove();
+    } catch (eventError) {
+      console.warn("Failed to subscribe to onHomePressed event:", eventError);
     }
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let backgroundTask: ReturnType<typeof InteractionManager.runAfterInteractions> | null = null;
+
     async function loadApps() {
       try {
-        const apps = await getInstalledApps();
-        setInstalledApps(apps);
+        const currentState = useAppStore.getState();
+        const initialDockPackages =
+          currentState.dockPackages.length > 0
+            ? currentState.dockPackages
+            : DEFAULT_DOCK_PACKAGES;
+        const initialAllowedPackages =
+          currentState.allowedPackages.length > 0
+            ? currentState.allowedPackages
+            : DEFAULT_ALLOWED_PACKAGES;
 
-        // Set defaults on first run
-        if (dockPackages.length === 0) {
+        if (currentState.dockPackages.length === 0) {
           reorderDock(DEFAULT_DOCK_PACKAGES);
         }
-        if (allowedPackages.length === 0) {
+        if (currentState.allowedPackages.length === 0) {
           setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
         }
 
-        // ── Boot-time preloading ──
-        // Batch-load all system app icons in one native bridge call.
-        // This populates the JS-side cache so AppIcon mounts synchronously.
-        const allPackages = apps.map((a) => a.packageName);
-        batchLoadSystemIcons(allPackages).catch((e) =>
-          console.warn("[RootLayout] Batch icon preload error:", e)
-        );
+        // Fetch only above-the-fold icons before mounting app tiles.
+        const visiblePackages = [
+          ...new Set([...initialDockPackages, ...initialAllowedPackages.slice(0, 20)]),
+        ];
+        const [apps] = await Promise.all([
+          getInstalledApps(),
+          batchLoadSystemIcons(visiblePackages),
+        ]);
+        if (cancelled) return;
+        setInstalledApps(apps);
 
-        // Pre-scan icon packs in the background so settings opens instantly.
-        preloadIconPacks().catch((e) =>
-          console.warn("[RootLayout] Icon pack preload error:", e)
-        );
-      } catch (err) {
-        console.error("[RootLayout] Error loading apps:", err);
-        // Fallback: still try to set defaults even if app loading fails
+        // Discovery is useful for Settings, but should not delay launcher paint.
+        backgroundTask = InteractionManager.runAfterInteractions(() => {
+          preloadIconPacks().catch((iconPackError) =>
+            console.warn("[RootLayout] Icon pack preload error:", iconPackError)
+          );
+        });
+      } catch (loadError) {
+        console.error("[RootLayout] Error loading apps:", loadError);
         try {
-          if (dockPackages.length === 0) {
+          const currentState = useAppStore.getState();
+          if (currentState.dockPackages.length === 0) {
             reorderDock(DEFAULT_DOCK_PACKAGES);
           }
-          if (allowedPackages.length === 0) {
+          if (currentState.allowedPackages.length === 0) {
             setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
           }
-        } catch (fallbackErr) {
-          console.error("[RootLayout] Error setting defaults:", fallbackErr);
-          setError(fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr)));
+        } catch (fallbackError) {
+          console.error("[RootLayout] Error setting defaults:", fallbackError);
+          setError(
+            fallbackError instanceof Error
+              ? fallbackError
+              : new Error(String(fallbackError))
+          );
         }
       }
     }
-    loadApps();
-  }, [
-    allowedPackages.length,
-    dockPackages.length,
-    reorderDock,
-    setAllowedPackages,
-    setInstalledApps,
-  ]);
 
-  // Error fallback UI
+    loadApps();
+    return () => {
+      cancelled = true;
+      backgroundTask?.cancel();
+    };
+  }, [reorderDock, setAllowedPackages, setInstalledApps]);
+
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", alignItems: "center", padding: 20 }}>
@@ -211,7 +201,7 @@ export default function RootLayout() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setTimedOut(true);
-    }, 1500); // 1.5 second safety net
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);

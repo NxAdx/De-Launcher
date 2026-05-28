@@ -12,7 +12,7 @@ export interface AppInfo {
 export interface IconPackInfo {
   packageName: string;
   label: string;
-  mappingCount: number;
+  mappingCount: number | null;
 }
 
 declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModuleEvents> {

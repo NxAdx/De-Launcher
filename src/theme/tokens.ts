@@ -48,8 +48,8 @@ export const palette = {
   },
 
   // Accent — a single, muted tone. Intentionally subdued.
-  accent: "#FFFFFF", // Monochrome white
-  accentMuted: "rgba(255, 255, 255, 0.15)",
+  accent: "#94A3B8", // Slate-400 — subdued, intentional
+  accentMuted: "rgba(148, 163, 184, 0.15)",
 
   // Semantic
   error: "#EF4444",
@@ -190,6 +190,17 @@ export const durations = {
   slow: 350,
 } as const;
 
+// ─── Spring Presets (react-native-reanimated) ───────────
+export const springs = {
+  /** Quick, snappy interactions (buttons, toggles, dock icons) */
+  snappy: { damping: 15, stiffness: 280, mass: 0.6 },
+  /** Gentle settling (page transitions, large element moves) */
+  gentle: { damping: 20, stiffness: 180, mass: 0.8 },
+  /** Bouncy feedback (lift/drop, scale pops) */
+  bouncy: { damping: 12, stiffness: 200, mass: 0.5 },
+  stiff: { damping: 22, stiffness: 350, mass: 0.5 },
+} as const;
+
 // ─── Layout ─────────────────────────────────────────────
 export const layout = {
   screenPaddingH: spacing.xl,
@@ -199,4 +210,5 @@ export const layout = {
   gridColumns: 4,
   gridGap: spacing.base,
   touchTarget: 48,
+  longPressDelay: 380,
 } as const;

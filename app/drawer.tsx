@@ -82,7 +82,6 @@ export default function DrawerScreen() {
 
       return (
         <Animated.View
-          entering={FadeIn.duration(200)}
           style={[
             styles.appRow,
             {
@@ -141,6 +140,9 @@ export default function DrawerScreen() {
         { backgroundColor: colors.surface, paddingTop: insets.top },
       ]}
     >
+      {/* Pull Indicator */}
+      <View style={styles.pullIndicator} />
+
       {/* Header */}
       <Animated.View
         entering={FadeInDown.duration(300)}
@@ -197,7 +199,7 @@ export default function DrawerScreen() {
                 styles.filterText,
                 {
                   color:
-                    filterMode === mode ? "#FFFFFF" : colors.textSecondary,
+                    filterMode === mode ? "#0A0A0A" : colors.textSecondary,
                 },
               ]}
             >
@@ -213,13 +215,21 @@ export default function DrawerScreen() {
       </Text>
 
       {/* App List */}
-      <FlashList
-        data={filteredApps}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.packageName}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {filteredApps.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyStateText, { color: colors.textTertiary }]}>
+            No apps found
+          </Text>
+        </View>
+      ) : (
+        <FlashList
+          data={filteredApps}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.packageName}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
@@ -227,6 +237,25 @@ export default function DrawerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  pullIndicator: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing["4xl"],
+  },
+  emptyStateText: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.base,
   },
   header: {
     flexDirection: "row",
@@ -262,7 +291,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   appRow: {
     flexDirection: "row",

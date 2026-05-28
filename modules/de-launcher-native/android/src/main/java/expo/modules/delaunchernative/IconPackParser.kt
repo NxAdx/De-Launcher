@@ -281,7 +281,7 @@ class IconPackParser(private val context: Context) {
     fun getIconFromPack(
         iconPackPackage: String,
         drawableName: String,
-        size: Int = 256
+        size: Int = 384
     ): String? {
         return try {
             val resources = context.packageManager.getResourcesForApplication(iconPackPackage)

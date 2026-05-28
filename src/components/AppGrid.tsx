@@ -4,8 +4,8 @@
  * Renders a responsive horizontal paginated grid of app icons.
  * Supports interactive drag-to-reorder custom gestures with smooth spring tilt/scale animations.
  */
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, StyleSheet, Dimensions, ScrollView, StatusBar as RNStatusBar } from "react-native";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { View, StyleSheet, ScrollView, StatusBar as RNStatusBar, useWindowDimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,12 +17,12 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { AppIcon } from "./AppIcon";
 import { AppInfo } from "@/src/types/app";
-import { spacing, layout } from "@/src/theme/tokens";
+import { spacing, springs } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 import { useTheme } from "@/src/theme/ThemeContext";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+// Screen dimensions are now obtained via useWindowDimensions() inside each component
 const ROW_HEIGHT = 92;
 // Estimate available height for the grid (screen minus status bar, clock, dock)
 const STATUS_BAR_HEIGHT = RNStatusBar.currentHeight ?? 24;
@@ -42,8 +42,8 @@ interface DraggableItemProps {
   onLongPress: (app: AppInfo) => void;
   isAnyDragging: SharedValue<boolean>;
   setScrollEnabled: (enabled: boolean) => void;
-  onSwap: (fromIndex: number, toIndex: number) => void;
-  onDragEnd: (finalApps: AppInfo[]) => void;
+  onSwap: (packageName: string, toIndex: number) => void;
+  onDragEnd: () => void;
 }
 
 function DraggableItem({
@@ -98,17 +98,11 @@ function DraggableItem({
       x.value = withSpring(targetX, { damping: 18, stiffness: 240, mass: 0.9 });
       y.value = withSpring(targetY, { damping: 18, stiffness: 240, mass: 0.9 });
     }
-  }, [targetX, targetY]);
+  }, [isDragging, targetX, targetY, x, y]);
 
   const triggerHaptic = () => {
     if (hapticEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-  };
-
-  const triggerLightHaptic = () => {
-    if (hapticEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -137,8 +131,6 @@ function DraggableItem({
       let minDistance = Infinity;
 
       for (let i = pageStart; i < pageEnd; i++) {
-        if (i === index) continue; // skip self
-
         const localI = i % pageSize;
         const colI = localI % gridColumns;
         const rowI = Math.floor(localI / gridColumns);
@@ -163,8 +155,7 @@ function DraggableItem({
 
       // Swap threshold is 45% of item width to eliminate oscillation
       if (closestIndex !== -1 && minDistance < itemWidth * 0.45) {
-        runOnJS(onSwap)(index, closestIndex);
-        runOnJS(triggerLightHaptic)();
+        runOnJS(onSwap)(app.packageName, closestIndex);
       }
     })
     .onEnd((event) => {
@@ -184,7 +175,7 @@ function DraggableItem({
       if (distance < 15) {
         runOnJS(onLongPress)(app);
       } else {
-        runOnJS(onDragEnd)(apps);
+        runOnJS(onDragEnd)();
       }
     });
 
@@ -214,6 +205,19 @@ function DraggableItem({
   );
 }
 
+function AnimatedDot({ index, activePage }: { index: number; activePage: number }) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const isActive = index === activePage;
+    return {
+      width: withSpring(isActive ? 18 : 6, springs.snappy),
+      backgroundColor: isActive ? "#94A3B8" : "rgba(255, 255, 255, 0.4)",
+      opacity: withSpring(isActive ? 1 : 0.3, springs.snappy),
+    };
+  });
+
+  return <Animated.View style={[styles.dot, animatedStyle]} />;
+}
+
 interface AppGridProps {
   apps: AppInfo[];
   onPress: (app: AppInfo) => void;
@@ -222,10 +226,13 @@ interface AppGridProps {
 
 export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
   const { colors } = useTheme();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
   const [orderedApps, setOrderedApps] = useState<AppInfo[]>(apps);
+  const orderedAppsRef = useRef<AppInfo[]>(apps);
   const isAnyDragging = useSharedValue(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [activePage, setActivePage] = useState(0);
@@ -236,28 +243,34 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
 
   // Synchronize dynamic updates from outer stores safely when drag gesture is inert
   useEffect(() => {
-    if (!isAnyDragging.value) {
+    if (scrollEnabled) {
+      orderedAppsRef.current = apps;
       setOrderedApps(apps);
     }
-  }, [apps]);
+  }, [apps, scrollEnabled]);
 
   const itemWidth = useMemo(() => {
     const totalPadding = spacing.xl * 2;
     return (SCREEN_WIDTH - totalPadding) / gridColumns;
   }, [gridColumns]);
 
-  const handleSwap = useCallback((fromIndex: number, toIndex: number) => {
-    setOrderedApps((prev) => {
-      const next = [...prev];
-      const temp = next[fromIndex];
-      next[fromIndex] = next[toIndex];
-      next[toIndex] = temp;
-      return next;
-    });
-  }, []);
+  const handleSwap = useCallback((packageName: string, toIndex: number) => {
+    const current = orderedAppsRef.current;
+    const fromIndex = current.findIndex((app) => app.packageName === packageName);
+    if (fromIndex === -1 || fromIndex === toIndex) return;
+    const next = [...current];
+    const temp = next[fromIndex];
+    next[fromIndex] = next[toIndex];
+    next[toIndex] = temp;
+    orderedAppsRef.current = next;
+    setOrderedApps(next);
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [hapticEnabled]);
 
-  const handleDragEnd = useCallback((finalApps: AppInfo[]) => {
-    const packages = finalApps.map((a) => a.packageName);
+  const handleDragEnd = useCallback(() => {
+    const packages = orderedAppsRef.current.map((a) => a.packageName);
     setAllowedPackages(packages);
   }, [setAllowedPackages]);
 
@@ -295,6 +308,7 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        decelerationRate="fast"
         style={styles.scrollStyle}
       >
         {pages.map((pageApps, pageIndex) => {
@@ -336,20 +350,11 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
         })}
       </ScrollView>
 
-      {/* Dots page indicator */}
+      {/* Animated page indicator */}
       {numPages > 1 && (
         <View style={styles.pageIndicator}>
           {Array.from({ length: numPages }).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: i === activePage ? colors.accent : colors.textTertiary,
-                  opacity: i === activePage ? 1 : 0.4,
-                },
-              ]}
-            />
+            <AnimatedDot key={i} index={i} activePage={activePage} />
           ))}
         </View>
       )}

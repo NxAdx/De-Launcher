@@ -14,7 +14,7 @@ import { router } from "expo-router";
 import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { spacing, layout } from "@/src/theme/tokens";
+import { typography, spacing, layout } from "@/src/theme/tokens";
 import { Clock } from "@/src/components/Clock";
 import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
@@ -58,23 +58,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-        {/* Settings gear */}
-        <Animated.View
-          entering={FadeIn.delay(400)}
-          style={[styles.settingsButton, { top: statusBarHeight + spacing.sm }]}
-        >
-          <Pressable
-            onPress={() => {
-              signalNavigation();
-              router.push("/settings");
-            }}
-            hitSlop={16}
-            style={styles.settingsPressable}
-          >
-            <Settings size={20} color={colors.textTertiary} />
-          </Pressable>
-        </Animated.View>
-
         {/* Clock */}
         {showClock && (
           <View style={{ paddingTop: statusBarHeight }}>
@@ -99,6 +82,23 @@ export default function HomeScreen() {
 
         {/* Dock */}
         <Dock onLongPress={handleAppLongPress} />
+
+        {/* Settings gear */}
+        <Animated.View
+          entering={FadeIn.delay(400)}
+          style={[styles.settingsButton, { top: statusBarHeight + spacing.sm, elevation: 10 }]}
+        >
+          <Pressable
+            onPress={() => {
+              signalNavigation();
+              router.push("/settings");
+            }}
+            hitSlop={24}
+            style={styles.settingsPressable}
+          >
+            <Settings size={20} color={colors.textTertiary} />
+          </Pressable>
+        </Animated.View>
 
         {/* Long Press Context Menu */}
         {selectedApp && (() => {
@@ -132,6 +132,7 @@ export default function HomeScreen() {
                         {dockPackages.indexOf(selectedApp.packageName) > 0 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               moveDockApp(selectedApp.packageName, "left");
                               setSelectedApp(null);
@@ -147,6 +148,7 @@ export default function HomeScreen() {
                         {dockPackages.indexOf(selectedApp.packageName) < dockPackages.length - 1 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               moveDockApp(selectedApp.packageName, "right");
                               setSelectedApp(null);
@@ -161,6 +163,7 @@ export default function HomeScreen() {
 
                         <Pressable
                           style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                           onPress={() => {
                             removeFromDock(selectedApp.packageName);
                             setSelectedApp(null);
@@ -175,6 +178,7 @@ export default function HomeScreen() {
                         {!isSelectedAppInHome && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               toggleAppAllowed(selectedApp.packageName);
                               setSelectedApp(null);
@@ -195,6 +199,7 @@ export default function HomeScreen() {
                         {allowedPackages.indexOf(selectedApp.packageName) > 0 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               moveApp(selectedApp.packageName, "left");
                               setSelectedApp(null);
@@ -210,6 +215,7 @@ export default function HomeScreen() {
                         {allowedPackages.indexOf(selectedApp.packageName) < allowedPackages.length - 1 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               moveApp(selectedApp.packageName, "right");
                               setSelectedApp(null);
@@ -225,6 +231,7 @@ export default function HomeScreen() {
                         {!isSelectedAppInDock && dockPackages.length < 5 && (
                           <Pressable
                             style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                             onPress={() => {
                               addToDock(selectedApp.packageName);
                               setSelectedApp(null);
@@ -238,7 +245,8 @@ export default function HomeScreen() {
                         )}
 
                         <Pressable
-                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                          style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: 'rgba(239, 68, 68, 0.06)' }]}
+                          android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                           onPress={() => {
                             toggleAppAllowed(selectedApp.packageName);
                             setSelectedApp(null);
@@ -254,6 +262,7 @@ export default function HomeScreen() {
 
                     <Pressable
                       style={[styles.menuOption, styles.cancelOption]}
+                      android_ripple={{ color: 'rgba(255,255,255,0.08)', borderless: false }}
                       onPress={() => setSelectedApp(null)}
                     >
                       <Text style={[styles.menuOptionText, { color: colors.textTertiary, textAlign: "center", width: "100%" }]}>
@@ -289,12 +298,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
     justifyContent: "flex-end",
   },
   menuContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: spacing.xl,
     paddingBottom: spacing["3xl"],
     borderWidth: 1,
@@ -305,16 +314,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   menuAppTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
   },
   menuAppSubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
     marginTop: 2,
   },
   menuOptions: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
   },
   menuOption: {
@@ -325,12 +334,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.02)",
   },
   menuOptionText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.md,
   },
   cancelOption: {
     marginTop: spacing.sm,
     justifyContent: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 14,
   },
 });

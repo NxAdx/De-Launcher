@@ -198,7 +198,7 @@ class DeLauncherNativeModule : Module() {
           mapOf(
             "packageName" to pack.packageName,
             "label" to pack.label,
-            "mappingCount" to pack.iconMappings.size
+            "mappingCount" to pack.mappingCount
           )
         }
       } ?: emptyList<Map<String, Any?>>()
@@ -218,7 +218,7 @@ class DeLauncherNativeModule : Module() {
         try {
           val pm = context.packageManager
           val cacheDir = context.cacheDir
-          val maxSize = 256
+          val maxSize = 384
           val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
           if (iconFile.exists() && iconFile.length() > 0) {
             "file://" + iconFile.absolutePath
@@ -238,7 +238,7 @@ class DeLauncherNativeModule : Module() {
       appContext.reactContext?.let { context ->
         val pm = context.packageManager
         val cacheDir = context.cacheDir
-        val maxSize = 256
+        val maxSize = 384
         val result = mutableMapOf<String, String?>()
         for (pkg in packageNames) {
           try {
@@ -323,7 +323,7 @@ class DeLauncherNativeModule : Module() {
   private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String): String? {
     return try {
       val cacheDir = context.cacheDir
-      val maxSize = 256
+      val maxSize = 384
       val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${maxSize}.png")
       
       if (iconFile.exists() && iconFile.length() > 0) {

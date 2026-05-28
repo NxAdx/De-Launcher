@@ -5,9 +5,7 @@
  * Persists user preference to MMKV.
  */
 import React, { createContext, useContext, useMemo, useCallback } from "react";
-import { useColorScheme } from "react-native";
 import { getThemeColors, ThemeColors, ThemeMode } from "./tokens";
-import { useSettingsStore } from "@/src/store/settingsStore";
 
 interface ThemeContextType {
   mode: ThemeMode;

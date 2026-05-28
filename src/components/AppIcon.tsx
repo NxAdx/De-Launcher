@@ -6,7 +6,8 @@
  * Supports custom icons from icon packs.
  */
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Image } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,7 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, layout } from "@/src/theme/tokens";
+import { typography, spacing, layout, springs } from "@/src/theme/tokens";
 import { AppInfo } from "@/src/types/app";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { getIconFromPack, getCachedIcon, getSystemAppIcon, getCachedSystemIcon } from "@/src/services/appManager";
@@ -65,6 +66,7 @@ export function AppIcon({
   const activeIconPack = useSettingsStore((s) => s.activeIconPack);
   const showLabel = showLabelProp ?? globalShowLabels;
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
   const [customIcon, setCustomIcon] = useState<string | null>(() => {
     if (activeIconPack) {
       const cached = getCachedIcon(activeIconPack, app.packageName);
@@ -73,60 +75,51 @@ export function AppIcon({
     return null;
   });
   const [systemIcon, setSystemIcon] = useState<string | null>(() => {
-    if (!activeIconPack) {
-      const cached = getCachedSystemIcon(app.packageName);
-      if (cached !== undefined) return cached;
-    }
+    const cached = getCachedSystemIcon(app.packageName);
+    if (cached !== undefined) return cached;
     return null;
   });
-  const [loadedPack, setLoadedPack] = useState<string | null>(activeIconPack ?? null);
 
   // Load custom icon from icon pack when pack changes
   useEffect(() => {
     if (!activeIconPack) {
       setCustomIcon(null);
-      setLoadedPack(null);
       return;
     }
 
-    if (loadedPack === activeIconPack) return;
-
-    // Check JS memory cache first
     const cached = getCachedIcon(activeIconPack, app.packageName);
     if (cached !== undefined) {
       setCustomIcon(cached);
-      setLoadedPack(activeIconPack);
       return;
     }
 
+    let isMounted = true;
+    setCustomIcon(null);
     const loadCustomIcon = async () => {
       try {
         const icon = await getIconFromPack(activeIconPack, app.packageName);
-        if (icon) {
+        if (isMounted) {
           setCustomIcon(icon);
-          setLoadedPack(activeIconPack);
-        } else {
-          setCustomIcon(null);
         }
       } catch (error) {
         console.warn(
           `Failed to load icon from pack for ${app.packageName}:`,
           error
         );
-        setCustomIcon(null);
+        if (isMounted) {
+          setCustomIcon(null);
+        }
       }
     };
 
     loadCustomIcon();
-  }, [activeIconPack, app.packageName, loadedPack]);
+    return () => {
+      isMounted = false;
+    };
+  }, [activeIconPack, app.packageName]);
 
-  // Load fallback system app icon lazily when active icon pack is disabled or not set
+  // Keep the system icon ready as an immediate fallback while a custom pack resolves.
   useEffect(() => {
-    if (activeIconPack) {
-      setSystemIcon(null);
-      return;
-    }
-
     const cached = getCachedSystemIcon(app.packageName);
     if (cached !== undefined) {
       setSystemIcon(cached);
@@ -140,7 +133,7 @@ export function AppIcon({
         if (icon && isMounted) {
           setSystemIcon(icon);
         }
-      } catch (e) {
+      } catch {
         // Ignore
       }
     };
@@ -148,19 +141,22 @@ export function AppIcon({
     return () => {
       isMounted = false;
     };
-  }, [activeIconPack, app.packageName]);
+  }, [app.packageName]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    opacity: opacity.value,
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.88, { damping: 15, stiffness: 300, mass: 0.5 });
-  }, [scale]);
+    scale.value = withSpring(0.93, springs.snappy);
+    opacity.value = withSpring(0.85, springs.snappy);
+  }, [scale, opacity]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 200, mass: 0.5 });
-  }, [scale]);
+    scale.value = withSpring(1, springs.gentle);
+    opacity.value = withSpring(1, springs.gentle);
+  }, [scale, opacity]);
 
   const handlePress = useCallback(() => {
     if (hapticEnabled) {
@@ -189,12 +185,16 @@ export function AppIcon({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
-      onLongPress={handleLongPress}
-      delayLongPress={400}
+      onLongPress={onLongPress ? handleLongPress : undefined}
+      delayLongPress={layout.longPressDelay}
+      accessibilityRole="button"
+      accessibilityLabel={app.label}
     >
       {customIcon ? (
         <Image
           source={{ uri: customIcon }}
+          cachePolicy="disk"
+          transition={150}
           style={[
             styles.icon,
             { width: size, height: size, borderRadius: size * 0.22 },
@@ -203,6 +203,8 @@ export function AppIcon({
       ) : systemIcon ? (
         <Image
           source={{ uri: systemIcon }}
+          cachePolicy="disk"
+          transition={150}
           style={[
             styles.icon,
             { width: size, height: size, borderRadius: size * 0.22 },
@@ -211,6 +213,8 @@ export function AppIcon({
       ) : appIconUri ? (
         <Image
           source={{ uri: appIconUri }}
+          cachePolicy="disk"
+          transition={150}
           style={[
             styles.icon,
             { width: size, height: size, borderRadius: size * 0.22 },
@@ -260,10 +264,20 @@ const styles = StyleSheet.create({
   },
   icon: {
     resizeMode: "cover",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   avatar: {
     alignItems: "center",
     justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   initials: {
     fontFamily: typography.family.semiBold,
