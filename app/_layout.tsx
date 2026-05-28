@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { InteractionManager, View, Text, AppState } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack, ErrorBoundary, router, Redirect } from "expo-router";
+import { Stack, ErrorBoundary, router } from "expo-router";
 import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,7 +22,6 @@ import {
 } from "@expo-google-fonts/inter";
 import { ThemeProvider, useTheme } from "@/src/theme/ThemeContext";
 import { useAppStore } from "@/src/store/appStore";
-import { useSettingsStore } from "@/src/store/settingsStore";
 import {
   getInstalledApps,
   batchLoadSystemIcons,
@@ -51,7 +50,6 @@ export function signalNavigation(durationMs = 600) {
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
   const [error, setError] = useState<Error | null>(null);
-  const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const setInstalledApps = useAppStore((s) => s.setInstalledApps);
   const reorderDock = useAppStore((s) => s.reorderDock);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);

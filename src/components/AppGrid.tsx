@@ -20,7 +20,6 @@ import { AppInfo } from "@/src/types/app";
 import { spacing, springs } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
-import { useTheme } from "@/src/theme/ThemeContext";
 
 // Screen dimensions are now obtained via useWindowDimensions() inside each component
 const ROW_HEIGHT = 92;
@@ -101,11 +100,11 @@ function DraggableItem({
     }
   }, [isDragging, targetX, targetY, x, y]);
 
-  const triggerHaptic = () => {
+  const triggerHaptic = useCallback(() => {
     if (hapticEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-  };
+  }, [hapticEnabled]);
 
   const panGesture = useMemo(() => {
     return Gesture.Pan()

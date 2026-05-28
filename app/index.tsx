@@ -8,11 +8,10 @@
  * - Swipe up to open app drawer
  */
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, Pressable, Modal, Text, StatusBar as RNStatusBar } from "react-native";
-import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
+import { View, StyleSheet, Pressable, Text, StatusBar as RNStatusBar } from "react-native";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { Settings, ArrowLeft, ArrowRight, Trash, Plus, Minus, ShieldAlert, Search } from "lucide-react-native";
+import { Settings, ShieldAlert, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -35,9 +34,6 @@ export default function HomeScreen() {
   const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
-  const moveApp = useAppStore((s) => s.moveApp);
-  const moveDockApp = useAppStore((s) => s.moveDockApp);
-  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
   const [showBlockedBanner, setShowBlockedBanner] = useState(false);
@@ -58,10 +54,6 @@ export default function HomeScreen() {
       }
     }
   }, [blocked_pkg, installedApps]);
-
-  if (!hasCompletedOnboarding) {
-    return <Redirect href={"/onboarding" as any} />;
-  }
 
   const panGesture = React.useMemo(() => {
     return Gesture.Pan()
@@ -87,6 +79,10 @@ export default function HomeScreen() {
   const handleAppLongPress = useCallback((app: AppInfo) => {
     setSelectedApp(app);
   }, []);
+
+  if (!hasCompletedOnboarding) {
+    return <Redirect href={"/onboarding" as any} />;
+  }
 
   return (
     <GestureDetector gesture={panGesture}>

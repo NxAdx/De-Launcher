@@ -3,7 +3,6 @@ import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Pla
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
-// eslint-disable-next-line import/no-unresolved
 import { BlurView } from "expo-blur";
 import { Settings, Home, Shield, Smartphone, Search, X } from "lucide-react-native";
 import Animated, { FadeIn, FadeOut, SlideInUp } from "react-native-reanimated";

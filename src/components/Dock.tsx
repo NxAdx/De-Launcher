@@ -112,7 +112,7 @@ function DraggableDockIcon({
         runOnJS(onLongPress)(app);
       }
     });
-  }, [app, index, slotWidth, onMove, onDrop, onLongPress, triggerLiftHaptic, layout.longPressDelay, x, dragStartX, isDragging, didActivate, hasMoved, scale, zIndex, lastSwappedIndex, targetX]);
+  }, [app, index, slotWidth, onMove, onDrop, onLongPress, triggerLiftHaptic, x, dragStartX, isDragging, didActivate, hasMoved, scale, zIndex, lastSwappedIndex, targetX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: slotWidth,
