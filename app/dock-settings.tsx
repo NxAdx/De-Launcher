@@ -1,8 +1,21 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, Switch, Image, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Switch,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import DraggableFlatList, { RenderItemParams, ScaleDecorator } from "react-native-draggable-flatlist";
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
 import { ArrowLeft, Search, GripVertical } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -10,6 +23,8 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
+import { useSettingsStore } from "@/src/store/settingsStore";
+import { getCachedSystemIcon } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { AppInfo } from "@/src/types/app";
 
@@ -23,13 +38,16 @@ export default function DockSettingsScreen() {
   const addToDock = useAppStore((s) => s.addToDock);
   const removeFromDock = useAppStore((s) => s.removeFromDock);
   const reorderDock = useAppStore((s) => s.reorderDock);
+  const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
 
   const displayData = useMemo(() => {
     const docked = dockPackages
       .map((pkg) => installedApps.find((a) => a.packageName === pkg))
       .filter(Boolean) as AppInfo[];
-    
-    let others = installedApps.filter((a) => !dockPackages.includes(a.packageName));
+
+    let others = installedApps.filter(
+      (a) => !dockPackages.includes(a.packageName)
+    );
 
     if (query) {
       const lowerQuery = query.toLowerCase();
@@ -51,10 +69,8 @@ export default function DockSettingsScreen() {
   }, [dockPackages, installedApps, query]);
 
   const handleDragEnd = ({ data }: { data: AppInfo[] }) => {
-    // Only reorder if we are not searching
     if (query) return;
 
-    // Filter to only the docked items in their new relative order
     const newDockOrder = data
       .filter((app) => dockPackages.includes(app.packageName))
       .map((app) => app.packageName);
@@ -65,16 +81,21 @@ export default function DockSettingsScreen() {
   const renderItem = useCallback(
     ({ item, drag, isActive }: RenderItemParams<AppInfo>) => {
       const isDocked = dockPackages.includes(item.packageName);
-      
+      const iconUri = getCachedSystemIcon(item.packageName) || item.icon;
+
       return (
         <ScaleDecorator>
           <View
             style={[
               styles.appRow,
               {
-                backgroundColor: isActive 
-                  ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")
-                  : (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
+                backgroundColor: isActive
+                  ? isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(0,0,0,0.06)"
+                  : isDark
+                  ? "rgba(255,255,255,0.02)"
+                  : "rgba(0,0,0,0.02)",
                 opacity: isActive ? 0.9 : 1,
               },
             ]}
@@ -95,16 +116,20 @@ export default function DockSettingsScreen() {
             <View style={styles.appInfo}>
               <Image
                 source={{
-                  uri: item.icon?.startsWith("data:") || item.icon?.startsWith("file:")
-                    ? item.icon
-                    : item.icon
-                      ? `data:image/png;base64,${item.icon}`
-                      : undefined
+                  uri:
+                    iconUri?.startsWith("data:") || iconUri?.startsWith("file:")
+                      ? iconUri
+                      : iconUri
+                      ? `data:image/png;base64,${iconUri}`
+                      : undefined,
                 }}
                 style={styles.appIcon}
               />
               <View style={styles.appTextContainer}>
-                <Text style={[styles.appLabel, { color: colors.textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.appLabel, { color: colors.textPrimary }]}
+                  numberOfLines={1}
+                >
                   {item.label}
                 </Text>
               </View>
@@ -117,14 +142,16 @@ export default function DockSettingsScreen() {
                 if (isDocked) {
                   removeFromDock(item.packageName);
                 } else {
-                  if (dockPackages.length >= 5) {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  if (dockPackages.length >= maxDockIcons) {
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Warning
+                    );
                     return;
                   }
                   addToDock(item.packageName);
                 }
               }}
-              disabled={!isDocked && dockPackages.length >= 5}
+              disabled={!isDocked && dockPackages.length >= maxDockIcons}
               trackColor={{
                 false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
                 true: colors.accent,
@@ -135,17 +162,26 @@ export default function DockSettingsScreen() {
         </ScaleDecorator>
       );
     },
-    [dockPackages, query, isDark, colors, removeFromDock, addToDock]
+    [dockPackages, maxDockIcons, query, isDark, colors, removeFromDock, addToDock]
   );
 
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor: colors.surface, paddingTop: insets.top }]}
+    <KeyboardAvoidingView
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface, paddingTop: insets.top },
+      ]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {/* Header */}
       <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
-        <Pressable onPress={() => { signalNavigation(); router.back(); }} hitSlop={16}>
+        <Pressable
+          onPress={() => {
+            signalNavigation();
+            router.back();
+          }}
+          hitSlop={16}
+        >
           <ArrowLeft size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
@@ -157,26 +193,42 @@ export default function DockSettingsScreen() {
       {/* Search Bar & Capacity Indicator */}
       <View style={styles.topSection}>
         <View style={styles.capacityContainer}>
-          {[0, 1, 2, 3, 4].map((i) => (
+          {Array.from({ length: maxDockIcons }).map((_, i) => (
             <View
               key={i}
               style={[
                 styles.capacityDot,
                 {
-                  backgroundColor: i < dockPackages.length 
-                    ? colors.accent 
-                    : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"),
-                }
+                  backgroundColor:
+                    i < dockPackages.length
+                      ? colors.accent
+                      : isDark
+                      ? "rgba(255,255,255,0.1)"
+                      : "rgba(0,0,0,0.1)",
+                },
               ]}
             />
           ))}
           <Text style={[styles.capacityText, { color: colors.textTertiary }]}>
-            {dockPackages.length} / 5 slots
+            {dockPackages.length} / {maxDockIcons} slots
           </Text>
         </View>
 
-        <View style={[styles.searchBox, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }]}>
-          <Search size={18} color={colors.textTertiary} style={styles.searchIcon} />
+        <View
+          style={[
+            styles.searchBox,
+            {
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.03)"
+                : "rgba(0,0,0,0.03)",
+            },
+          ]}
+        >
+          <Search
+            size={18}
+            color={colors.textTertiary}
+            style={styles.searchIcon}
+          />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder="Search apps..."
@@ -219,73 +271,72 @@ const styles = StyleSheet.create({
   },
   topSection: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   capacityContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.md,
-    gap: 6,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   capacityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   capacityText: {
     fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
-    marginLeft: spacing.sm,
+    fontSize: typography.size.xs,
+    marginLeft: spacing.xs,
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.md,
     height: 44,
     borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   searchIcon: {
     marginRight: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.base,
     height: "100%",
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
   },
   listContent: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing["4xl"],
-    paddingTop: spacing.sm,
+    paddingBottom: 40,
   },
   appRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: spacing.xs,
   },
   dragHandle: {
     padding: spacing.xs,
     marginRight: spacing.xs,
-    marginLeft: -spacing.xs,
   },
   dragPlaceholder: {
-    width: 20 + spacing.xs * 2,
-    marginRight: spacing.xs,
-    marginLeft: -spacing.xs,
+    width: 24,
   },
   appInfo: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    gap: spacing.md,
   },
   appIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    marginRight: spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   appTextContainer: {
     flex: 1,

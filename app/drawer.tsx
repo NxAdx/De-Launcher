@@ -1,24 +1,25 @@
 /**
  * App Drawer — De-Launcher
  *
- * Full list of installed apps with search, filter, and allow/block toggle.
+ * Full list of installed apps with search, filter, and comprehensive focus controls.
  * Presented as a modal (slide from bottom).
  */
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
-import { ChevronDown, ShieldOff, Settings } from "lucide-react-native";
+import { ChevronDown, ShieldOff, Settings, Clock } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { SearchBar } from "@/src/components/SearchBar";
 import { AppIcon } from "@/src/components/AppIcon";
+import { ContextMenu } from "@/src/components/ContextMenu";
 import { useAppStore } from "@/src/store/appStore";
 import { AppInfo } from "@/src/types/app";
-import { launchApp, KNOWN_DISTRACTION_PACKAGES } from "@/src/services/appManager";
+import { launchApp, isKnownDistraction } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 
 type FilterMode = "all" | "allowed" | "blocked";
@@ -31,8 +32,8 @@ export default function DrawerScreen() {
 
   const installedApps = useAppStore((s) => s.installedApps);
   const getAppFocusState = useAppStore((s) => s.getAppFocusState);
-  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
+  const scheduleRules = useAppStore((s) => s.scheduleRules);
 
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
@@ -65,24 +66,11 @@ export default function DrawerScreen() {
     router.back();
   }, []);
 
-  const handleStateChange = useCallback(
-    (packageName: string, state: "allowed" | "intent_pause" | "blocked") => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setAppFocusState(packageName, state);
-      setSelectedApp(null);
-    },
-    [setAppFocusState]
-  );
-
-  const isDistraction = useCallback(
-    (packageName: string) => KNOWN_DISTRACTION_PACKAGES.includes(packageName),
-    []
-  );
-
   const renderItem = useCallback(
     ({ item }: { item: AppInfo }) => {
       const state = getAppFocusState(item.packageName);
-      const distraction = isDistraction(item.packageName);
+      const distraction = isKnownDistraction(item.packageName);
+      const schedule = scheduleRules[item.packageName]?.scheduleType;
 
       return (
         <Animated.View
@@ -116,39 +104,71 @@ export default function DrawerScreen() {
               >
                 {item.label}
               </Text>
-              {(distraction || state === "intent_pause") && (
+              {(distraction || state === "intent_pause" || (schedule && schedule !== "always_allowed")) && (
                 <View style={styles.distractionBadge}>
-                  {state === "intent_pause" ? (
-                    <ShieldOff size={10} color={colors.warning} />
+                  {schedule === "work_hours" ? (
+                    <>
+                      <Clock size={10} color={colors.accent} />
+                      <Text style={[styles.distractionText, { color: colors.accent }]}>
+                        Work Hours
+                      </Text>
+                    </>
+                  ) : schedule === "evening_only" ? (
+                    <>
+                      <Clock size={10} color={colors.accent} />
+                      <Text style={[styles.distractionText, { color: colors.accent }]}>
+                        Evening Only
+                      </Text>
+                    </>
+                  ) : state === "intent_pause" ? (
+                    <>
+                      <ShieldOff size={10} color={colors.warning} />
+                      <Text style={[styles.distractionText, { color: colors.warning }]}>
+                        Intent Pause
+                      </Text>
+                    </>
                   ) : (
-                    <ShieldOff size={10} color={colors.error} />
+                    <>
+                      <ShieldOff size={10} color={colors.error} />
+                      <Text style={[styles.distractionText, { color: colors.error }]}>
+                        Distraction
+                      </Text>
+                    </>
                   )}
-                  <Text style={[styles.distractionText, { color: state === "intent_pause" ? colors.warning : colors.error }]}>
-                    {state === "intent_pause" ? "Intent Pause" : "Distraction"}
-                  </Text>
                 </View>
               )}
             </View>
           </Pressable>
+
           <Pressable
             hitSlop={12}
             onPress={() => setSelectedApp(item)}
             style={styles.stateButton}
           >
-            <Text style={[styles.stateButtonText, { 
-              color: state === "allowed" ? colors.accent 
-                   : state === "intent_pause" ? colors.warning 
-                   : colors.textTertiary 
-            }]}>
-              {state === "allowed" ? "Allowed" 
-               : state === "intent_pause" ? "Paused" 
-               : "Hidden"}
+            <Text
+              style={[
+                styles.stateButtonText,
+                {
+                  color:
+                    state === "allowed"
+                      ? colors.accent
+                      : state === "intent_pause"
+                      ? colors.warning
+                      : colors.textTertiary,
+                },
+              ]}
+            >
+              {state === "allowed"
+                ? "Allowed"
+                : state === "intent_pause"
+                ? "Paused"
+                : "Hidden"}
             </Text>
           </Pressable>
         </Animated.View>
       );
     },
-    [getAppFocusState, colors, isDark, handleAppPress, isDistraction]
+    [getAppFocusState, colors, isDark, handleAppPress, scheduleRules]
   );
 
   return (
@@ -166,7 +186,13 @@ export default function DrawerScreen() {
         entering={FadeInDown.duration(300)}
         style={styles.header}
       >
-        <Pressable onPress={() => { signalNavigation(); router.back(); }} hitSlop={16}>
+        <Pressable
+          onPress={() => {
+            signalNavigation();
+            router.back();
+          }}
+          hitSlop={16}
+        >
           <ChevronDown size={28} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -249,45 +275,11 @@ export default function DrawerScreen() {
         />
       )}
 
-      {/* State Picker Modal */}
-      {selectedApp && (
-        <Modal transparent animationType="fade" visible onRequestClose={() => setSelectedApp(null)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setSelectedApp(null)}>
-            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                {selectedApp.label}
-              </Text>
-              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                Choose how this app behaves.
-              </Text>
-
-              <Pressable
-                style={styles.modalOption}
-                onPress={() => handleStateChange(selectedApp.packageName, "allowed")}
-              >
-                <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Allowed</Text>
-                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Immediate access on home screen</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.modalOption}
-                onPress={() => handleStateChange(selectedApp.packageName, "intent_pause")}
-              >
-                <Text style={[styles.modalOptionTitle, { color: colors.warning }]}>Intent Pause</Text>
-                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Requires a 5-second breathing exercise to launch</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.modalOption}
-                onPress={() => handleStateChange(selectedApp.packageName, "blocked")}
-              >
-                <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Blocked</Text>
-                <Text style={[styles.modalOptionSub, { color: colors.textTertiary }]}>Hidden from home screen</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Modal>
-      )}
+      {/* Context Menu Bottom Sheet */}
+      <ContextMenu
+        selectedApp={selectedApp}
+        onClose={() => setSelectedApp(null)}
+      />
     </View>
   );
 }
@@ -300,15 +292,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignSelf: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignSelf: "center",
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: spacing["4xl"],
   },
   emptyStateText: {
@@ -387,42 +379,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: radii.sm,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
   stateButtonText: {
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    padding: spacing.xl,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-  },
-  modalTitle: {
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.lg,
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    marginBottom: spacing.xl,
-  },
-  modalOption: {
-    marginBottom: spacing.lg,
-  },
-  modalOptionTitle: {
-    fontFamily: typography.family.semiBold,
-    fontSize: typography.size.base,
-    marginBottom: 2,
-  },
-  modalOptionSub: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-  }
 });

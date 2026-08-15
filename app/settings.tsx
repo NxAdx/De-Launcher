@@ -1,8 +1,15 @@
 /**
  * Settings Screen — De-Launcher
  *
- * Launcher configuration: theme, grid, labels, clock, dock management.
- * Designed with a clean, grouped section pattern.
+ * Comprehensive launcher configuration:
+ * - Appearance & Theme (Dark/Light)
+ * - Home Layout & Icon Sizing (Small, Medium, Large)
+ * - Search Widget Customization (Pill, Rounded, Minimal)
+ * - Dock Customization (Frosted Glass vs Transparent, 4-6 icons)
+ * - Daily Focus & Streak Widget
+ * - Auto-arrange Home with non-distracting apps
+ * - Icon Packs & Wallpaper
+ * - System Permissions & Default Home
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -28,14 +35,31 @@ import {
   LayoutGrid,
   Smartphone,
   Shield,
+  Search,
+  Sparkles,
+  Layers,
+  CheckSquare,
+  Maximize2,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as IntentLauncher from "expo-intent-launcher";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, radii, palette } from "@/src/theme/tokens";
-import { useSettingsStore } from "@/src/store/settingsStore";
-import { getAvailableIconPacks, getCachedIconPacks, promptSetDefaultLauncher, changeWallpaper } from "@/src/services/appManager";
+import { typography, spacing } from "@/src/theme/tokens";
+import {
+  useSettingsStore,
+  SearchWidgetStyle,
+  DockBackgroundStyle,
+  IconSizeOption,
+} from "@/src/store/settingsStore";
+import { useAppStore } from "@/src/store/appStore";
+import {
+  getAvailableIconPacks,
+  getCachedIconPacks,
+  promptSetDefaultLauncher,
+  changeWallpaper,
+  getNonDistractionApps,
+} from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { IconPackInfo } from "@/modules/de-launcher-native";
 
@@ -101,114 +125,125 @@ function SectionHeader({
   colors: ReturnType<typeof useTheme>["colors"];
 }) {
   return (
-    <Text style={[styles.sectionHeader, { color: colors.accent }]}>
+    <Text style={[styles.sectionHeader, { color: colors.textTertiary }]}>
       {title}
     </Text>
   );
 }
 
-/** Card wrapper that groups related setting rows with dividers between them */
-function SectionCard({ children }: { children: React.ReactNode }) {
-  const childArray = React.Children.toArray(children);
-  return (
-    <View style={styles.sectionCard}>
-      {childArray.map((child, index) => (
-        <React.Fragment key={index}>
-          {child}
-          {index < childArray.length - 1 && <View style={styles.sectionDivider} />}
-        </React.Fragment>
-      ))}
-    </View>
-  );
-}
-
-// ─── Main Component ─────────────────────────────────────
+// ─── Main Settings Screen ───────────────────────────────
 
 export default function SettingsScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, mode, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const [iconPacks, setIconPacks] = useState<IconPackInfo[]>(
-    () => getCachedIconPacks() ?? []
-  );
-  const [isIconPacksLoading, setIsIconPacksLoading] = useState(
-    () => getCachedIconPacks() === null
-  );
 
-  const {
-    gridColumns,
-    showLabels,
-    showClock,
-    hapticFeedback,
-    activeIconPack,
-    setGridColumns,
-    setShowLabels,
-    setShowClock,
-    setHapticFeedback,
-    setActiveIconPack,
-  } = useSettingsStore();
+  // Settings store
+  const gridColumns = useSettingsStore((s) => s.gridColumns);
+  const setGridColumns = useSettingsStore((s) => s.setGridColumns);
+  const showLabels = useSettingsStore((s) => s.showLabels);
+  const setShowLabels = useSettingsStore((s) => s.setShowLabels);
+  const showClock = useSettingsStore((s) => s.showClock);
+  const setShowClock = useSettingsStore((s) => s.setShowClock);
+  const hapticFeedback = useSettingsStore((s) => s.hapticFeedback);
+  const setHapticFeedback = useSettingsStore((s) => s.setHapticFeedback);
+  const activeIconPack = useSettingsStore((s) => s.activeIconPack);
+  const setActiveIconPack = useSettingsStore((s) => s.setActiveIconPack);
+
+  const showHomeSearchWidget = useSettingsStore((s) => s.showHomeSearchWidget);
+  const setShowHomeSearchWidget = useSettingsStore((s) => s.setShowHomeSearchWidget);
+  const searchWidgetStyle = useSettingsStore((s) => s.searchWidgetStyle);
+  const setSearchWidgetStyle = useSettingsStore((s) => s.setSearchWidgetStyle);
+
+  const dockBackground = useSettingsStore((s) => s.dockBackground);
+  const setDockBackground = useSettingsStore((s) => s.setDockBackground);
+  const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
+  const setMaxDockIcons = useSettingsStore((s) => s.setMaxDockIcons);
+
+  const showTodoWidget = useSettingsStore((s) => s.showTodoWidget);
+  const setShowTodoWidget = useSettingsStore((s) => s.setShowTodoWidget);
+
+  const iconSize = useSettingsStore((s) => s.iconSize);
+  const setIconSize = useSettingsStore((s) => s.setIconSize);
+
+  // App store
+  const installedApps = useAppStore((s) => s.installedApps);
+  const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
+
+  // Icon packs
+  const [iconPacks, setIconPacks] = useState<IconPackInfo[]>(
+    () => getCachedIconPacks() || []
+  );
+  const [loadingIconPacks, setLoadingIconPacks] = useState(
+    () => !getCachedIconPacks()
+  );
+  const [autoArrangeMessage, setAutoArrangeMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    const cached = getCachedIconPacks();
-    if (cached !== null) {
-      setIconPacks(cached);
-      setIsIconPacksLoading(false);
-      return;
-    }
-
-    const loadIconPacks = async () => {
-      try {
-        const packs = await getAvailableIconPacks();
+    getAvailableIconPacks()
+      .then((packs) => {
         if (isMounted) {
           setIconPacks(packs);
+          setLoadingIconPacks(false);
         }
-      } catch (error) {
-        console.error("Failed to load icon packs:", error);
-      } finally {
-        if (isMounted) {
-          setIsIconPacksLoading(false);
-        }
-      }
-    };
-    loadIconPacks();
+      })
+      .catch(() => {
+        if (isMounted) setLoadingIconPacks(false);
+      });
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleGridChange = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Cycle: 3 → 4 → 5 → 3
-    const next = gridColumns >= 5 ? 3 : gridColumns + 1;
-    setGridColumns(next);
-  }, [gridColumns, setGridColumns]);
-
-  const handleIconPackSelect = useCallback(
-    (packageName: string | null) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setActiveIconPack(packageName);
+  const handleToggleHaptics = useCallback(
+    (enabled: boolean) => {
+      setHapticFeedback(enabled);
+      if (enabled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     },
-    [setActiveIconPack]
+    [setHapticFeedback]
   );
 
-  const handleSetDefaultLauncher = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handleSetDefault = async () => {
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await promptSetDefaultLauncher();
-  }, []);
+  };
 
-  const handleChangeWallpaper = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleChangeWallpaper = async () => {
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await changeWallpaper();
-  }, []);
+  };
 
-  const openAndroidSettings = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleOpenAndroidSettings = () => {
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.SETTINGS);
     } catch (e) {
-      console.warn("Failed to open Android Settings", e);
+      console.warn("Could not open Android Settings", e);
     }
-  }, []);
+  };
+
+  const handleOpenAccessibility = () => {
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      IntentLauncher.startActivityAsync(
+        IntentLauncher.ActivityAction.ACCESSIBILITY_SETTINGS
+      );
+    } catch (e) {
+      console.warn("Could not open Accessibility Settings", e);
+    }
+  };
+
+  const handleAutoArrange = () => {
+    if (hapticFeedback) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const nonDistractions = getNonDistractionApps(installedApps);
+    const pkgList = nonDistractions.map((a) => a.packageName);
+    autoArrangeHome(pkgList);
+    setAutoArrangeMessage(`Added ${pkgList.length} non-distracting apps to Home.`);
+    setTimeout(() => setAutoArrangeMessage(null), 4000);
+  };
 
   return (
     <View
@@ -218,356 +253,458 @@ export default function SettingsScreen() {
       ]}
     >
       {/* Header */}
-      <Animated.View
-        entering={FadeIn.duration(300)}
-        style={styles.header}
-      >
-        <Pressable onPress={() => { signalNavigation(); router.back(); }} hitSlop={16}>
+      <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
+        <Pressable
+          onPress={() => {
+            signalNavigation();
+            router.back();
+          }}
+          hitSlop={16}
+        >
           <ArrowLeft size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Settings
+          Launcher Settings
         </Text>
         <View style={{ width: 24 }} />
       </Animated.View>
 
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + spacing["3xl"] },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── System & Recovery ─── */}
-        <SectionHeader title="SYSTEM & RECOVERY" colors={colors} />
-        <SectionCard>
+        {/* ─── Appearance ───────────────────────────── */}
+        <SectionHeader title="Appearance & Themes" colors={colors} />
+        <View style={styles.sectionGroup}>
           <SettingRow
-            icon={<Home size={20} color={colors.textSecondary} />}
-            label="Default Launcher"
-            description="Set De-Launcher as your default home screen"
-            right={
-              <Pressable onPress={handleSetDefaultLauncher} style={styles.gridButton}>
-                <Home size={16} color={colors.accent} />
-              </Pressable>
-            }
-            onPress={handleSetDefaultLauncher}
+            icon={<Palette size={20} color={colors.textSecondary} />}
+            label="Theme"
+            description={mode === "dark" ? "OLED Pure Dark" : "Clean Light"}
             colors={colors}
             isDark={isDark}
-          />
-          <SettingRow
-            icon={<Smartphone size={20} color={colors.textSecondary} />}
-            label="Android Settings"
-            description="Open device settings (fallback recovery)"
             right={
-              <Pressable onPress={openAndroidSettings} style={styles.gridButton}>
-                <Smartphone size={16} color={colors.accent} />
-              </Pressable>
-            }
-            onPress={openAndroidSettings}
-            colors={colors}
-            isDark={isDark}
-          />
-        </SectionCard>
-
-        {/* ─── Home Layout ─── */}
-        <SectionHeader title="HOME LAYOUT" colors={colors} />
-        <SectionCard>
-          <SettingRow
-            icon={<Grid3x3 size={20} color={colors.textSecondary} />}
-            label="Grid Columns"
-            description={`${gridColumns} columns per row`}
-            right={
-              <Pressable onPress={handleGridChange} style={styles.gridButton}>
-                <Text style={[styles.gridButtonText, { color: colors.accent }]}>
-                  {gridColumns}
+              <Pressable
+                onPress={() => {
+                  if (hapticFeedback)
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  toggleTheme();
+                }}
+                style={[styles.badge, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}
+              >
+                <Text style={[styles.badgeText, { color: colors.textPrimary }]}>
+                  {mode.toUpperCase()}
                 </Text>
               </Pressable>
             }
-            onPress={handleGridChange}
-            colors={colors}
-            isDark={isDark}
           />
-          <SettingRow
-            icon={<LayoutGrid size={20} color={colors.textSecondary} />}
-            label="Configure Dock"
-            description="Manage and reorder your 5 dock apps"
-            right={
-              <Pressable onPress={() => { signalNavigation(); router.push("/dock-settings" as any); }} style={styles.gridButton}>
-                <LayoutGrid size={16} color={colors.accent} />
-              </Pressable>
-            }
-            onPress={() => { signalNavigation(); router.push("/dock-settings" as any); }}
-            colors={colors}
-            isDark={isDark}
-          />
-        </SectionCard>
 
-        {/* ─── Focus Mode ─── */}
-        <SectionHeader title="FOCUS MODE" colors={colors} />
-        <SectionCard>
           <SettingRow
-            icon={<Shield size={20} color={colors.textSecondary} />}
-            label="Allowed Apps"
-            description="Manage apps visible on your homescreen"
-            right={
-              <Pressable onPress={() => { signalNavigation(); router.push("/drawer"); }} style={styles.gridButton}>
-                <Shield size={16} color={colors.accent} />
-              </Pressable>
-            }
-            onPress={() => { signalNavigation(); router.push("/drawer"); }}
+            icon={<Maximize2 size={20} color={colors.textSecondary} />}
+            label="Icon Sizing"
+            description={`Current: ${iconSize.charAt(0).toUpperCase() + iconSize.slice(1)}`}
             colors={colors}
             isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {(["small", "medium", "large"] as IconSizeOption[]).map((opt) => (
+                  <Pressable
+                    key={opt}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setIconSize(opt);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      iconSize === opt && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: iconSize === opt ? "#0A0A0A" : colors.textSecondary },
+                      ]}
+                    >
+                      {opt.charAt(0).toUpperCase()}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
           />
-        </SectionCard>
 
-        {/* ─── Appearance ─── */}
-        <SectionHeader title="APPEARANCE" colors={colors} />
-        <SectionCard>
           <SettingRow
-            icon={<ImageIcon size={20} color={colors.textSecondary} />}
-            label="Change Wallpaper"
-            description="Choose a system wallpaper"
-            right={
-              <Pressable onPress={handleChangeWallpaper} style={styles.gridButton}>
-                <ImageIcon size={16} color={colors.accent} />
-              </Pressable>
-            }
-            onPress={handleChangeWallpaper}
+            icon={<Grid3x3 size={20} color={colors.textSecondary} />}
+            label="Grid Columns"
+            description={`${gridColumns} columns per page`}
             colors={colors}
             isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {[3, 4, 5].map((cols) => (
+                  <Pressable
+                    key={cols}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setGridColumns(cols);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      gridColumns === cols && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: gridColumns === cols ? "#0A0A0A" : colors.textSecondary },
+                      ]}
+                    >
+                      {cols}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
           />
+
           <SettingRow
             icon={<Type size={20} color={colors.textSecondary} />}
             label="App Labels"
-            description="Show names below app icons"
+            description="Show app names below icons"
+            colors={colors}
+            isDark={isDark}
             right={
               <Switch
                 value={showLabels}
-                onValueChange={setShowLabels}
-                trackColor={{
-                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                  true: colors.accent,
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setShowLabels(val);
                 }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
                 thumbColor="#FFFFFF"
               />
             }
-            colors={colors}
-            isDark={isDark}
           />
+
           <SettingRow
             icon={<ClockIcon size={20} color={colors.textSecondary} />}
             label="Clock Widget"
-            description="Show clock on homescreen"
+            description="Show digital time on home"
+            colors={colors}
+            isDark={isDark}
             right={
               <Switch
                 value={showClock}
-                onValueChange={setShowClock}
-                trackColor={{
-                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                  true: colors.accent,
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setShowClock(val);
                 }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
                 thumbColor="#FFFFFF"
               />
             }
+          />
+        </View>
+
+        {/* ─── Search Widget ───────────────────────────── */}
+        <SectionHeader title="Home Search Widget" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<Search size={20} color={colors.textSecondary} />}
+            label="Show Search Bar"
+            description="Minimalist search bar on home screen"
             colors={colors}
             isDark={isDark}
-          />
-          <SettingRow
-            icon={<Vibrate size={20} color={colors.textSecondary} />}
-            label="Haptic Feedback"
-            description="Vibrate on interaction"
             right={
               <Switch
-                value={hapticFeedback}
-                onValueChange={setHapticFeedback}
-                trackColor={{
-                  false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                  true: colors.accent,
+                value={showHomeSearchWidget}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setShowHomeSearchWidget(val);
                 }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
                 thumbColor="#FFFFFF"
               />
             }
+          />
+
+          {showHomeSearchWidget && (
+            <SettingRow
+              icon={<Layers size={20} color={colors.textSecondary} />}
+              label="Widget Style"
+              description={`Current: ${searchWidgetStyle.charAt(0).toUpperCase() + searchWidgetStyle.slice(1)}`}
+              colors={colors}
+              isDark={isDark}
+              right={
+                <View style={styles.segmentContainer}>
+                  {(["pill", "rounded", "minimal"] as SearchWidgetStyle[]).map((styleOpt) => (
+                    <Pressable
+                      key={styleOpt}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setSearchWidgetStyle(styleOpt);
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        searchWidgetStyle === styleOpt && { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          { color: searchWidgetStyle === styleOpt ? "#0A0A0A" : colors.textSecondary },
+                        ]}
+                      >
+                        {styleOpt.charAt(0).toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              }
+            />
+          )}
+        </View>
+
+        {/* ─── Dock Customization ──────────────────────── */}
+        <SectionHeader title="Dock Settings" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<Layers size={20} color={colors.textSecondary} />}
+            label="Dock Background"
+            description={dockBackground === "frosted" ? "Vivo-style Frosted Glass" : "Transparent Minimal"}
             colors={colors}
             isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {(["frosted", "transparent"] as DockBackgroundStyle[]).map((bgOpt) => (
+                  <Pressable
+                    key={bgOpt}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setDockBackground(bgOpt);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      dockBackground === bgOpt && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: dockBackground === bgOpt ? "#0A0A0A" : colors.textSecondary },
+                      ]}
+                    >
+                      {bgOpt === "frosted" ? "Frosted" : "Clear"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
           />
-        </SectionCard>
 
-        {/* ─── Icon Packs ─── */}
-        <SectionHeader title="ICON PACKS" colors={colors} />
-        <SectionCard>
-        {isIconPacksLoading ? (
-          <View
-            style={[
-              styles.infoCard,
-              {
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(0,0,0,0.03)",
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <ActivityIndicator color={colors.accent} style={styles.infoCardIcon} />
-            <View style={styles.infoCardTextContainer}>
-              <Text style={[styles.infoCardTitle, { color: colors.textPrimary }]}>
-                Finding Icon Packs
+          <SettingRow
+            icon={<LayoutGrid size={20} color={colors.textSecondary} />}
+            label="Max Dock Icons"
+            description={`Allows up to ${maxDockIcons} essential apps in the dock`}
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {[4, 5, 6].map((num) => (
+                  <Pressable
+                    key={num}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setMaxDockIcons(num);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      maxDockIcons === num && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: maxDockIcons === num ? "#0A0A0A" : colors.textSecondary },
+                      ]}
+                    >
+                      {num}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
+          />
+
+          <SettingRow
+            icon={<LayoutGrid size={20} color={colors.textSecondary} />}
+            label="Configure Dock Apps"
+            description="Reorder or toggle dock shortcuts"
+            colors={colors}
+            isDark={isDark}
+            onPress={() => {
+              signalNavigation();
+              router.push("/dock-settings" as any);
+            }}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Manage →</Text>}
+          />
+        </View>
+
+        {/* ─── Productivity & Focus ────────────────────── */}
+        <SectionHeader title="Productivity & Focus Tools" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<CheckSquare size={20} color={colors.textSecondary} />}
+            label="Daily Focus & Streaks"
+            description="GitHub-style habit streak & intentional tasks on home"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={showTodoWidget}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setShowTodoWidget(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          <SettingRow
+            icon={<Sparkles size={20} color={colors.accent} />}
+            label="Auto-Arrange Non-Distractions"
+            description="Fill home with essential productive apps only"
+            colors={colors}
+            isDark={isDark}
+            onPress={handleAutoArrange}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Run ⚡</Text>}
+          />
+          {autoArrangeMessage && (
+            <Animated.View entering={FadeInRight} style={styles.toastBanner}>
+              <Text style={[styles.toastText, { color: colors.accent }]}>
+                {autoArrangeMessage}
               </Text>
-              <Text style={[styles.infoCardDescription, { color: colors.textSecondary }]}>
-                Installed themes will appear here.
+            </Animated.View>
+          )}
+        </View>
+
+        {/* ─── Icon Packs ─────────────────────────────── */}
+        <SectionHeader title="Custom Icon Packs" colors={colors} />
+        <View style={styles.sectionGroup}>
+          {loadingIconPacks ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={[styles.loadingText, { color: colors.textTertiary }]}>
+                Scanning icon packs...
               </Text>
             </View>
-          </View>
-        ) : iconPacks.length > 0 ? (
-          <>
-            <Pressable
-              onPress={() => handleIconPackSelect(null)}
-              style={[
-                styles.settingRow,
-                {
-                  backgroundColor:
-                    activeIconPack === null
-                      ? colors.accent
-                      : isDark
+          ) : iconPacks.length === 0 ? (
+            <View style={styles.emptyRow}>
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                No third-party icon packs detected on device.
+              </Text>
+            </View>
+          ) : (
+            iconPacks.map((pack) => {
+              const isSelected = activeIconPack === pack.packageName;
+              return (
+                <Pressable
+                  key={pack.packageName}
+                  onPress={() => {
+                    if (hapticFeedback) Haptics.selectionAsync();
+                    setActiveIconPack(isSelected ? null : pack.packageName);
+                  }}
+                  style={[
+                    styles.settingRow,
+                    {
+                      backgroundColor: isDark
                         ? "rgba(255,255,255,0.03)"
                         : "rgba(0,0,0,0.03)",
-                },
-              ]}
-            >
-              <View style={styles.settingLeft}>
-                <Palette size={20} color={colors.textSecondary} />
-                <View style={styles.settingTextContainer}>
+                    },
+                  ]}
+                >
                   <Text
                     style={[
                       styles.settingLabel,
-                      {
-                        color:
-                          activeIconPack === null
-                            ? palette.dark.surface
-                            : colors.textPrimary,
-                      },
+                      { color: isSelected ? colors.accent : colors.textPrimary },
                     ]}
                   >
-                    Default Icons
+                    {pack.label}
                   </Text>
-                  <Text
-                    style={[
-                      styles.settingDescription,
-                      {
-                        color:
-                          activeIconPack === null
-                            ? palette.textLight.secondary
-                            : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    System default app icons
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-
-            {iconPacks.map((pack) => (
-              <Pressable
-                key={pack.packageName}
-                onPress={() => handleIconPackSelect(pack.packageName)}
-                style={[
-                  styles.settingRow,
-                  {
-                    backgroundColor:
-                      activeIconPack === pack.packageName
-                        ? colors.accent
-                        : isDark
-                          ? "rgba(255,255,255,0.03)"
-                          : "rgba(0,0,0,0.03)",
-                  },
-                ]}
-              >
-                <View style={styles.settingLeft}>
-                  <Palette size={20} color={colors.textSecondary} />
-                  <View style={styles.settingTextContainer}>
-                    <Text
-                      style={[
-                        styles.settingLabel,
-                        {
-                          color:
-                            activeIconPack === pack.packageName
-                              ? palette.dark.surface
-                              : colors.textPrimary,
-                        },
-                      ]}
-                    >
-                      {pack.label}
+                  {isSelected && (
+                    <Text style={{ color: colors.accent, fontWeight: "bold" }}>
+                      Active ✓
                     </Text>
-                    <Text
-                      style={[
-                        styles.settingDescription,
-                        {
-                          color:
-                            activeIconPack === pack.packageName
-                              ? palette.textLight.secondary
-                              : colors.textTertiary,
-                        },
-                      ]}
-                    >
-                      {pack.mappingCount === null
-                        ? "Available - icons load when selected"
-                        : `${pack.mappingCount} custom icons`}
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
-            ))}
-          </>
-        ) : (
-          <View
-            style={[
-              styles.infoCard,
-              {
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(0,0,0,0.03)",
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Palette size={20} color={colors.accent} style={styles.infoCardIcon} />
-            <View style={styles.infoCardTextContainer}>
-              <Text style={[styles.infoCardTitle, { color: colors.textPrimary }]}>
-                No Icon Packs Installed
-              </Text>
-              <Text style={[styles.infoCardDescription, { color: colors.textSecondary }]}>
-                Install Nova or Lawnchair compatible icon packs from the Play Store to customize your home screen.
-              </Text>
-            </View>
-          </View>
-        )}
-        </SectionCard>
+                  )}
+                </Pressable>
+              );
+            })
+          )}
+        </View>
 
-        {/* ─── About ─── */}
-        <SectionHeader title="ABOUT" colors={colors} />
-        <Animated.View
-          entering={FadeInRight.delay(200)}
-          style={[
-            styles.aboutCard,
-            {
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.03)"
-                : "rgba(0,0,0,0.03)",
-            },
-          ]}
-        >
-          <View style={styles.aboutHeader}>
-            <Palette size={24} color={colors.accent} />
-            <Text style={[styles.aboutTitle, { color: colors.textPrimary }]}>
-              De-Launcher
-            </Text>
-          </View>
-          <Text style={[styles.aboutVersion, { color: colors.textTertiary }]}>
-            v1.0.0 · Intentional Minimalism
-          </Text>
-          <Text style={[styles.aboutBody, { color: colors.textSecondary }]}>
-            A distraction-free launcher designed to help you focus on what matters.
-            Only the apps you choose. Nothing more.
-          </Text>
-        </Animated.View>
+        {/* ─── System & Device Actions ────────────────── */}
+        <SectionHeader title="System & Recovery" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<Home size={20} color={colors.textSecondary} />}
+            label="Set as Default Home"
+            description="Open Android Default Apps settings"
+            colors={colors}
+            isDark={isDark}
+            onPress={handleSetDefault}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>}
+          />
+
+          <SettingRow
+            icon={<Shield size={20} color={colors.textSecondary} />}
+            label="Accessibility Service"
+            description="Manage background focus blocking permission"
+            colors={colors}
+            isDark={isDark}
+            onPress={handleOpenAccessibility}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>}
+          />
+
+          <SettingRow
+            icon={<ImageIcon size={20} color={colors.textSecondary} />}
+            label="System Wallpaper"
+            description="Select phone background"
+            colors={colors}
+            isDark={isDark}
+            onPress={handleChangeWallpaper}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Change →</Text>}
+          />
+
+          <SettingRow
+            icon={<Smartphone size={20} color={colors.textSecondary} />}
+            label="Android Device Settings"
+            description="Open system settings"
+            colors={colors}
+            isDark={isDark}
+            onPress={handleOpenAndroidSettings}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>}
+          />
+
+          <SettingRow
+            icon={<Vibrate size={20} color={colors.textSecondary} />}
+            label="Haptic Feedback"
+            description="Vibrate on gestures and presses"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={hapticFeedback}
+                onValueChange={handleToggleHaptics}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+        </View>
       </ScrollView>
     </View>
   );
@@ -588,118 +725,110 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.semiBold,
     fontSize: typography.size.lg,
   },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing["4xl"],
   },
   sectionHeader: {
-    fontFamily: typography.family.semiBold,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
-    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
     marginTop: spacing.xl,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
+    marginLeft: spacing.xs,
   },
-  sectionCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    marginBottom: spacing.base,
-    overflow: 'hidden',
-  },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    marginHorizontal: spacing.base,
+  sectionGroup: {
+    borderRadius: 18,
+    overflow: "hidden",
+    gap: 1,
   },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
-    borderRadius: 0,
-    marginBottom: 0,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
+    minHeight: 52,
   },
   settingLeft: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
     gap: spacing.md,
+    flex: 1,
+    paddingRight: spacing.sm,
   },
   settingTextContainer: {
     flex: 1,
   },
   settingLabel: {
     fontFamily: typography.family.medium,
-    fontSize: typography.size.md,
+    fontSize: typography.size.sm,
   },
   settingDescription: {
     fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
+    fontSize: 11,
     marginTop: 2,
   },
-  gridButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.md,
+  badge: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xs,
+  },
+  segmentContainer: {
+    flexDirection: "row",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    padding: 3,
+    borderRadius: 10,
+  },
+  segmentBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 7,
+    minWidth: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
   },
-  gridButtonText: {
+  segmentText: {
     fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
+    fontSize: 11,
   },
-  aboutCard: {
-    padding: spacing.xl,
-    borderRadius: radii.xl,
-  },
-  aboutHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  aboutTitle: {
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xl,
-  },
-  aboutVersion: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
-    marginBottom: spacing.md,
-  },
-  aboutBody: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    lineHeight: 20,
-  },
-  infoCard: {
-    flexDirection: "row",
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  infoCardIcon: {
-    marginLeft: spacing.xs,
-  },
-  infoCardTextContainer: {
-    flex: 1,
-  },
-  infoCardTitle: {
+  linkText: {
     fontFamily: typography.family.semiBold,
-    fontSize: typography.size.sm,
-    marginBottom: 2,
+    fontSize: typography.size.xs,
   },
-  infoCardDescription: {
+  toastBanner: {
+    padding: spacing.sm,
+    backgroundColor: "rgba(148, 163, 184, 0.12)",
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  toastText: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.xs,
+    textAlign: "center",
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  loadingText: {
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
-    lineHeight: 16,
+  },
+  emptyRow: {
+    padding: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  emptyText: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
   },
 });

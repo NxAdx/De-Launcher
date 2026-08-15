@@ -321,6 +321,7 @@ export const DEFAULT_DOCK_PACKAGES = [
   "com.google.android.apps.messaging",
   "com.android.chrome",
   "com.google.android.gm",
+  "com.google.android.calendar",
 ];
 
 /**
@@ -343,14 +344,52 @@ export const DEFAULT_ALLOWED_PACKAGES = [
 ];
 
 /**
- * Apps commonly considered "distracting" — used for auto-detection.
+ * Apps commonly considered "distracting" — social media, short-form video, infinite feeds, games.
  */
 export const KNOWN_DISTRACTION_PACKAGES = [
   "com.instagram.android",
   "com.twitter.android",
+  "com.zhiliaoapp.musically",
+  "com.ss.android.ugc.trill",
+  "com.tiktok.android",
   "com.snapchat.android",
   "com.reddit.frontpage",
   "com.facebook.katana",
-  "com.tiktok.android",
+  "com.facebook.orca",
   "com.google.android.youtube",
+  "com.netflix.mediaclient",
+  "com.disney.disneyplus",
+  "com.amazon.avod.thirdpartyclient",
+  "tv.twitch.android.app",
+  "com.pinterest",
+  "com.bytedance.tiktok",
+  "com.supercell.clashofclans",
+  "com.supercell.clashroyale",
+  "com.supercell.brawlstars",
+  "com.king.candycrushsaga",
+  "com.dts.freefireth",
+  "com.tencent.ig",
+  "com.activision.callofduty.shooter",
+  "com.roblox.client",
 ];
+
+/**
+ * Check if a package is a known distraction.
+ */
+export function isKnownDistraction(packageName: string): boolean {
+  const lower = packageName.toLowerCase();
+  return (
+    KNOWN_DISTRACTION_PACKAGES.includes(packageName) ||
+    lower.includes("tiktok") ||
+    lower.includes("instagram") ||
+    lower.includes("snapchat") ||
+    lower.includes("game")
+  );
+}
+
+/**
+ * Filter installed apps to obtain all non-distracting productivity/utility apps.
+ */
+export function getNonDistractionApps(installedApps: AppInfo[]): AppInfo[] {
+  return installedApps.filter((app) => !isKnownDistraction(app.packageName));
+}

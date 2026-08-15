@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  Easing, 
-  FadeIn, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  FadeIn,
   FadeInUp,
   FadeInDown,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { Clock } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing, radii } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
@@ -23,19 +24,20 @@ const BREATHE_DURATION = 5; // 5 seconds
 const EXEMPTION_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export default function IntentPauseScreen() {
-  const { pkg } = useLocalSearchParams();
+  const { pkg, reason } = useLocalSearchParams<{ pkg?: string; reason?: string }>();
   const packageName = typeof pkg === "string" ? pkg : "";
-  
+  const scheduleReason = typeof reason === "string" ? reason : "";
+
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  
-  const installedApps = useAppStore(s => s.installedApps);
-  const grantExemption = useAppStore(s => s.grantExemption);
-  
+
+  const installedApps = useAppStore((s) => s.installedApps);
+  const grantExemption = useAppStore((s) => s.grantExemption);
+
   const [timeLeft, setTimeLeft] = useState(BREATHE_DURATION);
   const [canLaunch, setCanLaunch] = useState(false);
-  
-  const app = installedApps.find(a => a.packageName === packageName);
+
+  const app = installedApps.find((a) => a.packageName === packageName);
   const appLabel = app?.label || "this app";
 
   // Breathing animation
@@ -69,11 +71,11 @@ export default function IntentPauseScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return;
     }
-    
+
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, [timeLeft]);
 
@@ -93,39 +95,60 @@ export default function IntentPauseScreen() {
 
   return (
     <View style={styles.container}>
-      <BlurView 
-        intensity={isDark ? 80 : 40} 
-        tint={isDark ? "dark" : "light"} 
-        style={StyleSheet.absoluteFill} 
+      <BlurView
+        intensity={isDark ? 80 : 40}
+        tint={isDark ? "dark" : "light"}
+        style={StyleSheet.absoluteFill}
       />
-      
-      <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <Animated.View entering={FadeInUp.duration(600).delay(100)} style={styles.textContainer}>
+
+      <View
+        style={[
+          styles.content,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
+        <Animated.View
+          entering={FadeInUp.duration(600).delay(100)}
+          style={styles.textContainer}
+        >
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             Intent Pause
           </Text>
+
+          {scheduleReason ? (
+            <View style={styles.reasonBadge}>
+              <Clock size={14} color={colors.warning} />
+              <Text style={[styles.reasonText, { color: colors.warning }]}>
+                {scheduleReason}
+              </Text>
+            </View>
+          ) : null}
+
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Take a deep breath before opening {appLabel}.
           </Text>
         </Animated.View>
 
         <View style={styles.breathingContainer}>
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.breathingCircle, 
-              { backgroundColor: colors.accent }, 
-              breatheStyle
-            ]} 
+              styles.breathingCircle,
+              { backgroundColor: colors.accent },
+              breatheStyle,
+            ]}
           />
           <Text style={[styles.timerText, { color: colors.textPrimary }]}>
             {timeLeft > 0 ? timeLeft : ""}
           </Text>
         </View>
 
-        <Animated.View entering={FadeInDown.duration(600).delay(200)} style={styles.actionsContainer}>
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(200)}
+          style={styles.actionsContainer}
+        >
           {canLaunch ? (
             <Animated.View entering={FadeIn.duration(400)}>
-              <Pressable 
+              <Pressable
                 style={[styles.launchButton, { backgroundColor: colors.accent }]}
                 onPress={handleLaunch}
               >
@@ -139,11 +162,10 @@ export default function IntentPauseScreen() {
             <View style={styles.launchButtonPlaceholder} />
           )}
 
-          <Pressable 
-            style={styles.cancelButton}
-            onPress={handleCancel}
-          >
-            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+          <Pressable style={styles.cancelButton} onPress={handleCancel}>
+            <Text
+              style={[styles.cancelButtonText, { color: colors.textSecondary }]}
+            >
               I actually don&apos;t need this
             </Text>
           </Pressable>
@@ -172,7 +194,21 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: typography.family.bold,
     fontSize: typography.size.xl,
+    marginBottom: spacing.xs,
+  },
+  reasonBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginBottom: spacing.sm,
+  },
+  reasonText: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.xs,
   },
   subtitle: {
     fontFamily: typography.family.regular,
@@ -204,7 +240,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   launchButtonPlaceholder: {
-    height: 56 + 20, // button height + exemption text height roughly
+    height: 56 + 20,
   },
   launchButton: {
     width: 220,

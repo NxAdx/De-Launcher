@@ -1,11 +1,15 @@
 /**
  * Dock Component
  *
- * Fixed bottom bar for essential apps. Long-press and drag an icon to
- * reorder it; the final ordering is persisted when the drag settles.
+ * Fixed bottom bar for essential apps (supports up to 6 icons).
+ * Features:
+ * - Vivo/OriginOS-inspired floating frosted glassmorphism background
+ * - Dynamic slot calculations for 1 to 6 apps
+ * - Long-press and drag to reorder with snappy spring physics
+ * - Haptic feedback integration
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { LayoutChangeEvent, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { LayoutChangeEvent, StyleSheet, View, Platform } from "react-native";
 import Animated, {
   FadeInDown,
   runOnJS,
@@ -13,6 +17,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { BlurView } from "expo-blur";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +36,9 @@ interface DockProps {
 interface DraggableDockIconProps {
   app: AppInfo;
   index: number;
+  maxIndex: number;
   slotWidth: number;
+  iconSize: number;
   onPress: (app: AppInfo) => void;
   onLongPress: (app: AppInfo) => void;
   onMove: (packageName: string, targetIndex: number) => void;
@@ -41,7 +48,9 @@ interface DraggableDockIconProps {
 function DraggableDockIcon({
   app,
   index,
+  maxIndex,
   slotWidth,
+  iconSize,
   onPress,
   onLongPress,
   onMove,
@@ -70,49 +79,67 @@ function DraggableDockIcon({
     }
   }, [hapticEnabled]);
 
-  const panGesture = React.useMemo(() => {
+  const panGesture = useMemo(() => {
     return Gesture.Pan()
       .activateAfterLongPress(layout.longPressDelay)
       .onStart(() => {
-      didActivate.value = true;
-      isDragging.value = true;
-      hasMoved.value = false;
-      dragStartX.value = x.value;
-      scale.value = withSpring(1.12, springs.snappy);
-      zIndex.value = 10;
-      runOnJS(triggerLiftHaptic)();
-    })
-    .onUpdate((event) => {
-      x.value = dragStartX.value + event.translationX;
-      if (Math.abs(event.translationX) > 12) {
-        hasMoved.value = true;
-      }
+        didActivate.value = true;
+        isDragging.value = true;
+        hasMoved.value = false;
+        dragStartX.value = x.value;
+        scale.value = withSpring(1.15, springs.snappy);
+        zIndex.value = 10;
+        runOnJS(triggerLiftHaptic)();
+      })
+      .onUpdate((event) => {
+        x.value = dragStartX.value + event.translationX;
+        if (Math.abs(event.translationX) > 10) {
+          hasMoved.value = true;
+        }
 
-      const targetIndex = Math.max(
-        0,
-        Math.min(4, Math.round(x.value / slotWidth))
-      );
-      if (targetIndex !== index && targetIndex !== lastSwappedIndex.value) {
-        lastSwappedIndex.value = targetIndex;
-        runOnJS(onMove)(app.packageName, targetIndex);
-      }
-    })
-    .onFinalize(() => {
-      lastSwappedIndex.value = -1;
-      if (!didActivate.value) return;
-      didActivate.value = false;
-      isDragging.value = false;
-      scale.value = withSpring(1, springs.snappy);
-      zIndex.value = 1;
-      x.value = withSpring(targetX, springs.snappy);
+        const targetIndex = Math.max(
+          0,
+          Math.min(maxIndex, Math.round(x.value / slotWidth))
+        );
+        if (targetIndex !== index && targetIndex !== lastSwappedIndex.value) {
+          lastSwappedIndex.value = targetIndex;
+          runOnJS(onMove)(app.packageName, targetIndex);
+        }
+      })
+      .onFinalize(() => {
+        lastSwappedIndex.value = -1;
+        if (!didActivate.value) return;
+        didActivate.value = false;
+        isDragging.value = false;
+        scale.value = withSpring(1, springs.snappy);
+        zIndex.value = 1;
+        x.value = withSpring(targetX, springs.snappy);
 
-      if (hasMoved.value) {
-        runOnJS(onDrop)();
-      } else {
-        runOnJS(onLongPress)(app);
-      }
-    });
-  }, [app, index, slotWidth, onMove, onDrop, onLongPress, triggerLiftHaptic, x, dragStartX, isDragging, didActivate, hasMoved, scale, zIndex, lastSwappedIndex, targetX]);
+        if (hasMoved.value) {
+          runOnJS(onDrop)();
+        } else {
+          runOnJS(onLongPress)(app);
+        }
+      });
+  }, [
+    app,
+    index,
+    maxIndex,
+    slotWidth,
+    onMove,
+    onDrop,
+    onLongPress,
+    triggerLiftHaptic,
+    x,
+    dragStartX,
+    isDragging,
+    didActivate,
+    hasMoved,
+    scale,
+    zIndex,
+    lastSwappedIndex,
+    targetX,
+  ]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: slotWidth,
@@ -126,7 +153,7 @@ function DraggableDockIcon({
         <AppIcon
           app={app}
           onPress={onPress}
-          size={layout.appIconSize}
+          size={iconSize}
           showLabel={false}
         />
       </Animated.View>
@@ -138,19 +165,38 @@ export function Dock({ onLongPress }: DockProps) {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
+  const dockBackground = useSettingsStore((s) => s.dockBackground);
+  const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
+  const iconSizeOption = useSettingsStore((s) => s.iconSize);
+
   const installedApps = useAppStore((s) => s.installedApps);
   const dockPackages = useAppStore((s) => s.dockPackages);
   const reorderDock = useAppStore((s) => s.reorderDock);
   const [dockWidth, setDockWidth] = useState(0);
 
-  const dockApps = React.useMemo(() => {
+  const getBaseIconSize = () => {
+    switch (iconSizeOption) {
+      case "small":
+        return 42;
+      case "large":
+        return 50;
+      case "medium":
+      default:
+        return 46;
+    }
+  };
+
+  const iconSize = getBaseIconSize();
+
+  const dockApps = useMemo(() => {
     const installedByPackage = new Map(
       installedApps.map((app) => [app.packageName, app])
     );
     return dockPackages
+      .slice(0, maxDockIcons)
       .map((pkg) => installedByPackage.get(pkg))
       .filter((app): app is AppInfo => !!app);
-  }, [installedApps, dockPackages]);
+  }, [installedApps, dockPackages, maxDockIcons]);
 
   const [orderedApps, setOrderedApps] = useState<AppInfo[]>(dockApps);
   const orderedAppsRef = useRef<AppInfo[]>(dockApps);
@@ -194,61 +240,100 @@ export function Dock({ onLongPress }: DockProps) {
   }, [reorderDock]);
 
   const slotWidth =
-    dockWidth > 0 && orderedApps.length > 0 ? dockWidth / orderedApps.length : 0;
+    dockWidth > 0 && orderedApps.length > 0
+      ? dockWidth / orderedApps.length
+      : 0;
+
+  const maxIndex = Math.max(0, orderedApps.length - 1);
+
+  const isFrosted = dockBackground === "frosted";
 
   return (
     <Animated.View
       entering={FadeInDown.duration(400).delay(200)}
       style={[
-        styles.container,
+        styles.dockWrapper,
         {
-          backgroundColor: isDark
-            ? "rgba(255, 255, 255, 0.06)"
-            : "rgba(0, 0, 0, 0.06)",
-          paddingBottom: insets.bottom,
+          bottom: insets.bottom + spacing.xs,
         },
       ]}
     >
-      <View style={styles.separator} />
-      <View style={styles.icons} onLayout={handleLayout}>
-        {slotWidth > 0 &&
-          orderedApps.map((app, index) => (
-            <DraggableDockIcon
-              key={app.packageName}
-              app={app}
-              index={index}
-              slotWidth={slotWidth}
-              onPress={handlePress}
-              onLongPress={onLongPress}
-              onMove={handleMove}
-              onDrop={handleDrop}
-            />
-          ))}
+      <View
+        style={[
+          styles.dockCard,
+          isFrosted && [
+            styles.frostedCard,
+            {
+              backgroundColor: isDark
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(255, 255, 255, 0.75)",
+              borderColor: isDark
+                ? "rgba(255, 255, 255, 0.14)"
+                : "rgba(0, 0, 0, 0.08)",
+            },
+          ],
+        ]}
+      >
+        {isFrosted && Platform.OS === "ios" && (
+          <BlurView
+            intensity={40}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+
+        <View style={styles.iconsContainer} onLayout={handleLayout}>
+          {slotWidth > 0 &&
+            orderedApps.map((app, index) => (
+              <DraggableDockIcon
+                key={app.packageName}
+                app={app}
+                index={index}
+                maxIndex={maxIndex}
+                slotWidth={slotWidth}
+                iconSize={iconSize}
+                onPress={handlePress}
+                onLongPress={onLongPress}
+                onMove={handleMove}
+                onDrop={handleDrop}
+              />
+            ))}
+        </View>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  dockWrapper: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
-    height: layout.dockHeight,
-    paddingHorizontal: spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    zIndex: 10,
   },
-  separator: {
-    width: 36,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    alignSelf: "center",
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+  dockCard: {
+    width: "100%",
+    height: 72,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 28,
   },
-  icons: {
+  frostedCard: {
+    borderWidth: 1.2,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  iconsContainer: {
     flex: 1,
+    height: "100%",
     position: "relative",
   },
   dockItem: {

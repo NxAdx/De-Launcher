@@ -1,11 +1,11 @@
 /**
  * AppGrid Component
  *
- * Renders a responsive horizontal paginated grid of app icons.
+ * Renders a responsive horizontal paginated grid of apps and folders.
  * Supports interactive drag-to-reorder custom gestures with smooth spring tilt/scale animations.
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, StyleSheet, ScrollView, StatusBar as RNStatusBar, useWindowDimensions } from "react-native";
+import { View, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,22 +16,22 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { AppIcon } from "./AppIcon";
-import { AppInfo } from "@/src/types/app";
-import { spacing, springs } from "@/src/theme/tokens";
+import { FolderIcon } from "./FolderIcon";
+import { AppInfo, FolderInfo } from "@/src/types/app";
+import { spacing } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 
-// Screen dimensions are now obtained via useWindowDimensions() inside each component
-const ROW_HEIGHT = 92;
-// Estimate available height for the grid (screen minus status bar, clock, dock)
-const STATUS_BAR_HEIGHT = RNStatusBar.currentHeight ?? 24;
-const CLOCK_HEIGHT = 120; // approximate clock widget height
-const DOCK_HEIGHT = 80;
+export type GridItemData =
+  | { id: string; type: "app"; app: AppInfo }
+  | { id: string; type: "folder"; folder: FolderInfo };
 
-interface DraggableItemProps {
-  app: AppInfo;
-  index: number; // global index in orderedApps
-  apps: AppInfo[];
+const ROW_HEIGHT = 92;
+
+interface DraggableGridItemProps {
+  item: GridItemData;
+  index: number;
+  items: GridItemData[];
   itemWidth: number;
   gridColumns: number;
   pageIndex: number;
@@ -39,16 +39,18 @@ interface DraggableItemProps {
   verticalOffset: number;
   onPress: (app: AppInfo) => void;
   onLongPress: (app: AppInfo) => void;
+  onFolderPress?: (folder: FolderInfo) => void;
+  onFolderLongPress?: (folder: FolderInfo) => void;
   isAnyDragging: SharedValue<boolean>;
   setScrollEnabled: (enabled: boolean) => void;
-  onSwap: (packageName: string, toIndex: number) => void;
+  onSwap: (itemId: string, toIndex: number) => void;
   onDragEnd: () => void;
 }
 
-function DraggableItem({
-  app,
+function DraggableGridItem({
+  item,
   index,
-  apps,
+  items,
   itemWidth,
   gridColumns,
   pageIndex,
@@ -56,26 +58,26 @@ function DraggableItem({
   verticalOffset,
   onPress,
   onLongPress,
+  onFolderPress,
+  onFolderLongPress,
   isAnyDragging,
   setScrollEnabled,
   onSwap,
   onDragEnd,
-}: DraggableItemProps) {
+}: DraggableGridItemProps) {
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const localIndex = index % pageSize;
   const col = localIndex % gridColumns;
   const row = Math.floor(localIndex / gridColumns);
 
-  // Compute row offset for centering items that do not completely fill the gridColumns
   const pageStart = pageIndex * pageSize;
-  const pageEnd = Math.min(pageStart + pageSize, apps.length);
-  const pageAppsCount = pageEnd - pageStart;
-  const pageRows = Math.ceil(pageAppsCount / gridColumns);
+  const pageEnd = Math.min(pageStart + pageSize, items.length);
+  const pageItemsCount = pageEnd - pageStart;
+  const pageRows = Math.ceil(pageItemsCount / gridColumns);
 
-  const itemsInRow = row === pageRows - 1 
-    ? pageAppsCount - row * gridColumns 
-    : gridColumns;
+  const itemsInRow =
+    row === pageRows - 1 ? pageItemsCount - row * gridColumns : gridColumns;
   const rowOffset = ((gridColumns - itemsInRow) * itemWidth) / 2;
 
   const targetX = spacing.xl + col * itemWidth + rowOffset;
@@ -92,7 +94,6 @@ function DraggableItem({
   const startY = useSharedValue(0);
   const lastSwappedIndex = useSharedValue(-1);
 
-  // Synchronize target positions dynamically when indices/layouts update
   useEffect(() => {
     if (!isDragging.value) {
       x.value = withSpring(targetX, { damping: 18, stiffness: 240, mass: 0.9 });
@@ -108,204 +109,215 @@ function DraggableItem({
 
   const panGesture = useMemo(() => {
     return Gesture.Pan()
-      .activateAfterLongPress(400) // 400ms long press lifts the item
+      .activateAfterLongPress(400)
       .onStart(() => {
-      isDragging.value = true;
-      isAnyDragging.value = true;
-      runOnJS(setScrollEnabled)(false);
-      startX.value = x.value;
-      startY.value = y.value;
-      scale.value = withSpring(1.15, { damping: 15, stiffness: 200, mass: 0.8 });
-      rotation.value = withSpring(4, { damping: 15, stiffness: 200, mass: 0.8 });
-      zIndex.value = 999;
-      runOnJS(triggerHaptic)();
-    })
-    .onUpdate((event) => {
-      x.value = startX.value + event.translationX;
-      y.value = startY.value + event.translationY;
+        isDragging.value = true;
+        isAnyDragging.value = true;
+        runOnJS(setScrollEnabled)(false);
+        startX.value = x.value;
+        startY.value = y.value;
+        scale.value = withSpring(1.15, { damping: 15, stiffness: 200, mass: 0.8 });
+        rotation.value = withSpring(4, { damping: 15, stiffness: 200, mass: 0.8 });
+        zIndex.value = 999;
+        runOnJS(triggerHaptic)();
+      })
+      .onUpdate((event) => {
+        x.value = startX.value + event.translationX;
+        y.value = startY.value + event.translationY;
 
-      // Realtime grid swapping calculations based on Euclidean distance to visual cell centers
-      const centerX = x.value + itemWidth / 2;
-      const centerY = y.value + ROW_HEIGHT / 2;
+        const currentLocalCol = Math.max(
+          0,
+          Math.min(gridColumns - 1, Math.round((x.value - spacing.xl - rowOffset) / itemWidth))
+        );
+        const currentLocalRow = Math.max(
+          0,
+          Math.min(3, Math.round((y.value - verticalOffset) / ROW_HEIGHT))
+        );
 
-      let closestIndex = -1;
-      let minDistance = Infinity;
+        const newLocalIndex = currentLocalRow * gridColumns + currentLocalCol;
+        const newGlobalIndex = pageIndex * pageSize + newLocalIndex;
 
-      for (let i = pageStart; i < pageEnd; i++) {
-        const localI = i % pageSize;
-        const colI = localI % gridColumns;
-        const rowI = Math.floor(localI / gridColumns);
-
-        const itemsInRowI = rowI === pageRows - 1 
-          ? pageAppsCount - rowI * gridColumns 
-          : gridColumns;
-        const rowOffsetI = ((gridColumns - itemsInRowI) * itemWidth) / 2;
-
-        const centerCellX = spacing.xl + colI * itemWidth + rowOffsetI + itemWidth / 2;
-        const centerCellY = rowI * ROW_HEIGHT + verticalOffset + ROW_HEIGHT / 2;
-
-        const dx = centerX - centerCellX;
-        const dy = centerY - centerCellY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestIndex = i;
+        if (
+          newGlobalIndex >= pageStart &&
+          newGlobalIndex < pageEnd &&
+          newGlobalIndex !== index &&
+          newGlobalIndex !== lastSwappedIndex.value
+        ) {
+          lastSwappedIndex.value = newGlobalIndex;
+          runOnJS(onSwap)(item.id, newGlobalIndex);
         }
-      }
-
-      // Swap threshold is 45% of item width to eliminate oscillation
-      if (closestIndex !== -1 && minDistance < itemWidth * 0.45) {
-        if (lastSwappedIndex.value !== closestIndex) {
-          lastSwappedIndex.value = closestIndex;
-          runOnJS(onSwap)(app.packageName, closestIndex);
-        }
-      }
-    })
-    .onEnd((event) => {
-      lastSwappedIndex.value = -1;
-      isDragging.value = false;
-      isAnyDragging.value = false;
-      runOnJS(setScrollEnabled)(true);
-      scale.value = withSpring(1, { damping: 20, stiffness: 180, mass: 0.9 });
-      rotation.value = withSpring(0, { damping: 20, stiffness: 180, mass: 0.9 });
-      zIndex.value = 1;
-
-      // Snap home to new position
-      x.value = withSpring(targetX, { damping: 18, stiffness: 240, mass: 0.9 });
-      y.value = withSpring(targetY, { damping: 18, stiffness: 240, mass: 0.9 });
-
-      // Identify if the gesture was just a long-press click or a true swap action
-      const distance = Math.sqrt(event.translationX ** 2 + event.translationY ** 2);
-      if (distance < 15) {
-        runOnJS(onLongPress)(app);
-      } else {
+      })
+      .onFinalize(() => {
+        isDragging.value = false;
+        isAnyDragging.value = false;
+        scale.value = withSpring(1, { damping: 18, stiffness: 240 });
+        rotation.value = withSpring(0, { damping: 18, stiffness: 240 });
+        zIndex.value = 1;
+        lastSwappedIndex.value = -1;
+        runOnJS(setScrollEnabled)(true);
         runOnJS(onDragEnd)();
-      }
-    });
-  }, [app, itemWidth, pageStart, pageEnd, pageSize, gridColumns, pageRows, pageAppsCount, verticalOffset, onSwap, onDragEnd, onLongPress, setScrollEnabled, triggerHaptic, isAnyDragging, x, y, startX, startY, isDragging, scale, rotation, zIndex, lastSwappedIndex, targetX, targetY]);
+      });
+  }, [
+    item.id,
+    index,
+    gridColumns,
+    itemWidth,
+    verticalOffset,
+    rowOffset,
+    pageIndex,
+    pageSize,
+    pageStart,
+    pageEnd,
+    isAnyDragging,
+    setScrollEnabled,
+    onSwap,
+    onDragEnd,
+    triggerHaptic,
+    startX,
+    startY,
+    x,
+    y,
+    scale,
+    rotation,
+    zIndex,
+    isDragging,
+    lastSwappedIndex,
+  ]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      position: "absolute",
-      width: itemWidth,
-      height: ROW_HEIGHT,
-      transform: [
-        { translateX: x.value },
-        { translateY: y.value },
-        { scale: scale.value },
-        { rotate: `${rotation.value}deg` },
-      ],
-      zIndex: zIndex.value,
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: itemWidth,
+    height: ROW_HEIGHT,
+    transform: [
+      { translateX: x.value },
+      { translateY: y.value },
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+    zIndex: zIndex.value,
+  }));
 
   return (
     <GestureDetector gesture={panGesture}>
       <Animated.View style={animatedStyle}>
         <View style={styles.gridItem}>
-          <AppIcon app={app} onPress={onPress} />
+          {item.type === "app" ? (
+            <AppIcon
+              app={item.app}
+              onPress={onPress}
+              onLongPress={onLongPress}
+            />
+          ) : (
+            <FolderIcon
+              folder={item.folder}
+              onPress={onFolderPress || (() => {})}
+              onLongPress={onFolderLongPress}
+            />
+          )}
         </View>
       </Animated.View>
     </GestureDetector>
   );
 }
 
-function AnimatedDot({ index, activePage }: { index: number; activePage: number }) {
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
-  const animatedStyle = useAnimatedStyle(() => {
-    const isActive = index === activePage;
-    const width = withSpring(isActive ? 18 : 6, springs.snappy);
-    const opacity = withSpring(isActive ? 1 : 0.3, springs.snappy);
-    return {
-      width,
-      opacity,
-      backgroundColor: "rgba(255, 255, 255, 0.4)",
-    };
-  }, [index, activePage, SCREEN_WIDTH]);
-
-  return <Animated.View style={[styles.dot, animatedStyle]} />;
-}
-
 interface AppGridProps {
   apps: AppInfo[];
+  folders?: FolderInfo[];
   onPress: (app: AppInfo) => void;
   onLongPress: (app: AppInfo) => void;
+  onFolderPress?: (folder: FolderInfo) => void;
+  onFolderLongPress?: (folder: FolderInfo) => void;
 }
 
-export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
-  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+export function AppGrid({
+  apps,
+  folders = [],
+  onPress,
+  onLongPress,
+  onFolderPress,
+  onFolderLongPress,
+}: AppGridProps) {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
-  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
-  const [orderedApps, setOrderedApps] = useState<AppInfo[]>(apps);
-  const orderedAppsRef = useRef<AppInfo[]>(apps);
-  const isAnyDragging = useSharedValue(false);
-  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [gridHeight, setGridHeight] = useState(380);
   const [activePage, setActivePage] = useState(0);
-  const [gridHeight, setGridHeight] = useState(() => {
-    // Deterministic initial height based on screen dimensions
-    return SCREEN_HEIGHT - STATUS_BAR_HEIGHT - CLOCK_HEIGHT - DOCK_HEIGHT - spacing.xl;
-  });
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const isAnyDragging = useSharedValue(false);
 
-  // Synchronize dynamic updates from outer stores safely when drag gesture is inert
+  // Combine folders and apps into unified grid items
+  const combinedItems: GridItemData[] = useMemo(() => {
+    const folderItems: GridItemData[] = folders.map((f) => ({
+      id: f.id,
+      type: "folder",
+      folder: f,
+    }));
+    const appItems: GridItemData[] = apps.map((a) => ({
+      id: a.packageName,
+      type: "app",
+      app: a,
+    }));
+    return [...folderItems, ...appItems];
+  }, [folders, apps]);
+
+  const [orderedItems, setOrderedItems] = useState<GridItemData[]>(combinedItems);
+  const orderedItemsRef = useRef<GridItemData[]>(combinedItems);
+
   useEffect(() => {
-    if (scrollEnabled) {
-      orderedAppsRef.current = apps;
-      setOrderedApps(apps);
-    }
-  }, [apps, scrollEnabled]);
+    orderedItemsRef.current = combinedItems;
+    setOrderedItems(combinedItems);
+  }, [combinedItems]);
 
-  const itemWidth = useMemo(() => {
-    const totalPadding = spacing.xl * 2;
-    return (SCREEN_WIDTH - totalPadding) / gridColumns;
-  }, [gridColumns, SCREEN_WIDTH]);
+  const ROWS_PER_PAGE = 4;
+  const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;
+  const numPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
 
-  const handleSwap = useCallback((packageName: string, toIndex: number) => {
-    const current = orderedAppsRef.current;
-    const fromIndex = current.findIndex((app) => app.packageName === packageName);
-    if (fromIndex === -1 || fromIndex === toIndex) return;
-    const next = [...current];
-    const temp = next[fromIndex];
-    next[fromIndex] = next[toIndex];
-    next[toIndex] = temp;
-    orderedAppsRef.current = next;
-    setOrderedApps(next);
-    if (hapticEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  }, [hapticEnabled]);
-
-  const handleDragEnd = useCallback(() => {
-    const packages = orderedAppsRef.current.map((a) => a.packageName);
-    setAllowedPackages(packages);
-  }, [setAllowedPackages]);
-
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / SCREEN_WIDTH);
-    setActivePage(page);
-  };
+  const usableWidth = SCREEN_WIDTH - spacing.xl * 2;
+  const itemWidth = usableWidth / gridColumns;
 
   const handleLayout = (e: any) => {
-    const { height } = e.nativeEvent.layout;
+    const height = e.nativeEvent.layout.height;
     if (height > 0) {
       setGridHeight(height);
     }
   };
 
-  const PAGE_SIZE = gridColumns * 4;
-  const numPages = Math.ceil(orderedApps.length / PAGE_SIZE);
+  const handleScroll = (e: any) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    setActivePage(page);
+  };
 
-  // Group ordered apps into pages
+  const handleSwap = useCallback((itemId: string, toIndex: number) => {
+    const current = orderedItemsRef.current;
+    const fromIndex = current.findIndex((item) => item.id === itemId);
+    if (fromIndex === -1 || fromIndex === toIndex) return;
+
+    const next = [...current];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    orderedItemsRef.current = next;
+    setOrderedItems(next);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    const nextApps = orderedItemsRef.current
+      .filter((item): item is { id: string; type: "app"; app: AppInfo } => item.type === "app")
+      .map((item) => item.app.packageName);
+    setAllowedPackages(nextApps);
+  }, [setAllowedPackages]);
+
   const pages = useMemo(() => {
     const grouped = [];
     for (let i = 0; i < numPages; i++) {
-      grouped.push(orderedApps.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE));
+      grouped.push(orderedItems.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE));
     }
     return grouped;
-  }, [orderedApps, numPages, PAGE_SIZE]);
+  }, [orderedItems, numPages, PAGE_SIZE]);
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
@@ -319,8 +331,7 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
         decelerationRate="fast"
         style={styles.scrollStyle}
       >
-        {pages.map((pageApps, pageIndex) => {
-          // Centering offsets based on a stable 4-row height layout to keep coordinates static
+        {pages.map((pageItems, pageIndex) => {
           const verticalOffset = Math.max(0, (gridHeight - 4 * ROW_HEIGHT) / 2);
 
           return (
@@ -331,14 +342,14 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
                 { width: SCREEN_WIDTH, height: gridHeight },
               ]}
             >
-              {pageApps.map((app, localIndex) => {
+              {pageItems.map((item, localIndex) => {
                 const globalIndex = pageIndex * PAGE_SIZE + localIndex;
                 return (
-                  <DraggableItem
-                    key={app.packageName}
-                    app={app}
+                  <DraggableGridItem
+                    key={item.id}
+                    item={item}
                     index={globalIndex}
-                    apps={orderedApps}
+                    items={orderedItems}
                     itemWidth={itemWidth}
                     gridColumns={gridColumns}
                     pageIndex={pageIndex}
@@ -346,6 +357,8 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
                     verticalOffset={verticalOffset}
                     onPress={onPress}
                     onLongPress={onLongPress}
+                    onFolderPress={onFolderPress}
+                    onFolderLongPress={onFolderLongPress}
                     isAnyDragging={isAnyDragging}
                     setScrollEnabled={setScrollEnabled}
                     onSwap={handleSwap}
@@ -358,11 +371,20 @@ export function AppGrid({ apps, onPress, onLongPress }: AppGridProps) {
         })}
       </ScrollView>
 
-      {/* Animated page indicator */}
       {numPages > 1 && (
         <View style={styles.pageIndicator}>
           {Array.from({ length: numPages }).map((_, i) => (
-            <AnimatedDot key={i} index={i} activePage={activePage} />
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor:
+                    i === activePage ? "#FFFFFF" : "rgba(255, 255, 255, 0.2)",
+                  transform: [{ scale: i === activePage ? 1.2 : 1 }],
+                },
+              ]}
+            />
           ))}
         </View>
       )}
