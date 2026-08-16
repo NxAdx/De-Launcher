@@ -147,7 +147,7 @@ export default function HomeScreen() {
             style={[
               styles.headerBar,
               {
-                top: -(44 - spacing.xs),
+                top: statusBarHeight + spacing.xs,
               },
             ]}
           >
