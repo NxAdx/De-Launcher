@@ -58,7 +58,7 @@ class MainActivity : ReactActivity() {
           return
       }
 
-  // Use the default back button implementation on Android S
+      // Use the default back button implementation on Android S
       // because it's doing more than [Activity.moveTaskToBack] in fact.
       super.invokeDefaultOnBackPressed()
   }
@@ -70,9 +70,9 @@ class MainActivity : ReactActivity() {
       intent?.let {
           if (it.hasCategory(android.content.Intent.CATEGORY_HOME)) {
               val now = System.currentTimeMillis()
-              // Debounce: only broadcast if >500ms since last, to avoid killing
-              // in-progress navigation transitions (e.g. pushing to /settings)
-              if (now - lastHomePressedTime > 500) {
+              // Debounce: only broadcast if >1200ms since last, to avoid killing
+              // in-progress navigation transitions (e.g. pushing to /settings or /search)
+              if (now - lastHomePressedTime > 1200) {
                   lastHomePressedTime = now
                   val localIntent = android.content.Intent("com.nxadx.delauncher.HOME_PRESSED")
                   sendBroadcast(localIntent)

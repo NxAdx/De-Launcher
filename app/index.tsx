@@ -134,9 +134,47 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {/* Gesture-driven Home Content */}
+      {/* Gesture-driven Home Content — buttons are INSIDE the gesture view
+          so they share the same native touch hierarchy on Android.
+          React Native's Pressable always wins over RNGH Pan on taps
+          because Pan requires 35px vertical movement to activate. */}
       <GestureDetector gesture={panGesture}>
         <View style={[styles.contentArea, { paddingTop: statusBarHeight + 44 }]}>
+          {/* Top Header Bar — absolute positioned inside gesture view,
+              high zIndex ensures it draws on top and receives taps first */}
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.headerBar,
+              {
+                top: -(44 - spacing.xs),
+              },
+            ]}
+          >
+            <View style={styles.headerLeftSpacer} />
+
+            <View style={styles.topControls}>
+              <Pressable
+                onPress={handleOpenSearch}
+                hitSlop={16}
+                style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Open search and command bar"
+              >
+                <Search size={22} color={colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                onPress={handleOpenSettings}
+                hitSlop={16}
+                style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Open settings"
+              >
+                <Settings size={22} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          </View>
+
           {/* Clock Widget */}
           {showClock && (
             <View style={styles.clockWrapper}>
@@ -165,40 +203,6 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
       </GestureDetector>
-
-      {/* Top Header Bar — positioned on top layer with pointerEvents box-none for 100% reliable touch response */}
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.headerBar,
-          {
-            top: statusBarHeight + spacing.xs,
-          },
-        ]}
-      >
-        <View style={styles.headerLeftSpacer} pointerEvents="none" />
-
-        <View style={styles.topControls} pointerEvents="auto">
-          <Pressable
-            onPress={handleOpenSearch}
-            hitSlop={16}
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Open search and command bar"
-          >
-            <Search size={22} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            onPress={handleOpenSettings}
-            hitSlop={16}
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-          >
-            <Settings size={22} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
 
       {/* Blocked App Banner */}
       {showBlockedBanner && (

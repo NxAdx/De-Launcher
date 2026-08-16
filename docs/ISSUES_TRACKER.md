@@ -23,7 +23,12 @@ This document tracks all reported issues, technical root causes, implementation 
 
 ### ISSUE-01: Top Action Buttons (Search & Settings) Unresponsive
 * **Symptoms**: Tapping Search (magnifying glass) or Settings (gear icon) on the top right does not open the respective screens when De-Launcher is set as the default launcher.
-* **Resolution**: Reordered the JSX hierarchy in `app/index.tsx` to render `headerBar` as the top-level overlay AFTER `<GestureDetector>`, with `pointerEvents="box-none"` on the container and `hitSlop={16}` on the buttons.
+* **Root Cause (Deep Analysis)**:
+  1. **RNGH Touch Interception**: The `GestureDetector` (with Pan gesture) wrapped a `<View>` covering the full screen. The Search & Settings buttons were rendered as a **sibling** View outside the GestureDetector, using absolute positioning and `pointerEvents="box-none"`. On Android, RNGH installs a native `onInterceptTouchEvent` handler that intercepts `ACTION_DOWN` events at a lower level than React Native's `pointerEvents` system, causing the Pan gesture system to consume touch starts before the overlay `Pressable` could register them.
+  2. **HOME Intent Re-delivery**: When set as default launcher with `launchMode="singleTask"`, Android re-delivers the HOME intent via `onNewIntent()` in `MainActivity.kt`. The native debounce was only 500ms which could sometimes fire during in-progress navigation transitions, calling `router.dismissAll()` + `router.replace("/")` and cancelling the navigation to `/search` or `/settings`.
+* **Resolution (v2 — Production Fix)**:
+  1. **Moved buttons INSIDE the GestureDetector child View** in `app/index.tsx`. As children of the gesture-wrapped view, `Pressable` taps are dispatched by React Native's touch responder system BEFORE the Pan gesture activates (Pan requires `activeOffsetY: 35` — a 35px vertical drag). Taps (quick down/up) never reach the Pan activation threshold.
+  2. **Increased native HOME debounce** in `MainActivity.kt` from 500ms to 1200ms to provide safe headroom for JS `signalNavigation(1000ms)` guard.
 
 ### ISSUE-02: Page Indicator Dots Overlapping App Labels
 * **Symptoms**: In 4-row app grids, the pagination dots (`• • • • •`) rendered directly on top of the text labels of the bottom-most row of apps.

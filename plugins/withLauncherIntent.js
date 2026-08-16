@@ -6,7 +6,9 @@
  * 2. AccessibilityService registration for the Distraction Engine
  * 3. Required permissions
  */
-const { withAndroidManifest, withAndroidStyles } = require("expo/config-plugins");
+const { withAndroidManifest, withAndroidStyles, withDangerousMod } = require("expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
 
 function addPermissions(androidManifest) {
   if (!androidManifest.manifest["uses-permission"]) {
@@ -267,6 +269,61 @@ module.exports = function withLauncherIntent(config) {
     config.modResults = addWallpaperTheme(config.modResults);
     return config;
   });
+
+  // Inject onNewIntent HOME press handler into MainActivity.kt
+  // so the native module can detect when the HOME button is pressed
+  // and the app is already the default launcher.
+  config = withDangerousMod(config, [
+    "android",
+    async (config) => {
+      const packageName = config.android?.package || "com.nxadx.delauncher";
+      const packagePath = packageName.replace(/\./g, "/");
+      const mainActivityPath = path.join(
+        config.modRequest.platformProjectRoot,
+        "app/src/main/java",
+        packagePath,
+        "MainActivity.kt"
+      );
+
+      if (fs.existsSync(mainActivityPath)) {
+        let contents = fs.readFileSync(mainActivityPath, "utf8");
+
+        // Only inject if not already present
+        if (!contents.includes("onNewIntent")) {
+          const homeHandlerCode = `
+  private var lastHomePressedTime = 0L
+
+  override fun onNewIntent(intent: android.content.Intent?) {
+      super.onNewIntent(intent)
+      intent?.let {
+          if (it.hasCategory(android.content.Intent.CATEGORY_HOME)) {
+              val now = System.currentTimeMillis()
+              // Debounce: only broadcast if >1200ms since last, to avoid killing
+              // in-progress navigation transitions (e.g. pushing to /settings or /search)
+              if (now - lastHomePressedTime > 1200) {
+                  lastHomePressedTime = now
+                  val localIntent = android.content.Intent("com.nxadx.delauncher.HOME_PRESSED")
+                  sendBroadcast(localIntent)
+              }
+          }
+      }
+  }`;
+
+          // Insert before the final closing brace of the class
+          const lastBraceIndex = contents.lastIndexOf("}");
+          if (lastBraceIndex !== -1) {
+            contents =
+              contents.slice(0, lastBraceIndex) +
+              homeHandlerCode +
+              "\n}\n";
+            fs.writeFileSync(mainActivityPath, contents);
+          }
+        }
+      }
+
+      return config;
+    },
+  ]);
 
   return config;
 };
