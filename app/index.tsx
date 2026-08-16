@@ -4,9 +4,9 @@
  * The main launcher screen. Features:
  * - Large minimal clock
  * - Customizable Home Search Widget
- * - Daily Focus & GitHub-style Contribution Streak Heatmap
- * - Grid of allowed apps and folders
- * - Vivo-style frosted Dock at the bottom
+ * - Daily Focus & Streak Heatmap Widget
+ * - Responsive Grid of allowed apps and folders
+ * - Floating Frosted Capsule Dock at the bottom
  * - Swipe up/down gestures for Command Bar & Drawer
  */
 import React, { useCallback, useState, useMemo, useEffect } from "react";
@@ -134,8 +134,41 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {/* Top Header Bar — isolated from Pan Gesture for 100% reliable touch response */}
+      {/* Gesture-driven Home Content */}
+      <GestureDetector gesture={panGesture}>
+        <View style={[styles.contentArea, { paddingTop: statusBarHeight + 44 }]}>
+          {/* Clock Widget */}
+          {showClock && (
+            <View style={styles.clockWrapper}>
+              <Clock />
+            </View>
+          )}
+
+          {/* Customizable Search Bar Widget */}
+          <HomeSearchWidget />
+
+          {/* Daily Focus Tasks & Streak Widget */}
+          <TodoStreakWidget />
+
+          {/* App & Folder Grid */}
+          <Animated.View
+            entering={FadeInUp.duration(400).delay(150)}
+            style={styles.gridContainer}
+          >
+            <AppGrid
+              apps={allowedApps}
+              folders={folders}
+              onPress={handleAppPress}
+              onLongPress={handleAppLongPress}
+              onFolderPress={handleFolderPress}
+            />
+          </Animated.View>
+        </View>
+      </GestureDetector>
+
+      {/* Top Header Bar — positioned on top layer with pointerEvents box-none for 100% reliable touch response */}
       <View
+        pointerEvents="box-none"
         style={[
           styles.headerBar,
           {
@@ -143,9 +176,9 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <View style={styles.headerLeftSpacer} />
+        <View style={styles.headerLeftSpacer} pointerEvents="none" />
 
-        <View style={styles.topControls}>
+        <View style={styles.topControls} pointerEvents="auto">
           <Pressable
             onPress={handleOpenSearch}
             hitSlop={16}
@@ -186,38 +219,6 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
       )}
-
-      {/* Gesture-driven Home Content */}
-      <GestureDetector gesture={panGesture}>
-        <View style={[styles.contentArea, { paddingTop: statusBarHeight + 44 }]}>
-          {/* Clock Widget */}
-          {showClock && (
-            <View style={styles.clockWrapper}>
-              <Clock />
-            </View>
-          )}
-
-          {/* Customizable Search Bar Widget */}
-          <HomeSearchWidget />
-
-          {/* Daily Focus Tasks & GitHub Streak Widget */}
-          <TodoStreakWidget />
-
-          {/* App & Folder Grid */}
-          <Animated.View
-            entering={FadeInUp.duration(400).delay(150)}
-            style={styles.gridContainer}
-          >
-            <AppGrid
-              apps={allowedApps}
-              folders={folders}
-              onPress={handleAppPress}
-              onLongPress={handleAppLongPress}
-              onFolderPress={handleFolderPress}
-            />
-          </Animated.View>
-        </View>
-      </GestureDetector>
 
       {/* Dock */}
       <Dock onLongPress={handleAppLongPress} />

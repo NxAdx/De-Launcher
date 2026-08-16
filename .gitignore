@@ -3,7 +3,6 @@
 # ============================================
 
 # ----- SENSITIVE / PRIVATE PROJECT FILES -----
-docs/
 .agents/
 .agent/
 master-docs/

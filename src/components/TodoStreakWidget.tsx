@@ -8,7 +8,7 @@
  * - Streak counter
  * - Collapsible / expandable minimal design
  */
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -31,17 +31,58 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function TodoStreakWidget() {
   const { colors, isDark } = useTheme();
   const showTodoWidget = useSettingsStore((s) => s.showTodoWidget);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
-  const todos = useTodoStore((s) => s.getTodayTodos)();
+  // Directly subscribe to store arrays/objects for instant reactive updates
+  const allTodos = useTodoStore((s) => s.todos);
+  const history = useTodoStore((s) => s.history);
   const currentStreak = useTodoStore((s) => s.currentStreak);
-  const heatmapData = useTodoStore((s) => s.getHeatmapData)(28);
   const addTodo = useTodoStore((s) => s.addTodo);
   const toggleTodo = useTodoStore((s) => s.toggleTodo);
   const deleteTodo = useTodoStore((s) => s.deleteTodo);
+
+  const todayStr = useMemo(() => getTodayDateString(), []);
+
+  const todos = useMemo(
+    () => allTodos.filter((t) => t.date === todayStr),
+    [allTodos, todayStr]
+  );
+
+  const heatmapData = useMemo(() => {
+    const result: HeatmapDay[] = [];
+    const today = new Date();
+
+    for (let i = 28 - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+      const count = history[dateStr] || 0;
+
+      let level: 0 | 1 | 2 | 3 | 4 = 0;
+      if (count >= 4) level = 4;
+      else if (count === 3) level = 3;
+      else if (count === 2) level = 2;
+      else if (count === 1) level = 1;
+
+      result.push({ date: dateStr, count, level });
+    }
+
+    return result;
+  }, [history]);
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [newTodoText, setNewTodoText] = useState("");

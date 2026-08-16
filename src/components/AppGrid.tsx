@@ -34,6 +34,7 @@ interface DraggableGridItemProps {
   items: GridItemData[];
   itemWidth: number;
   gridColumns: number;
+  maxRows: number;
   pageIndex: number;
   pageSize: number;
   verticalOffset: number;
@@ -53,6 +54,7 @@ function DraggableGridItem({
   items,
   itemWidth,
   gridColumns,
+  maxRows,
   pageIndex,
   pageSize,
   verticalOffset,
@@ -64,7 +66,7 @@ function DraggableGridItem({
   setScrollEnabled,
   onSwap,
   onDragEnd,
-}: DraggableGridItemProps) {
+  }: DraggableGridItemProps) {
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const localIndex = index % pageSize;
@@ -131,7 +133,7 @@ function DraggableGridItem({
         );
         const currentLocalRow = Math.max(
           0,
-          Math.min(3, Math.round((y.value - verticalOffset) / ROW_HEIGHT))
+          Math.min(maxRows - 1, Math.round((y.value - verticalOffset) / ROW_HEIGHT))
         );
 
         const newLocalIndex = currentLocalRow * gridColumns + currentLocalCol;
@@ -161,6 +163,7 @@ function DraggableGridItem({
     item.id,
     index,
     gridColumns,
+    maxRows,
     itemWidth,
     verticalOffset,
     rowOffset,
@@ -243,7 +246,7 @@ export function AppGrid({
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
-  const [gridHeight, setGridHeight] = useState(380);
+  const [measuredHeight, setMeasuredHeight] = useState(380);
   const [activePage, setActivePage] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isAnyDragging = useSharedValue(false);
@@ -271,7 +274,11 @@ export function AppGrid({
     setOrderedItems(combinedItems);
   }, [combinedItems]);
 
-  const ROWS_PER_PAGE = 4;
+  // Dynamically compute how many rows fit in the available measured height
+  const INDICATOR_HEIGHT = 24;
+  const availableGridHeight = Math.max(ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
+  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / ROW_HEIGHT)));
+  const ROWS_PER_PAGE = dynamicRows;
   const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;
   const numPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
 
@@ -280,8 +287,8 @@ export function AppGrid({
 
   const handleLayout = (e: any) => {
     const height = e.nativeEvent.layout.height;
-    if (height > 0) {
-      setGridHeight(height);
+    if (height > 0 && Math.abs(height - measuredHeight) > 4) {
+      setMeasuredHeight(height);
     }
   };
 
@@ -321,57 +328,64 @@ export function AppGrid({
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        scrollEnabled={scrollEnabled}
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        style={styles.scrollStyle}
-      >
-        {pages.map((pageItems, pageIndex) => {
-          const verticalOffset = Math.max(0, (gridHeight - 4 * ROW_HEIGHT) / 2);
+      <View style={[styles.scrollWrapper, { height: availableGridHeight }]}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          scrollEnabled={scrollEnabled}
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          decelerationRate="fast"
+          style={styles.scrollStyle}
+        >
+          {pages.map((pageItems, pageIndex) => {
+            const pageRows = Math.max(1, Math.ceil(pageItems.length / gridColumns));
+            const verticalOffset = Math.max(
+              0,
+              (availableGridHeight - pageRows * ROW_HEIGHT) / 2
+            );
 
-          return (
-            <View
-              key={pageIndex}
-              style={[
-                styles.pageContainer,
-                { width: SCREEN_WIDTH, height: gridHeight },
-              ]}
-            >
-              {pageItems.map((item, localIndex) => {
-                const globalIndex = pageIndex * PAGE_SIZE + localIndex;
-                return (
-                  <DraggableGridItem
-                    key={item.id}
-                    item={item}
-                    index={globalIndex}
-                    items={orderedItems}
-                    itemWidth={itemWidth}
-                    gridColumns={gridColumns}
-                    pageIndex={pageIndex}
-                    pageSize={PAGE_SIZE}
-                    verticalOffset={verticalOffset}
-                    onPress={onPress}
-                    onLongPress={onLongPress}
-                    onFolderPress={onFolderPress}
-                    onFolderLongPress={onFolderLongPress}
-                    isAnyDragging={isAnyDragging}
-                    setScrollEnabled={setScrollEnabled}
-                    onSwap={handleSwap}
-                    onDragEnd={handleDragEnd}
-                  />
-                );
-              })}
-            </View>
-          );
-        })}
-      </ScrollView>
+            return (
+              <View
+                key={pageIndex}
+                style={[
+                  styles.pageContainer,
+                  { width: SCREEN_WIDTH, height: availableGridHeight },
+                ]}
+              >
+                {pageItems.map((item, localIndex) => {
+                  const globalIndex = pageIndex * PAGE_SIZE + localIndex;
+                  return (
+                    <DraggableGridItem
+                      key={item.id}
+                      item={item}
+                      index={globalIndex}
+                      items={orderedItems}
+                      itemWidth={itemWidth}
+                      gridColumns={gridColumns}
+                      maxRows={ROWS_PER_PAGE}
+                      pageIndex={pageIndex}
+                      pageSize={PAGE_SIZE}
+                      verticalOffset={verticalOffset}
+                      onPress={onPress}
+                      onLongPress={onLongPress}
+                      onFolderPress={onFolderPress}
+                      onFolderLongPress={onFolderLongPress}
+                      isAnyDragging={isAnyDragging}
+                      setScrollEnabled={setScrollEnabled}
+                      onSwap={handleSwap}
+                      onDragEnd={handleDragEnd}
+                    />
+                  );
+                })}
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      {numPages > 1 && (
+      {numPages > 1 ? (
         <View style={styles.pageIndicator}>
           {Array.from({ length: numPages }).map((_, i) => (
             <View
@@ -380,13 +394,15 @@ export function AppGrid({
                 styles.dot,
                 {
                   backgroundColor:
-                    i === activePage ? "#FFFFFF" : "rgba(255, 255, 255, 0.2)",
-                  transform: [{ scale: i === activePage ? 1.2 : 1 }],
+                    i === activePage ? "#FFFFFF" : "rgba(255, 255, 255, 0.25)",
+                  transform: [{ scale: i === activePage ? 1.25 : 1 }],
                 },
               ]}
             />
           ))}
         </View>
+      ) : (
+        <View style={styles.indicatorSpacer} />
       )}
     </View>
   );
@@ -395,6 +411,10 @@ export function AppGrid({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: "100%",
+    justifyContent: "space-between",
+  },
+  scrollWrapper: {
     width: "100%",
   },
   scrollStyle: {
@@ -414,11 +434,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: spacing.sm,
-    paddingVertical: spacing.md,
-    position: "absolute",
-    bottom: spacing.xxs,
-    left: 0,
-    right: 0,
+    height: 24,
+    width: "100%",
+    marginTop: spacing.xs,
+  },
+  indicatorSpacer: {
+    height: 8,
   },
   dot: {
     width: 6,

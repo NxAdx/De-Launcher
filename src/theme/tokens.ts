@@ -87,8 +87,8 @@ export function getThemeColors(mode: ThemeMode) {
     textDisabled: isDark
       ? palette.textDark.disabled
       : palette.textLight.disabled,
-    accent: palette.accent,
-    accentMuted: palette.accentMuted,
+    accent: isDark ? palette.accent : "#475569",
+    accentMuted: isDark ? palette.accentMuted : "rgba(71, 85, 105, 0.15)",
     error: palette.error,
     success: palette.success,
     warning: palette.warning,

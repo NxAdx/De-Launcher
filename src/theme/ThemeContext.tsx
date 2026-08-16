@@ -6,6 +6,7 @@
  */
 import React, { createContext, useContext, useMemo, useCallback } from "react";
 import { getThemeColors, ThemeColors, ThemeMode } from "./tokens";
+import { useSettingsStore } from "../store/settingsStore";
 
 interface ThemeContextType {
   mode: ThemeMode;
@@ -18,19 +19,22 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Permanently force OLED Dark Mode
-  const mode: ThemeMode = "dark";
-  const colors = useMemo(() => getThemeColors("dark"), []);
+  const mode = useSettingsStore((s) => s.theme) || "dark";
+  const setStoreTheme = useSettingsStore((s) => s.setTheme);
+
+  const colors = useMemo(() => getThemeColors(mode), [mode]);
+  const isDark = mode === "dark";
 
   const toggleTheme = useCallback(() => {
-    // No-op to preserve interface compatibility
-  }, []);
+    const nextMode: ThemeMode = mode === "dark" ? "light" : "dark";
+    setStoreTheme(nextMode);
+  }, [mode, setStoreTheme]);
 
   const setTheme = useCallback(
     (newMode: ThemeMode) => {
-      // No-op to preserve interface compatibility
+      setStoreTheme(newMode);
     },
-    []
+    [setStoreTheme]
   );
 
   const value = useMemo(
@@ -39,9 +43,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors,
       toggleTheme,
       setTheme,
-      isDark: true,
+      isDark,
     }),
-    [colors, toggleTheme, setTheme]
+    [mode, colors, toggleTheme, setTheme, isDark]
   );
 
   return (

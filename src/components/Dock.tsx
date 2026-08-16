@@ -3,7 +3,7 @@
  *
  * Fixed bottom bar for essential apps (supports up to 6 icons).
  * Features:
- * - Vivo/OriginOS-inspired floating frosted glassmorphism background
+ * - Floating translucent glass capsule design
  * - Dynamic slot calculations for 1 to 6 apps
  * - Long-press and drag to reorder with snappy spring physics
  * - Haptic feedback integration
@@ -321,10 +321,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 28,
+    overflow: "hidden",
   },
   frostedCard: {
     borderWidth: 1.2,
-    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
