@@ -35,8 +35,13 @@ This document tracks all reported issues, technical root causes, implementation 
 * **Resolution**: Removed `position: "absolute"` from `pageIndicator` in `src/components/AppGrid.tsx`. Placed the indicator in a dedicated footer container below the scrollable grid with explicit vertical padding, ensuring icons and dots occupy distinct vertical bands.
 
 ### ISSUE-03: App Icons Overflowing Under Dock During Focus Widget Expansion
-* **Symptoms**: Expanding the Daily Focus widget pushes the app grid down so that the bottom rows of icons are partially covered by or hidden beneath the bottom dock.
-* **Resolution**: Implemented dynamic row calculation in `src/components/AppGrid.tsx`. `ROWS_PER_PAGE` is calculated based on measured `gridHeight`: `Math.max(1, Math.min(4, Math.floor(availableGridHeight / ROW_HEIGHT)))`. When the focus widget expands, the grid gracefully switches to 2 or 3 rows per page with automatic pagination.
+* **Symptoms**: Expanding the Daily Focus widget pushes the app grid down so that the bottom rows of icons and page indicators are partially covered by or hidden beneath the bottom dock.
+* **Root Cause**: `gridContainer` had a static `marginBottom` of `88px` which failed to account for Android's system navigation bar (`insets.bottom`). In addition, `AppGrid` hardcoded row height to 92px and rendered unlimited page indicator dots (e.g. 15 dots across the screen), causing dots and bottom icons to overflow behind the floating Dock.
+* **Resolution**:
+  1. Made `gridContainer` `marginBottom` dynamic: `layout.dockHeight + insets.bottom + spacing.xs` with `overflow: "hidden"`.
+  2. Implemented dynamic `rowHeight` in `AppGrid.tsx` (`Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / dynamicRows))`) ensuring icons are strictly bounded to the visible grid area.
+  3. Added a smart sliding pagination window for `numPages > 6` displaying at most 6 dots centered on `activePage` with smoothly scaled edge dots.
+  4. Streamlined expanded `TodoStreakWidget` padding and margins to preserve vertical screen real estate.
 
 ### ISSUE-04: Dock Styling & Brand Name Cleanup
 * **Symptoms**: Dock description used "Vivo-style" in Settings and the dock card occasionally rendered with square corners on Android.
@@ -57,3 +62,16 @@ This document tracks all reported issues, technical root causes, implementation 
 ### ISSUE-08: Daily Focus Reactive Task Checking & Animations
 * **Symptoms**: Checking off a task in the Daily Focus widget did not show the checkmark or strikethrough until the widget was collapsed and re-opened.
 * **Resolution**: Fixed the Zustand selector in `src/components/TodoStreakWidget.tsx` to subscribe directly to `useTodoStore((s) => s.todos)` and `history`, triggering immediate UI re-renders with animated checkmarks, strikethrough text, and updated streak counts.
+
+### ISSUE-09: Wrong Icon on Search / Recycled List Items (e.g. Canva showing Chalo icon)
+* **Symptoms**: In Search results or App Drawer, searching for an app (e.g. "Canva") displayed the wrong app's icon (e.g. "Chalo").
+* **Root Cause**: `AppIcon.tsx` stored `systemIcon` in a `useState` initializer that only ran on initial component mount. When `FlashList` recycled cells, the `app` prop changed, but `systemIcon` retained the previous item's icon URI and `useEffect` was skipped because `systemIcon` was already non-null.
+* **Resolution**: Replaced unkeyed local state with synchronous cache resolution (`getCachedSystemIcon(app.packageName)` / `getCachedIcon(activeIconPack, app.packageName)`) and package-scoped async updates (`{ pkg: string, uri: string }`), ensuring recycled list items always render the exact matching icon for the current package.
+
+### ISSUE-10: Cold Start Latency & Icon Extraction Throughput
+* **Symptoms**: App took too long to load on startup; blank screen flash before apps appeared; icon generation was slow.
+* **Root Cause**: `installedApps` was excluded from Zustand MMKV persistence, forcing cold boots to start with an empty app list until native queries resolved. Native icon extraction generated uncompressed 384x384 PNGs sequentially, and `IconPackParser` performed an O(N) full system scan of every package on the device.
+* **Resolution**:
+  1. Persisted `installedApps` in MMKV via `useAppStore` for instant frame-0 home screen rendering.
+  2. Optimized native icon extraction size to 192px with `BufferedOutputStream` compression in `DeLauncherNativeModule.kt`.
+  3. Replaced slow full-system package scan in `IconPackParser.kt` with instant indexed intent queries.

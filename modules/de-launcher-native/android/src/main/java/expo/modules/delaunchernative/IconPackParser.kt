@@ -49,7 +49,10 @@ class IconPackParser(private val context: Context) {
                 "com.fede.launcher.THEME_ICONPACK",
                 "com.gau.go.launcherex.theme",
                 "com.dlto.atom.launcher.THEME",
-                "solo.launcher.THEME"
+                "solo.launcher.THEME",
+                "jp.co.a_tm.android.launcher.icons",
+                "com.lge.launcher2.THEME",
+                "ch.deletescape.lawnchair.ICONPACK"
             )
 
             for (action in actions) {
@@ -62,49 +65,6 @@ class IconPackParser(private val context: Context) {
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to query action $action: ${e.message}")
                 }
-            }
-
-            // Fallback: Scan all installed packages on the system to verify if they have appfilter XML resources
-            try {
-                val allPackages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-                for (pkgInfo in allPackages) {
-                    val pkgName = pkgInfo.packageName
-                    if (pkgName == context.packageName) continue
-                    if (iconPackPackages.contains(pkgName)) continue // already added
-
-                    try {
-                        val appInfo = pm.getApplicationInfo(pkgName, PackageManager.GET_META_DATA)
-                        val resources = pm.getResourcesForApplication(appInfo.packageName)
-                        
-                        var hasAppFilter = false
-                        var appfilterResId = resources.getIdentifier("appfilter", "xml", pkgName)
-                        if (appfilterResId == 0) {
-                            appfilterResId = resources.getIdentifier("appfilter", "raw", pkgName)
-                        }
-                        
-                        if (appfilterResId > 0) {
-                            hasAppFilter = true
-                        } else {
-                            // Check assets
-                            try {
-                                resources.assets.open("appfilter.xml").use {
-                                    hasAppFilter = true
-                                }
-                            } catch (e: Exception) {
-                                // Not in assets
-                            }
-                        }
-
-                        if (hasAppFilter) {
-                            iconPackPackages.add(pkgName)
-                            Log.d(TAG, "Found icon pack via fallback scanner: $pkgName")
-                        }
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Fallback scanner failed: ${e.message}")
             }
 
             cachedIconPackPackages = iconPackPackages

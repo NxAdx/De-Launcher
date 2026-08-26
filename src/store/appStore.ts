@@ -397,6 +397,7 @@ export const useAppStore = create<AppState>()(
       name: "app-store",
       storage: createJSONStorage(() => mmkvStorage),
       partialize: (state) => ({
+        installedApps: state.installedApps,
         allowedPackages: state.allowedPackages,
         dockPackages: state.dockPackages,
         intentPausePackages: state.intentPausePackages,

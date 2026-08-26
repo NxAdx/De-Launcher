@@ -191,7 +191,12 @@ export default function HomeScreen() {
           {/* App & Folder Grid */}
           <Animated.View
             entering={FadeInUp.duration(400).delay(150)}
-            style={styles.gridContainer}
+            style={[
+              styles.gridContainer,
+              {
+                marginBottom: layout.dockHeight + insets.bottom + spacing.xs,
+              },
+            ]}
           >
             <AppGrid
               apps={allowedApps}
@@ -281,7 +286,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
-    marginBottom: layout.dockHeight + spacing.sm,
+    overflow: "hidden",
   },
   blockedBanner: {
     position: "absolute",

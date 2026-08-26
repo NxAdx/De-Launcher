@@ -67,7 +67,10 @@ function addQueries(androidManifest) {
     "com.fede.launcher.THEME_ICONPACK",
     "com.gau.go.launcherex.theme",
     "com.dlto.atom.launcher.THEME",
-    "solo.launcher.THEME"
+    "solo.launcher.THEME",
+    "jp.co.a_tm.android.launcher.icons",
+    "com.lge.launcher2.THEME",
+    "ch.deletescape.lawnchair.ICONPACK"
   ];
 
   for (const actionName of iconPackActions) {

@@ -91,36 +91,26 @@ export const AppIcon = memo(function AppIcon({
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
-  const [customIcon, setCustomIcon] = useState<string | null>(() => {
-    if (activeIconPack) {
-      const cached = getCachedIcon(activeIconPack, app.packageName);
-      if (cached !== undefined) return cached;
-    }
-    return null;
-  });
+  // Synchronous cache checks on current app.packageName
+  const syncCustomIcon = activeIconPack ? getCachedIcon(activeIconPack, app.packageName) : undefined;
+  const syncSystemIcon = getCachedSystemIcon(app.packageName) ?? app.icon ?? undefined;
 
-  const [systemIcon, setSystemIcon] = useState<string | null>(() => {
-    const cached = getCachedSystemIcon(app.packageName);
-    if (cached !== undefined) return cached;
-    return app.icon;
-  });
+  // Package-keyed async state prevents recycled cells from displaying another app's icon
+  const [asyncCustomIcon, setAsyncCustomIcon] = useState<{ pkg: string; pack: string; uri: string | null } | null>(null);
+  const [asyncSystemIcon, setAsyncSystemIcon] = useState<{ pkg: string; uri: string | null } | null>(null);
 
-  // Load custom icon from icon pack when pack changes
+  // Load custom icon from icon pack when pack or package changes
   useEffect(() => {
-    if (!activeIconPack) {
-      setCustomIcon(null);
-      return;
-    }
+    if (!activeIconPack) return;
 
     const cached = getCachedIcon(activeIconPack, app.packageName);
-    if (cached !== undefined) {
-      setCustomIcon(cached);
-      return;
-    }
+    if (cached !== undefined) return;
 
     let isMounted = true;
     getIconFromPack(activeIconPack, app.packageName).then((icon) => {
-      if (isMounted) setCustomIcon(icon);
+      if (isMounted) {
+        setAsyncCustomIcon({ pkg: app.packageName, pack: activeIconPack, uri: icon });
+      }
     });
 
     return () => {
@@ -130,17 +120,20 @@ export const AppIcon = memo(function AppIcon({
 
   // Load system icon on-demand if not already cached
   useEffect(() => {
-    if (systemIcon || app.icon) return;
+    const cached = getCachedSystemIcon(app.packageName);
+    if (cached !== undefined || app.icon) return;
 
     let isMounted = true;
     getSystemAppIcon(app.packageName).then((icon) => {
-      if (isMounted && icon) setSystemIcon(icon);
+      if (isMounted) {
+        setAsyncSystemIcon({ pkg: app.packageName, uri: icon });
+      }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [app.packageName, app.icon, systemIcon]);
+  }, [app.packageName, app.icon]);
 
   const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.92, springs.snappy);
@@ -171,6 +164,20 @@ export const AppIcon = memo(function AppIcon({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
   }));
+
+  const customIcon =
+    syncCustomIcon !== undefined
+      ? syncCustomIcon
+      : asyncCustomIcon?.pkg === app.packageName && asyncCustomIcon?.pack === activeIconPack
+      ? asyncCustomIcon.uri
+      : null;
+
+  const systemIcon =
+    syncSystemIcon !== undefined
+      ? syncSystemIcon
+      : asyncSystemIcon?.pkg === app.packageName
+      ? asyncSystemIcon.uri
+      : app.icon;
 
   const iconSource = customIcon || systemIcon || app.icon;
   const avatarBg = getAvatarColor(app.packageName);

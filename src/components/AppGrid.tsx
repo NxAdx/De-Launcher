@@ -26,13 +26,14 @@ export type GridItemData =
   | { id: string; type: "app"; app: AppInfo }
   | { id: string; type: "folder"; folder: FolderInfo };
 
-const ROW_HEIGHT = 92;
+const BASE_ROW_HEIGHT = 88;
 
 interface DraggableGridItemProps {
   item: GridItemData;
   index: number;
   items: GridItemData[];
   itemWidth: number;
+  rowHeight: number;
   gridColumns: number;
   maxRows: number;
   pageIndex: number;
@@ -53,6 +54,7 @@ function DraggableGridItem({
   index,
   items,
   itemWidth,
+  rowHeight,
   gridColumns,
   maxRows,
   pageIndex,
@@ -66,7 +68,7 @@ function DraggableGridItem({
   setScrollEnabled,
   onSwap,
   onDragEnd,
-  }: DraggableGridItemProps) {
+}: DraggableGridItemProps) {
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const localIndex = index % pageSize;
@@ -83,7 +85,7 @@ function DraggableGridItem({
   const rowOffset = ((gridColumns - itemsInRow) * itemWidth) / 2;
 
   const targetX = spacing.xl + col * itemWidth + rowOffset;
-  const targetY = row * ROW_HEIGHT + verticalOffset;
+  const targetY = row * rowHeight + verticalOffset;
 
   const x = useSharedValue(targetX);
   const y = useSharedValue(targetY);
@@ -133,7 +135,7 @@ function DraggableGridItem({
         );
         const currentLocalRow = Math.max(
           0,
-          Math.min(maxRows - 1, Math.round((y.value - verticalOffset) / ROW_HEIGHT))
+          Math.min(maxRows - 1, Math.round((y.value - verticalOffset) / rowHeight))
         );
 
         const newLocalIndex = currentLocalRow * gridColumns + currentLocalCol;
@@ -165,6 +167,7 @@ function DraggableGridItem({
     gridColumns,
     maxRows,
     itemWidth,
+    rowHeight,
     verticalOffset,
     rowOffset,
     pageIndex,
@@ -192,7 +195,7 @@ function DraggableGridItem({
     left: 0,
     top: 0,
     width: itemWidth,
-    height: ROW_HEIGHT,
+    height: rowHeight,
     transform: [
       { translateX: x.value },
       { translateY: y.value },
@@ -208,6 +211,7 @@ function DraggableGridItem({
         <View style={styles.gridItem}>
           {item.type === "app" ? (
             <AppIcon
+              key={item.app.packageName}
               app={item.app}
               onPress={onPress}
               onLongPress={onLongPress}
@@ -275,10 +279,11 @@ export function AppGrid({
   }, [combinedItems]);
 
   // Dynamically compute how many rows fit in the available measured height
-  const INDICATOR_HEIGHT = 24;
-  const availableGridHeight = Math.max(ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
-  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / ROW_HEIGHT)));
+  const INDICATOR_HEIGHT = 20;
+  const availableGridHeight = Math.max(BASE_ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
+  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / BASE_ROW_HEIGHT)));
   const ROWS_PER_PAGE = dynamicRows;
+  const rowHeight = Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / dynamicRows));
   const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;
   const numPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
 
@@ -343,7 +348,7 @@ export function AppGrid({
             const pageRows = Math.max(1, Math.ceil(pageItems.length / gridColumns));
             const verticalOffset = Math.max(
               0,
-              (availableGridHeight - pageRows * ROW_HEIGHT) / 2
+              (availableGridHeight - pageRows * rowHeight) / 2
             );
 
             return (
@@ -363,6 +368,7 @@ export function AppGrid({
                       index={globalIndex}
                       items={orderedItems}
                       itemWidth={itemWidth}
+                      rowHeight={rowHeight}
                       gridColumns={gridColumns}
                       maxRows={ROWS_PER_PAGE}
                       pageIndex={pageIndex}
@@ -387,19 +393,44 @@ export function AppGrid({
 
       {numPages > 1 ? (
         <View style={styles.pageIndicator}>
-          {Array.from({ length: numPages }).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    i === activePage ? "#FFFFFF" : "rgba(255, 255, 255, 0.25)",
-                  transform: [{ scale: i === activePage ? 1.25 : 1 }],
-                },
-              ]}
-            />
-          ))}
+          {(() => {
+            const MAX_VISIBLE_DOTS = 6;
+            let start = 0;
+            let end = numPages;
+            if (numPages > MAX_VISIBLE_DOTS) {
+              start = Math.max(
+                0,
+                Math.min(
+                  activePage - Math.floor(MAX_VISIBLE_DOTS / 2),
+                  numPages - MAX_VISIBLE_DOTS
+                )
+              );
+              end = start + MAX_VISIBLE_DOTS;
+            }
+            return Array.from({ length: end - start }).map((_, idx) => {
+              const i = start + idx;
+              const isEdge =
+                numPages > MAX_VISIBLE_DOTS &&
+                (idx === 0 || idx === end - start - 1);
+              const isActive = i === activePage;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor: isActive
+                        ? "#FFFFFF"
+                        : "rgba(255, 255, 255, 0.25)",
+                      transform: [
+                        { scale: isActive ? 1.25 : isEdge ? 0.65 : 1 },
+                      ],
+                    },
+                  ]}
+                />
+              );
+            });
+          })()}
         </View>
       ) : (
         <View style={styles.indicatorSpacer} />
@@ -413,15 +444,18 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     justifyContent: "space-between",
+    overflow: "hidden",
   },
   scrollWrapper: {
     width: "100%",
+    overflow: "hidden",
   },
   scrollStyle: {
     flex: 1,
   },
   pageContainer: {
     position: "relative",
+    overflow: "hidden",
   },
   gridItem: {
     alignItems: "center",
@@ -434,12 +468,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: spacing.sm,
-    height: 24,
+    height: 18,
     width: "100%",
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   indicatorSpacer: {
-    height: 8,
+    height: 6,
   },
   dot: {
     width: 6,

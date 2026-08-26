@@ -37,7 +37,13 @@ export default function SearchScreen() {
     if (item.type === "app" && item.appInfo) {
       return (
         <View style={styles.iconContainer}>
-          <AppIcon app={item.appInfo} size={32} showLabel={false} onPress={() => {}} />
+          <AppIcon
+            key={item.appInfo.packageName}
+            app={item.appInfo}
+            size={32}
+            showLabel={false}
+            onPress={() => {}}
+          />
         </View>
       );
     }

@@ -221,7 +221,7 @@ class DeLauncherNativeModule : Module() {
           val appInfo = pm.getApplicationInfo(packageName, 0)
           val packageInfo = pm.getPackageInfo(packageName, 0)
           val lastUpdateTime = packageInfo.lastUpdateTime
-          val maxSize = 384
+          val maxSize = 192
           val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
           if (iconFile.exists() && iconFile.length() > 0) {
             "file://" + iconFile.absolutePath
@@ -240,7 +240,7 @@ class DeLauncherNativeModule : Module() {
       appContext.reactContext?.let { context ->
         val pm = context.packageManager
         val cacheDir = context.cacheDir
-        val maxSize = 384
+        val maxSize = 192
         val result = mutableMapOf<String, String?>()
         for (pkg in packageNames) {
           try {
@@ -334,7 +334,7 @@ class DeLauncherNativeModule : Module() {
   private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String, lastUpdateTime: Long = 0L): String? {
     return try {
       val cacheDir = context.cacheDir
-      val maxSize = 384
+      val maxSize = 192
       val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
       
       if (iconFile.exists() && iconFile.length() > 0) {
@@ -359,8 +359,8 @@ class DeLauncherNativeModule : Module() {
         originalBitmap
       }
 
-      val out = java.io.FileOutputStream(iconFile)
-      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+      val out = java.io.BufferedOutputStream(java.io.FileOutputStream(iconFile))
+      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
       out.flush()
       out.close()
       
