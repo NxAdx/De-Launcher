@@ -17,6 +17,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   NODE_VERSION: "20"
 
+permissions:
+  contents: write
+
 jobs:
   # ─── PR gate: fast lint + typecheck only ───
   validate:
@@ -94,3 +97,21 @@ jobs:
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish Public Release Asset
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          name: "De-Launcher Latest Build"
+          body: |
+            ## De-Launcher Latest Build
+            - 🚀 120 FPS High Refresh Rate & Zero-Jank Paging
+            - ⚡ Instant Frame-0 Cold Start with MMKV Persistence
+            - 📱 Bounded Dynamic Grid Height (Zero dock collision)
+            - 🎯 Accurate App Icons in Search & Drawer
+            - 🔘 Direct Top Navigation Touch Responsiveness
+          files: android/app/build/outputs/apk/release/app-release.apk
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
