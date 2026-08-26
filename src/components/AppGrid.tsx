@@ -300,7 +300,7 @@ export function AppGrid({
   const handleScroll = (e: any) => {
     const offsetX = e.nativeEvent.contentOffset.x;
     const page = Math.round(offsetX / SCREEN_WIDTH);
-    setActivePage(page);
+    setActivePage((prev) => (prev !== page ? page : prev));
   };
 
   const handleSwap = useCallback((itemId: string, toIndex: number) => {
@@ -340,7 +340,8 @@ export function AppGrid({
           scrollEnabled={scrollEnabled}
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
-          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScroll}
+          scrollEventThrottle={64}
           decelerationRate="fast"
           style={styles.scrollStyle}
         >

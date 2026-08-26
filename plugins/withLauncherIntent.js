@@ -259,12 +259,23 @@ function addWallpaperTheme(styles) {
   return styles;
 }
 
+function addPerformanceAttributes(androidManifest) {
+  const application = androidManifest.manifest.application?.[0];
+  if (application) {
+    if (!application.$) application.$ = {};
+    application.$["android:hardwareAccelerated"] = "true";
+    application.$["android:largeHeap"] = "true";
+  }
+  return androidManifest;
+}
+
 module.exports = function withLauncherIntent(config) {
   config = withAndroidManifest(config, (config) => {
     config.modResults = addPermissions(config.modResults);
     config.modResults = addQueries(config.modResults);
     config.modResults = addLauncherIntentFilter(config.modResults);
     config.modResults = addAccessibilityService(config.modResults);
+    config.modResults = addPerformanceAttributes(config.modResults);
     return config;
   });
   
@@ -273,9 +284,7 @@ module.exports = function withLauncherIntent(config) {
     return config;
   });
 
-  // Inject onNewIntent HOME press handler into MainActivity.kt
-  // so the native module can detect when the HOME button is pressed
-  // and the app is already the default launcher.
+  // Inject onNewIntent HOME press handler and 120Hz high refresh rate into MainActivity.kt
   config = withDangerousMod(config, [
     "android",
     async (config) => {
@@ -291,7 +300,56 @@ module.exports = function withLauncherIntent(config) {
       if (fs.existsSync(mainActivityPath)) {
         let contents = fs.readFileSync(mainActivityPath, "utf8");
 
-        // Only inject if not already present
+        // 1. Inject enableHighRefreshRate() call in onCreate if missing
+        if (!contents.includes("enableHighRefreshRate()")) {
+          contents = contents.replace(
+            "super.onCreate(null)",
+            "super.onCreate(null)\n    enableHighRefreshRate()"
+          );
+        }
+
+        // 2. Inject enableHighRefreshRate and onNewIntent methods if missing
+        if (!contents.includes("fun enableHighRefreshRate")) {
+          const highFpsCode = `
+  private fun enableHighRefreshRate() {
+    try {
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        val window = window ?: return
+        val display = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+          display
+        } else {
+          @Suppress("DEPRECATION")
+          windowManager.defaultDisplay
+        }
+        val modes = display?.supportedModes ?: return
+        var maxRefreshRate = 60f
+        var bestModeId = 0
+        for (mode in modes) {
+          if (mode.refreshRate > maxRefreshRate) {
+            maxRefreshRate = mode.refreshRate
+            bestModeId = mode.modeId
+          }
+        }
+        if (bestModeId != 0) {
+          val params = window.attributes
+          params.preferredDisplayModeId = bestModeId
+          window.attributes = params
+        }
+      }
+    } catch (e: Exception) {
+      android.util.Log.w("MainActivity", "Failed to set high refresh rate", e)
+    }
+  }`;
+
+          const lastBraceIndex = contents.lastIndexOf("}");
+          if (lastBraceIndex !== -1) {
+            contents =
+              contents.slice(0, lastBraceIndex) +
+              highFpsCode +
+              "\n}\n";
+          }
+        }
+
         if (!contents.includes("onNewIntent")) {
           const homeHandlerCode = `
   private var lastHomePressedTime = 0L
@@ -312,16 +370,16 @@ module.exports = function withLauncherIntent(config) {
       }
   }`;
 
-          // Insert before the final closing brace of the class
           const lastBraceIndex = contents.lastIndexOf("}");
           if (lastBraceIndex !== -1) {
             contents =
               contents.slice(0, lastBraceIndex) +
               homeHandlerCode +
               "\n}\n";
-            fs.writeFileSync(mainActivityPath, contents);
           }
         }
+
+        fs.writeFileSync(mainActivityPath, contents);
       }
 
       return config;

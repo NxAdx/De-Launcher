@@ -21,6 +21,37 @@ class MainActivity : ReactActivity() {
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
     super.onCreate(null)
+    enableHighRefreshRate()
+  }
+
+  private fun enableHighRefreshRate() {
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val window = window ?: return
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          display
+        } else {
+          @Suppress("DEPRECATION")
+          windowManager.defaultDisplay
+        }
+        val modes = display?.supportedModes ?: return
+        var maxRefreshRate = 60f
+        var bestModeId = 0
+        for (mode in modes) {
+          if (mode.refreshRate > maxRefreshRate) {
+            maxRefreshRate = mode.refreshRate
+            bestModeId = mode.modeId
+          }
+        }
+        if (bestModeId != 0) {
+          val params = window.attributes
+          params.preferredDisplayModeId = bestModeId
+          window.attributes = params
+        }
+      }
+    } catch (e: Exception) {
+      android.util.Log.w("MainActivity", "Failed to set high refresh rate", e)
+    }
   }
 
   /**

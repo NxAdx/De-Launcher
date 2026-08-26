@@ -218,7 +218,9 @@ export const AppIcon = memo(function AppIcon({
             ]}
             contentFit="contain"
             cachePolicy="memory-disk"
-            transition={100}
+            priority="high"
+            recyclingKey={app.packageName}
+            transition={0}
           />
         ) : (
           <View
