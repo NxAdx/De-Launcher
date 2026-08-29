@@ -255,18 +255,25 @@ export function AppGrid({
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isAnyDragging = useSharedValue(false);
 
-  // Combine folders and apps into unified grid items
+  // Combine folders and apps into unified grid items with strict deduplication
   const combinedItems: GridItemData[] = useMemo(() => {
     const folderItems: GridItemData[] = folders.map((f) => ({
       id: f.id,
       type: "folder",
       folder: f,
     }));
-    const appItems: GridItemData[] = apps.map((a) => ({
-      id: a.packageName,
-      type: "app",
-      app: a,
-    }));
+    const seen = new Set<string>();
+    const appItems: GridItemData[] = [];
+    for (const a of apps) {
+      if (!seen.has(a.packageName)) {
+        seen.add(a.packageName);
+        appItems.push({
+          id: a.packageName,
+          type: "app",
+          app: a,
+        });
+      }
+    }
     return [...folderItems, ...appItems];
   }, [folders, apps]);
 
@@ -280,8 +287,9 @@ export function AppGrid({
 
   // Dynamically compute how many rows fit in the available measured height
   const INDICATOR_HEIGHT = 20;
-  const availableGridHeight = Math.max(BASE_ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
-  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / BASE_ROW_HEIGHT)));
+  const MIN_ROW_HEIGHT = 70;
+  const availableGridHeight = Math.max(MIN_ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
+  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / MIN_ROW_HEIGHT)));
   const ROWS_PER_PAGE = dynamicRows;
   const rowHeight = Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / dynamicRows));
   const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;

@@ -193,10 +193,17 @@ export function Dock({ onLongPress }: DockProps) {
     const installedByPackage = new Map(
       installedApps.map((app) => [app.packageName, app])
     );
-    return dockPackages
-      .slice(0, maxDockIcons)
-      .map((pkg) => installedByPackage.get(pkg))
-      .filter((app): app is AppInfo => !!app);
+    const seen = new Set<string>();
+    const result: AppInfo[] = [];
+    for (const pkg of dockPackages.slice(0, maxDockIcons)) {
+      if (seen.has(pkg)) continue;
+      const app = installedByPackage.get(pkg);
+      if (app) {
+        seen.add(pkg);
+        result.push(app);
+      }
+    }
+    return result;
   }, [installedApps, dockPackages, maxDockIcons]);
 
   const [orderedApps, setOrderedApps] = useState<AppInfo[]>(dockApps);

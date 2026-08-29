@@ -90,9 +90,17 @@ export default function HomeScreen() {
 
   const allowedApps = useMemo(() => {
     const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
-    return allowedPackages
-      .map((pkg) => appsMap.get(pkg))
-      .filter((app): app is AppInfo => !!app);
+    const seen = new Set<string>();
+    const result: AppInfo[] = [];
+    for (const pkg of allowedPackages) {
+      if (seen.has(pkg)) continue;
+      const app = appsMap.get(pkg);
+      if (app) {
+        seen.add(pkg);
+        result.push(app);
+      }
+    }
+    return result;
   }, [installedApps, allowedPackages]);
 
   const handleAppPress = useCallback(

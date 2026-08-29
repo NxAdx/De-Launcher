@@ -115,3 +115,13 @@ This document tracks all reported issues, technical root causes, implementation 
   1. Implemented `resolveDefaultDockPackages()` in `appManager.ts` dynamically detecting the device's real Dialer, Messages, Browser, Camera, and Photos apps across all OEM brands.
   2. Implemented diff-checking before calling `setInstalledApps(apps)`, ensuring zero layout flashes or re-renders when nothing changed.
   3. Tied `SplashScreen.hideAsync()` to `isReady` so cold launches reveal the home screen only when it is 100% prepared with icons and dock.
+
+### ISSUE-17: End-to-End Strict Package Deduplication (Grid, Dock & Home Memoization)
+* **Symptoms**: Legacy MMKV store data with duplicate packages caused Amazon Pay, Authenticator, or Calculator to render twice on the home screen.
+* **Root Cause**: `allowedPackages` array was mapped without an explicit uniqueness filter before passing to `AppGrid` and `Dock`.
+* **Resolution**: Applied `Set<string>` deduplication guards in `app/index.tsx`, `Dock.tsx`, and `AppGrid.tsx`. Duplicate packages are filtered out at every rendering layer.
+
+### ISSUE-18: Adaptive Grid Row Height Stability & Zero-Eviction Scaling
+* **Symptoms**: Expanding the Daily Focus widget caused the bottom row of app icons to abruptly disappear and get pushed to Page 2.
+* **Root Cause**: `AppGrid` calculated `dynamicRows = Math.floor(availableGridHeight / BASE_ROW_HEIGHT)` using fixed `88px`. A minor height reduction from 265px to 260px immediately halved available rows from 3 to 2, evicting 5 apps to Page 2.
+* **Resolution**: Introduced `MIN_ROW_HEIGHT = 70px` for dynamic row calculation. When widgets expand, the grid maintains its 3-row layout and smoothly scales individual row heights from 88px to 78px without evicting any apps to another page.
