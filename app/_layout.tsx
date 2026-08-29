@@ -4,7 +4,7 @@
  * Owns font loading, providers, native HOME events, and launcher bootstrap.
  */
 import { useEffect, useState } from "react";
-import { InteractionManager, View, Text, AppState } from "react-native";
+import { InteractionManager, AppState } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Stack, ErrorBoundary, router } from "expo-router";
 import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
@@ -26,8 +26,8 @@ import {
   getInstalledApps,
   batchLoadSystemIcons,
   preloadIconPacks,
-  DEFAULT_DOCK_PACKAGES,
-  DEFAULT_ALLOWED_PACKAGES,
+  resolveDefaultDockPackages,
+  resolveDefaultAllowedPackages,
 } from "@/src/services/appManager";
 
 export { ErrorBoundary };
@@ -49,7 +49,6 @@ export function signalNavigation(durationMs = 600) {
 
 function RootLayoutContent() {
   const { colors, isDark } = useTheme();
-  const [error, setError] = useState<Error | null>(null);
   const setInstalledApps = useAppStore((s) => s.setInstalledApps);
   const reorderDock = useAppStore((s) => s.reorderDock);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
@@ -93,63 +92,64 @@ function RootLayoutContent() {
     async function loadApps() {
       try {
         const currentState = useAppStore.getState();
-        const initialDockPackages =
-          currentState.dockPackages.length > 0
-            ? currentState.dockPackages
-            : DEFAULT_DOCK_PACKAGES;
-        const initialAllowedPackages =
-          currentState.allowedPackages.length > 0
-            ? currentState.allowedPackages
-            : DEFAULT_ALLOWED_PACKAGES;
+        const hasCachedApps = currentState.installedApps.length > 0;
 
-        if (currentState.dockPackages.length === 0) {
-          reorderDock(DEFAULT_DOCK_PACKAGES);
-        }
-        if (currentState.allowedPackages.length === 0) {
-          setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
+        // If we already have persisted apps from previous boot, show home screen instantly (0ms)
+        if (hasCachedApps) {
+          setIsReady(true);
         }
 
-        // Fetch only above-the-fold icons before mounting app tiles.
-        const visiblePackages = [
-          ...new Set([...initialDockPackages, ...initialAllowedPackages.slice(0, 20)]),
-        ];
-        const [apps] = await Promise.all([
-          getInstalledApps(),
-          batchLoadSystemIcons(visiblePackages),
-        ]);
+        const apps = await getInstalledApps();
         if (cancelled) return;
-        setInstalledApps(apps);
 
-        // Discovery is useful for Settings, but should not delay launcher paint.
+        // Resolve smart OEM defaults if dock or allowed apps are uninitialized
+        if (currentState.dockPackages.length === 0) {
+          const resolvedDock = resolveDefaultDockPackages(apps);
+          reorderDock(resolvedDock);
+          if (currentState.allowedPackages.length === 0) {
+            setAllowedPackages(resolveDefaultAllowedPackages(apps, resolvedDock));
+          }
+        } else if (currentState.allowedPackages.length === 0) {
+          setAllowedPackages(resolveDefaultAllowedPackages(apps, currentState.dockPackages));
+        }
+
+        // Only commit updates to store if there is an actual difference to prevent layout thrash
+        const currentApps = currentState.installedApps;
+        const hasDiff =
+          currentApps.length !== apps.length ||
+          apps.some(
+            (a, i) =>
+              !currentApps[i] ||
+              currentApps[i].packageName !== a.packageName ||
+              currentApps[i].icon !== a.icon
+          );
+
+        if (hasDiff || !hasCachedApps) {
+          setInstalledApps(apps);
+        }
+
+        // Preload visible icons in background
+        const activeDock = useAppStore.getState().dockPackages;
+        const activeAllowed = useAppStore.getState().allowedPackages;
+        const visiblePackages = [...new Set([...activeDock, ...activeAllowed.slice(0, 20)])];
+        batchLoadSystemIcons(visiblePackages).catch(() => {});
+
+        // Preload icon packs in background without blocking launcher UI
         backgroundTask = InteractionManager.runAfterInteractions(() => {
           preloadIconPacks().catch((iconPackError) =>
             console.warn("[RootLayout] Icon pack preload error:", iconPackError)
           );
         });
+
+        setIsReady(true);
       } catch (loadError) {
         console.error("[RootLayout] Error loading apps:", loadError);
-        try {
-          const currentState = useAppStore.getState();
-          if (currentState.dockPackages.length === 0) {
-            reorderDock(DEFAULT_DOCK_PACKAGES);
-          }
-          if (currentState.allowedPackages.length === 0) {
-            setAllowedPackages(DEFAULT_ALLOWED_PACKAGES);
-          }
-        } catch (fallbackError) {
-          console.error("[RootLayout] Error setting defaults:", fallbackError);
-          setError(
-            fallbackError instanceof Error
-              ? fallbackError
-              : new Error(String(fallbackError))
-          );
-        }
+        setIsReady(true);
       }
     }
 
     loadApps();
     useAppStore.getState().pruneExemptions();
-    setIsReady(true);
 
     return () => {
       cancelled = true;
@@ -157,21 +157,14 @@ function RootLayoutContent() {
     };
   }, [reorderDock, setAllowedPackages, setInstalledApps]);
 
-  if (error) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, textAlign: "center", marginBottom: 10 }}>
-          App Error
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: "center" }}>
-          {error.message}
-        </Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (isReady) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isReady]);
 
   if (!isReady) {
-    return null; // Let Splash screen handle this phase
+    return null; // Keep Splash screen visible during initial scan
   }
 
   return (
@@ -189,25 +182,37 @@ function RootLayoutContent() {
           name="drawer"
           options={{
             animation: "slide_from_bottom",
-            presentation: "modal",
+            presentation: "transparentModal",
           }}
         />
         <Stack.Screen
           name="settings"
           options={{
-            animation: "fade_from_bottom",
+            animation: "slide_from_right",
+          }}
+        />
+        <Stack.Screen
+          name="focus-settings"
+          options={{
+            animation: "slide_from_right",
           }}
         />
         <Stack.Screen
           name="dock-settings"
           options={{
-            animation: "fade_from_bottom",
+            animation: "slide_from_right",
           }}
         />
         <Stack.Screen
-          name="onboarding"
+          name="backup-settings"
           options={{
-            animation: "fade",
+            animation: "slide_from_right",
+          }}
+        />
+        <Stack.Screen
+          name="theme-settings"
+          options={{
+            animation: "slide_from_right",
           }}
         />
         <Stack.Screen
@@ -250,12 +255,6 @@ export default function RootLayout() {
   }, []);
 
   const shouldRender = fontsLoaded || fontError || timedOut;
-
-  useEffect(() => {
-    if (shouldRender) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [shouldRender]);
 
   if (!shouldRender) {
     return null;

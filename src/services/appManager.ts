@@ -18,6 +18,70 @@ import {
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
+export const DEFAULT_DOCK_PACKAGES = [
+  "com.google.android.dialer",
+  "com.google.android.apps.messaging",
+  "com.android.chrome",
+  "com.google.android.gm",
+  "com.google.android.apps.photos",
+];
+
+export const DEFAULT_ALLOWED_PACKAGES: string[] = [];
+
+/**
+ * Automatically resolve default dock packages based on actual installed apps across all Android OEMs.
+ */
+export function resolveDefaultDockPackages(installedApps: AppInfo[]): string[] {
+  if (!installedApps || installedApps.length === 0) return DEFAULT_DOCK_PACKAGES;
+  const packages = new Set(installedApps.map((a) => a.packageName));
+
+  const dialer = installedApps.find((a) =>
+    (/dialer|phone/i.test(a.packageName) || /phone/i.test(a.label)) && !/voice|recording/i.test(a.label)
+  )?.packageName;
+
+  const messages = installedApps.find((a) =>
+    /messaging|messages|mms|sms/i.test(a.packageName) || /messages/i.test(a.label)
+  )?.packageName;
+
+  const browser = installedApps.find((a) =>
+    /chrome|browser|firefox|opera/i.test(a.packageName) || /chrome|browser/i.test(a.label)
+  )?.packageName;
+
+  const camera = installedApps.find((a) =>
+    /camera/i.test(a.packageName) || /camera/i.test(a.label)
+  )?.packageName;
+
+  const photos = installedApps.find((a) =>
+    /photos|gallery|albums/i.test(a.packageName) || /photos|gallery|albums/i.test(a.label)
+  )?.packageName;
+
+  const resolved = [dialer, messages, browser, camera, photos].filter(
+    (pkg): pkg is string => !!pkg && packages.has(pkg)
+  );
+
+  // Fill up to 5 with other non-system apps if needed
+  if (resolved.length < 5) {
+    for (const app of installedApps) {
+      if (resolved.length >= 5) break;
+      if (!resolved.includes(app.packageName)) {
+        resolved.push(app.packageName);
+      }
+    }
+  }
+
+  return [...new Set(resolved)];
+}
+
+/**
+ * Automatically resolve default home screen apps from installed apps excluding dock items.
+ */
+export function resolveDefaultAllowedPackages(installedApps: AppInfo[], dockPackages: string[]): string[] {
+  const dockSet = new Set(dockPackages);
+  return installedApps
+    .map((a) => a.packageName)
+    .filter((pkg) => !dockSet.has(pkg));
+}
+
 const PREVIEW_APPS: AppInfo[] = [
   {
     packageName: "com.google.android.dialer",
@@ -330,36 +394,6 @@ export async function changeWallpaper(): Promise<void> {
     console.error("[AppManager] Error opening wallpaper picker:", error);
   }
 }
-
-/**
- * Default apps that should be in the dock on first install.
- */
-export const DEFAULT_DOCK_PACKAGES = [
-  "com.google.android.dialer",
-  "com.google.android.apps.messaging",
-  "com.android.chrome",
-  "com.google.android.gm",
-  "com.google.android.calendar",
-];
-
-/**
- * Default allowed apps — productivity-friendly apps that won't be blocked.
- */
-export const DEFAULT_ALLOWED_PACKAGES = [
-  "com.google.android.dialer",
-  "com.google.android.apps.messaging",
-  "com.google.android.gm",
-  "com.google.android.apps.maps",
-  "com.google.android.calendar",
-  "com.android.settings",
-  "com.android.chrome",
-  "com.google.android.keep",
-  "com.google.android.apps.docs",
-  "com.todoist",
-  "com.notion.id",
-  "com.slack",
-  "com.google.android.apps.photos",
-];
 
 /**
  * Apps commonly considered "distracting" — social media, short-form video, infinite feeds, games.

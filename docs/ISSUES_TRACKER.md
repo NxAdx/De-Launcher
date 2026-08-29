@@ -107,3 +107,11 @@ This document tracks all reported issues, technical root causes, implementation 
 * **Symptoms**: On cold launch, the bottom dock was completely empty and icons popped in late.
 * **Root Cause**: `Dock.tsx` initialized `dockWidth` to `0`, making `slotWidth` zero until `onLayout` fired asynchronously.
 * **Resolution**: Initialized `dockWidth` directly from `useWindowDimensions().width`, ensuring `slotWidth > 0` on frame 0 and dock icons render immediately.
+
+### ISSUE-16: OEM Smart Dock Auto-Detection & Zero-Flicker Diff Reconciliation
+* **Symptoms**: On non-Pixel devices (Samsung, Vivo, Xiaomi, Oppo), the dock initialized empty because default Google package names did not exist. Background app scans triggered store re-renders causing home screen jump.
+* **Root Cause**: Hardcoded `DEFAULT_DOCK_PACKAGES` assuming Pixel apps; `_layout.tsx` called `setInstalledApps()` unconditionally even if the installed app list had zero changes.
+* **Resolution**: Inspired by Lawnchair, KISS, and Kvaesitso architecture:
+  1. Implemented `resolveDefaultDockPackages()` in `appManager.ts` dynamically detecting the device's real Dialer, Messages, Browser, Camera, and Photos apps across all OEM brands.
+  2. Implemented diff-checking before calling `setInstalledApps(apps)`, ensuring zero layout flashes or re-renders when nothing changed.
+  3. Tied `SplashScreen.hideAsync()` to `isReady` so cold launches reveal the home screen only when it is 100% prepared with icons and dock.
