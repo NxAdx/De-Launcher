@@ -15,9 +15,6 @@ import {
   StyleSheet,
   Pressable,
   TextInput,
-  LayoutAnimation,
-  Platform,
-  UIManager,
 } from "react-native";
 import { Check, Plus, Trash2, ChevronDown, ChevronUp, Flame } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -26,10 +23,6 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useTodoStore, HeatmapDay } from "@/src/store/todoStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
-
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -92,8 +85,7 @@ export function TodoStreakWidget() {
 
   const toggleExpand = () => {
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setIsExpanded(!isExpanded);
+    setIsExpanded((prev) => !prev);
   };
 
   const handleAdd = () => {

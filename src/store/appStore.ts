@@ -74,23 +74,23 @@ export const useAppStore = create<AppState>()(
         const installedPackageNames = new Set(apps.map((a) => a.packageName));
         const current = get();
 
-        // Sanitize existing lists by removing apps that are no longer installed
-        const sanitizedAllowed = current.allowedPackages.filter((pkg) =>
+        // Sanitize existing lists by removing apps that are no longer installed and deduplicating
+        const sanitizedAllowed = [...new Set(current.allowedPackages.filter((pkg) =>
           installedPackageNames.has(pkg)
-        );
-        const sanitizedDock = current.dockPackages.filter((pkg) =>
+        ))];
+        const sanitizedDock = [...new Set(current.dockPackages.filter((pkg) =>
           installedPackageNames.has(pkg)
-        );
-        const sanitizedIntentPause = current.intentPausePackages.filter((pkg) =>
+        ))];
+        const sanitizedIntentPause = [...new Set(current.intentPausePackages.filter((pkg) =>
           installedPackageNames.has(pkg)
-        );
+        ))];
 
         // Sanitize folders
         const sanitizedFolders = (current.folders || []).map((f) => ({
           ...f,
-          packageNames: f.packageNames.filter((pkg) =>
+          packageNames: [...new Set(f.packageNames.filter((pkg) =>
             installedPackageNames.has(pkg)
-          ),
+          ))],
         }));
 
         const sanitizedExemptions = { ...current.exemptions };

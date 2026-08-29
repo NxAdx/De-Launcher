@@ -87,3 +87,23 @@ This document tracks all reported issues, technical root causes, implementation 
   2. Enabled `android:hardwareAccelerated="true"` and `android:largeHeap="true"` in AndroidManifest.
   3. Throttled scroll handling with state guards (`setActivePage((prev) => (prev !== page ? page : prev))`), cutting JS bridge event traffic during swipe gestures by 4x.
   4. Configured `transition={0}`, `priority="high"`, and `recyclingKey` on `Image` in `AppIcon.tsx` for instantaneous zero-latency icon paints.
+
+### ISSUE-12: Instant Frame-0 Icon Rendering (No Initial Fallback Initials)
+* **Symptoms**: On cold boot, the launcher initially showed colorful circle avatars with letter initials before pop-in replacement with real app icons.
+* **Root Cause**: `getInstalledApps()` in Kotlin previously hardcoded `"icon" to null`, relying on asynchronous `batchLoadSystemIcons()` after React render. In-memory `systemIconCache` was empty on launch, forcing `AppIcon` to fall back to initials on first paint.
+* **Resolution**: Updated `getInstalledApps()` in `DeLauncherNativeModule.kt` and `appManager.ts` to directly resolve and return cached `file://` icon URIs on initial query. When `useAppStore` persists `installedApps` in MMKV, every app carries its real icon file path on frame 0, eliminating letter avatars and pop-in completely.
+
+### ISSUE-13: Duplicate App Icons on Home Screen (Multi-Activity Deduplication)
+* **Symptoms**: Certain apps (Amazon Pay, Authenticator, Canta, Calculator) appeared multiple times on the home screen.
+* **Root Cause**: `LauncherApps.getActivityList()` returns all launcher activities per package. Apps with multiple entry points (e.g. Amazon shopping + Amazon Pay shortcut) produced duplicate package entries in `appList`.
+* **Resolution**: Added package-level deduplication via `seenPackages` HashSet in `DeLauncherNativeModule.kt`, `appManager.ts`, and `appStore.ts`, guaranteeing each installed package appears exactly once.
+
+### ISSUE-14: TodoStreakWidget Expansion Jumps & Glitches
+* **Symptoms**: Tapping to expand the Daily Focus widget caused app grid icons to jump, clip, and temporarily glitch beneath the widget before settling.
+* **Root Cause**: `TodoStreakWidget.tsx` called legacy `LayoutAnimation.configureNext()`. On Android, native view-level layout animation directly conflicts with Reanimated UI thread transform worklets in `AppGrid`, causing view bounds and transforms to fight during the 300ms transition.
+* **Resolution**: Removed `LayoutAnimation.configureNext()`, letting Reanimated handle layout and fade transitions smoothly without disturbing native view frames.
+
+### ISSUE-15: Frame-0 Dock Icon Layout Initialization
+* **Symptoms**: On cold launch, the bottom dock was completely empty and icons popped in late.
+* **Root Cause**: `Dock.tsx` initialized `dockWidth` to `0`, making `slotWidth` zero until `onLayout` fired asynchronously.
+* **Resolution**: Initialized `dockWidth` directly from `useWindowDimensions().width`, ensuring `slotWidth > 0` on frame 0 and dock icons render immediately.

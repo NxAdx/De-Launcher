@@ -9,7 +9,7 @@
  * - Haptic feedback integration
  */
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { LayoutChangeEvent, StyleSheet, View, Platform } from "react-native";
+import { LayoutChangeEvent, StyleSheet, View, Platform, useWindowDimensions } from "react-native";
 import Animated, {
   FadeInDown,
   runOnJS,
@@ -172,7 +172,8 @@ export function Dock({ onLongPress }: DockProps) {
   const installedApps = useAppStore((s) => s.installedApps);
   const dockPackages = useAppStore((s) => s.dockPackages);
   const reorderDock = useAppStore((s) => s.reorderDock);
-  const [dockWidth, setDockWidth] = useState(0);
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const [dockWidth, setDockWidth] = useState(() => Math.max(200, SCREEN_WIDTH - spacing.md * 2));
 
   const getBaseIconSize = () => {
     switch (iconSizeOption) {

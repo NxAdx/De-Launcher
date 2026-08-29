@@ -90,8 +90,26 @@ export async function getInstalledApps(): Promise<AppInfo[]> {
     if (apps.length === 0) {
       return PREVIEW_APPS;
     }
+
+    // Pre-populate systemIconCache with real icon URIs
+    for (const app of apps) {
+      if (app.icon) {
+        systemIconCache.set(app.packageName, app.icon);
+      }
+    }
+
+    // Deduplicate in JS as an additional safety guard
+    const seen = new Set<string>();
+    const uniqueApps: AppInfo[] = [];
+    for (const app of apps) {
+      if (!seen.has(app.packageName)) {
+        seen.add(app.packageName);
+        uniqueApps.push(app);
+      }
+    }
+
     // Sort alphabetically by label
-    return apps.sort((a, b) => a.label.localeCompare(b.label));
+    return uniqueApps.sort((a, b) => a.label.localeCompare(b.label));
   } catch (error) {
     console.error("[AppManager] Error fetching apps:", error);
     return PREVIEW_APPS;

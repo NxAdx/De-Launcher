@@ -21,8 +21,12 @@ class DeLauncherNativeModule : Module() {
     AsyncFunction("getInstalledApps") { ->
       appContext.reactContext?.let { context ->
         val appList = mutableListOf<Map<String, Any?>>()
+        val seenPackages = HashSet<String>()
         val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as? android.content.pm.LauncherApps
         val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as? android.os.UserManager
+        val pm = context.packageManager
+        val cacheDir = context.cacheDir
+        val maxSize = 192
 
         if (launcherApps != null && userManager != null) {
           try {
@@ -33,9 +37,26 @@ class DeLauncherNativeModule : Module() {
                 val packageName = info.applicationInfo.packageName
                 // Exclude our own launcher app
                 if (packageName == context.packageName) continue
+                // Deduplicate packages so apps with multiple launcher activities only appear once
+                if (seenPackages.contains(packageName)) continue
+                seenPackages.add(packageName)
 
                 val label = info.label.toString()
-                val iconUri: String? = null
+                var iconUri: String? = null
+                try {
+                  val packageInfo = pm.getPackageInfo(packageName, 0)
+                  val lastUpdateTime = packageInfo.lastUpdateTime
+                  val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
+                  if (iconFile.exists() && iconFile.length() > 0) {
+                    iconUri = "file://" + iconFile.absolutePath
+                  } else {
+                    val drawable = info.getIcon(0) ?: info.applicationInfo.loadIcon(pm)
+                    iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
+                  }
+                } catch (e: Exception) {
+                  // Fallback: icon will load on demand
+                }
+
                 val isSystem = (info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
                 appList.add(
@@ -54,7 +75,6 @@ class DeLauncherNativeModule : Module() {
         }
 
         if (appList.isEmpty()) {
-          val pm = context.packageManager
           val intent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
           }
@@ -64,9 +84,26 @@ class DeLauncherNativeModule : Module() {
             val packageName = resolveInfo.activityInfo.packageName
             // Exclude our own launcher app
             if (packageName == context.packageName) continue
+            // Deduplicate packages
+            if (seenPackages.contains(packageName)) continue
+            seenPackages.add(packageName)
 
             val label = resolveInfo.loadLabel(pm).toString()
-            val iconUri: String? = null
+            var iconUri: String? = null
+            try {
+              val packageInfo = pm.getPackageInfo(packageName, 0)
+              val lastUpdateTime = packageInfo.lastUpdateTime
+              val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
+              if (iconFile.exists() && iconFile.length() > 0) {
+                iconUri = "file://" + iconFile.absolutePath
+              } else {
+                val drawable = resolveInfo.loadIcon(pm)
+                iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
+              }
+            } catch (e: Exception) {
+              // Fallback
+            }
+
             val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
             appList.add(
