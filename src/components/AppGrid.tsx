@@ -229,9 +229,10 @@ function DraggableGridItem({
   );
 }
 
-interface AppGridProps {
+export interface AppGridProps {
   apps: AppInfo[];
   folders?: FolderInfo[];
+  isTodoExpanded?: boolean;
   onPress: (app: AppInfo) => void;
   onLongPress: (app: AppInfo) => void;
   onFolderPress?: (folder: FolderInfo) => void;
@@ -241,6 +242,7 @@ interface AppGridProps {
 export function AppGrid({
   apps,
   folders = [],
+  isTodoExpanded = false,
   onPress,
   onLongPress,
   onFolderPress,
@@ -250,10 +252,18 @@ export function AppGrid({
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
-  const [measuredHeight, setMeasuredHeight] = useState(380);
+  const [measuredHeight, setMeasuredHeight] = useState(isTodoExpanded ? 240 : 380);
   const [activePage, setActivePage] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isAnyDragging = useSharedValue(false);
+
+  useEffect(() => {
+    if (isTodoExpanded) {
+      setMeasuredHeight((prev) => (prev > 260 ? 240 : prev));
+    } else {
+      setMeasuredHeight((prev) => (prev < 320 ? 380 : prev));
+    }
+  }, [isTodoExpanded]);
 
   // Combine folders and apps into unified grid items with strict deduplication
   const combinedItems: GridItemData[] = useMemo(() => {

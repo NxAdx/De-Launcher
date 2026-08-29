@@ -125,3 +125,8 @@ This document tracks all reported issues, technical root causes, implementation 
 * **Symptoms**: Expanding the Daily Focus widget caused the bottom row of app icons to abruptly disappear and get pushed to Page 2.
 * **Root Cause**: `AppGrid` calculated `dynamicRows = Math.floor(availableGridHeight / BASE_ROW_HEIGHT)` using fixed `88px`. A minor height reduction from 265px to 260px immediately halved available rows from 3 to 2, evicting 5 apps to Page 2.
 * **Resolution**: Introduced `MIN_ROW_HEIGHT = 70px` for dynamic row calculation. When widgets expand, the grid maintains its 3-row layout and smoothly scales individual row heights from 88px to 78px without evicting any apps to another page.
+
+### ISSUE-19: Synchronous Widget Expansion Coordination (Zero-Frame Layout Lag)
+* **Symptoms**: Toggling the Daily Focus widget showed a 1-frame visual collision where row 3 overlapped the dock before snapping to its new position.
+* **Root Cause**: `TodoStreakWidget` managed `isExpanded` locally, while `AppGrid` relied on asynchronous `onLayout` measurements. For 1-2 frames after expansion, `AppGrid` still rendered with the old 380px collapsed height before `onLayout` fired, rendering row 3 down into the dock.
+* **Resolution**: Lifted `isTodoExpanded` to `HomeScreen` and passed it synchronously into both `TodoStreakWidget` and `AppGrid`. `AppGrid` adjusts its baseline height on the exact same render frame, eliminating layout lag and visual collisions.

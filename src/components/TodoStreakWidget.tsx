@@ -32,7 +32,12 @@ function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-export function TodoStreakWidget() {
+interface TodoStreakWidgetProps {
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+}
+
+export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpand }: TodoStreakWidgetProps = {}) {
   const { colors, isDark } = useTheme();
   const showTodoWidget = useSettingsStore((s) => s.showTodoWidget);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
@@ -52,20 +57,20 @@ export function TodoStreakWidget() {
     [allTodos, todayStr]
   );
 
-  const heatmapData = useMemo(() => {
+  const heatmapData = useMemo<HeatmapDay[]>(() => {
     const result: HeatmapDay[] = [];
-    const today = new Date();
+    const now = new Date();
 
-    for (let i = 28 - 1; i >= 0; i--) {
-      const d = new Date(today);
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
       const day = String(d.getDate()).padStart(2, "0");
-      const dateStr = `${year}-${month}-${day}`;
-      const count = history[dateStr] || 0;
+      const dateStr = `${y}-${m}-${day}`;
 
-      let level: 0 | 1 | 2 | 3 | 4 = 0;
+      const count = history[dateStr] ?? 0;
+      let level: HeatmapDay["level"] = 0;
       if (count >= 4) level = 4;
       else if (count === 3) level = 3;
       else if (count === 2) level = 2;
@@ -77,7 +82,8 @@ export function TodoStreakWidget() {
     return result;
   }, [history]);
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
   const [newTodoText, setNewTodoText] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
@@ -85,7 +91,11 @@ export function TodoStreakWidget() {
 
   const toggleExpand = () => {
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsExpanded((prev) => !prev);
+    if (onToggleExpand) {
+      onToggleExpand();
+    } else {
+      setInternalExpanded((prev) => !prev);
+    }
   };
 
   const handleAdd = () => {

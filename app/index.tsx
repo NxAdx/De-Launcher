@@ -54,6 +54,7 @@ export default function HomeScreen() {
 
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<FolderInfo | null>(null);
+  const [isTodoExpanded, setIsTodoExpanded] = useState(false);
 
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
   const [showBlockedBanner, setShowBlockedBanner] = useState(false);
@@ -194,7 +195,10 @@ export default function HomeScreen() {
           <HomeSearchWidget />
 
           {/* Daily Focus Tasks & Streak Widget */}
-          <TodoStreakWidget />
+          <TodoStreakWidget
+            isExpanded={isTodoExpanded}
+            onToggleExpand={() => setIsTodoExpanded((prev) => !prev)}
+          />
 
           {/* App & Folder Grid */}
           <Animated.View
@@ -209,6 +213,7 @@ export default function HomeScreen() {
             <AppGrid
               apps={allowedApps}
               folders={folders}
+              isTodoExpanded={isTodoExpanded}
               onPress={handleAppPress}
               onLongPress={handleAppLongPress}
               onFolderPress={handleFolderPress}
