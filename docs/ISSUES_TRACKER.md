@@ -146,3 +146,13 @@ This document tracks all reported issues, technical root causes, implementation 
   2. `PAGE_SIZE = gridColumns * lockedRows` stays constant across widget expansions. Only `rowHeight` adapts (compresses from 88px → 60px) to fit within the available space.
   3. Removed the `isTodoExpanded` effect that artificially overrode `measuredHeight`, which was fighting with `onLayout` and causing double state updates.
 
+### ISSUE-22: Full-App 120 FPS Spring Physics & Jitter-Free Animation Architecture
+* **Symptoms**: Animation transitions felt sluggish, micro-stuttered on high-refresh-rate displays (90Hz/120Hz), and expanding widgets suffered from mount/unmount layout jumps.
+* **Root Cause**: Spring presets had low stiffness (180–280) and high mass (0.8–0.9), causing long settling times; `TodoStreakWidget` conditionally mounted/unmounted elements with `FadeIn/FadeOut` causing layout thrash; scroll throttles were set to `64ms` (4 frames behind at 60fps, 8 frames behind at 120fps); enter animations had arbitrary 150ms–200ms delay timers.
+* **Resolution** (Inspired by Lawnchair & Kvaesitso animation architecture):
+  1. Tuned all spring tokens in `tokens.ts` for 120Hz displays (`snappy`: stiffness 400, mass 0.4; `stiff`: stiffness 450, mass 0.4; `drag`: stiffness 500, mass 0.3).
+  2. Converted `TodoStreakWidget` expansion to continuous `useAnimatedStyle` animating `maxHeight` and `opacity` together without unmounting.
+  3. Removed enter delays across `AppGrid`, `Dock`, and `Drawer`, making all launcher transitions instant.
+  4. Updated `scrollEventThrottle` to `16ms` for frame-synchronized page indicators and horizontal momentum physics.
+
+

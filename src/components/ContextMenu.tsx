@@ -97,7 +97,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Animated.View
-          entering={FadeInDown.duration(250)}
+          entering={FadeInDown.duration(150)}
           style={[styles.menuContainer, { backgroundColor: colors.surface }]}
         >
           {/* App Title inside Menu */}

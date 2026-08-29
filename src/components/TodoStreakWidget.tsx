@@ -8,7 +8,7 @@
  * - Streak counter
  * - Collapsible / expandable minimal design
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -18,7 +18,12 @@ import {
 } from "react-native";
 import { Check, Plus, Trash2, ChevronDown, ChevronUp, Flame } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useTodoStore, HeatmapDay } from "@/src/store/todoStore";
@@ -177,10 +182,9 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
         </View>
       </Pressable>
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={styles.expandedBody}>
-          {/* GitHub-style Contribution Heatmap Matrix (4 columns of 7 days) */}
+      {/* Expanded Content — animated height for smooth 120fps transition */}
+      <ExpandableBody isExpanded={isExpanded}>
+        {/* GitHub-style Contribution Heatmap Matrix (4 columns of 7 days) */}
           <View style={styles.heatmapSection}>
             <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
               Consistency (Last 4 Weeks)
@@ -277,9 +281,36 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
               </Pressable>
             )}
           </View>
-        </Animated.View>
-      )}
+      </ExpandableBody>
     </View>
+  );
+}
+
+/**
+ * ExpandableBody — Smooth 120fps height animation using Reanimated.
+ * Always mounted (no mount/unmount jank). Opacity + maxHeight animate together.
+ * Inspired by Kvaesitso's fluid widget expansion.
+ */
+function ExpandableBody({ isExpanded, children }: { isExpanded: boolean; children: React.ReactNode }) {
+  const progress = useSharedValue(isExpanded ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(isExpanded ? 1 : 0, {
+      duration: 250,
+      easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+    });
+  }, [isExpanded, progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    maxHeight: progress.value * 400,
+    opacity: progress.value,
+    overflow: "hidden" as const,
+  }));
+
+  return (
+    <Animated.View style={[styles.expandedBody, animatedStyle]}>
+      {children}
+    </Animated.View>
   );
 }
 

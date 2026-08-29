@@ -183,7 +183,7 @@ export default function DrawerScreen() {
 
       {/* Header */}
       <Animated.View
-        entering={FadeInDown.duration(300)}
+        entering={FadeInDown.duration(150)}
         style={styles.header}
       >
         <Pressable

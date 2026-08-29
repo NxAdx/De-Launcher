@@ -190,15 +190,18 @@ export const durations = {
   slow: 350,
 } as const;
 
-// ─── Spring Presets (react-native-reanimated) ───────────
+// ─── Spring Presets (react-native-reanimated, tuned for 120fps) ─────
 export const springs = {
   /** Quick, snappy interactions (buttons, toggles, dock icons) */
-  snappy: { damping: 15, stiffness: 280, mass: 0.6 },
+  snappy: { damping: 20, stiffness: 400, mass: 0.4 },
   /** Gentle settling (page transitions, large element moves) */
-  gentle: { damping: 20, stiffness: 180, mass: 0.8 },
+  gentle: { damping: 22, stiffness: 260, mass: 0.5 },
   /** Bouncy feedback (lift/drop, scale pops) */
-  bouncy: { damping: 12, stiffness: 200, mass: 0.5 },
-  stiff: { damping: 22, stiffness: 350, mass: 0.5 },
+  bouncy: { damping: 14, stiffness: 300, mass: 0.35 },
+  /** Stiff, no-overshoot (grid repositioning, layout shifts) */
+  stiff: { damping: 28, stiffness: 450, mass: 0.4 },
+  /** Ultra-responsive for drag tracking */
+  drag: { damping: 24, stiffness: 500, mass: 0.3 },
 } as const;
 
 // ─── Layout ─────────────────────────────────────────────

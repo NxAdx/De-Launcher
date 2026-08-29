@@ -18,7 +18,7 @@ import * as Haptics from "expo-haptics";
 import { AppIcon } from "./AppIcon";
 import { FolderIcon } from "./FolderIcon";
 import { AppInfo, FolderInfo } from "@/src/types/app";
-import { spacing } from "@/src/theme/tokens";
+import { spacing, springs } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 
@@ -100,8 +100,8 @@ function DraggableGridItem({
 
   useEffect(() => {
     if (!isDragging.value) {
-      x.value = withSpring(targetX, { damping: 18, stiffness: 240, mass: 0.9 });
-      y.value = withSpring(targetY, { damping: 18, stiffness: 240, mass: 0.9 });
+      x.value = withSpring(targetX, springs.stiff);
+      y.value = withSpring(targetY, springs.stiff);
     }
   }, [isDragging, targetX, targetY, x, y]);
 
@@ -120,8 +120,8 @@ function DraggableGridItem({
         runOnJS(setScrollEnabled)(false);
         startX.value = x.value;
         startY.value = y.value;
-        scale.value = withSpring(1.15, { damping: 15, stiffness: 200, mass: 0.8 });
-        rotation.value = withSpring(4, { damping: 15, stiffness: 200, mass: 0.8 });
+        scale.value = withSpring(1.15, springs.bouncy);
+        rotation.value = withSpring(4, springs.bouncy);
         zIndex.value = 999;
         runOnJS(triggerHaptic)();
       })
@@ -154,8 +154,8 @@ function DraggableGridItem({
       .onFinalize(() => {
         isDragging.value = false;
         isAnyDragging.value = false;
-        scale.value = withSpring(1, { damping: 18, stiffness: 240 });
-        rotation.value = withSpring(0, { damping: 18, stiffness: 240 });
+        scale.value = withSpring(1, springs.stiff);
+        rotation.value = withSpring(0, springs.stiff);
         zIndex.value = 1;
         lastSwappedIndex.value = -1;
         runOnJS(setScrollEnabled)(true);
@@ -365,7 +365,7 @@ export function AppGrid({
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           onMomentumScrollEnd={handleScroll}
-          scrollEventThrottle={64}
+          scrollEventThrottle={16}
           decelerationRate="fast"
           style={styles.scrollStyle}
         >

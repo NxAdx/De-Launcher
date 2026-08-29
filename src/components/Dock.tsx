@@ -258,7 +258,7 @@ export function Dock({ onLongPress }: DockProps) {
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(400).delay(200)}
+      entering={FadeInDown.duration(200)}
       style={[
         styles.dockWrapper,
         {

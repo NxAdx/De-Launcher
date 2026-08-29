@@ -202,7 +202,7 @@ export default function HomeScreen() {
 
           {/* App & Folder Grid */}
           <Animated.View
-            entering={FadeInUp.duration(400).delay(150)}
+            entering={FadeInUp.duration(200)}
             style={[
               styles.gridContainer,
               {
