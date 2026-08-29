@@ -154,12 +154,16 @@ export const useAppStore = create<AppState>()(
           newIntentPause.push(packageName);
         }
 
-        set({ allowedPackages: newAllowed, intentPausePackages: newIntentPause });
+        // Deduplicate to prevent duplicate entries from persisting
+        set({
+          allowedPackages: [...new Set(newAllowed)],
+          intentPausePackages: [...new Set(newIntentPause)],
+        });
         get().syncNativeWhitelist();
       },
 
       setAllowedPackages: (packages) => {
-        set({ allowedPackages: packages });
+        set({ allowedPackages: [...new Set(packages)] });
         get().syncNativeWhitelist();
       },
 
@@ -405,6 +409,18 @@ export const useAppStore = create<AppState>()(
         scheduleRules: state.scheduleRules,
         exemptions: state.exemptions,
       }),
+      // On MMKV hydration, force-deduplicate any stale duplicate entries
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const deduped = [...new Set(state.allowedPackages)];
+          const dedupedDock = [...new Set(state.dockPackages)];
+          if (deduped.length !== state.allowedPackages.length ||
+              dedupedDock.length !== state.dockPackages.length) {
+            state.allowedPackages = deduped;
+            state.dockPackages = dedupedDock;
+          }
+        }
+      },
     }
   )
 );

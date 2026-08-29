@@ -257,14 +257,6 @@ export function AppGrid({
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isAnyDragging = useSharedValue(false);
 
-  useEffect(() => {
-    if (isTodoExpanded) {
-      setMeasuredHeight((prev) => (prev > 260 ? 240 : prev));
-    } else {
-      setMeasuredHeight((prev) => (prev < 320 ? 380 : prev));
-    }
-  }, [isTodoExpanded]);
-
   // Combine folders and apps into unified grid items with strict deduplication
   const combinedItems: GridItemData[] = useMemo(() => {
     const folderItems: GridItemData[] = folders.map((f) => ({
@@ -295,13 +287,27 @@ export function AppGrid({
     setOrderedItems(combinedItems);
   }, [combinedItems]);
 
-  // Dynamically compute how many rows fit in the available measured height
+  // Lock ROWS_PER_PAGE on first measurement so PAGE_SIZE never changes when
+  // the widget expands/collapses — only rowHeight compresses/expands.
+  // This prevents apps from jumping between pages.
   const INDICATOR_HEIGHT = 20;
-  const MIN_ROW_HEIGHT = 70;
-  const availableGridHeight = Math.max(MIN_ROW_HEIGHT, measuredHeight - INDICATOR_HEIGHT);
-  const dynamicRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / MIN_ROW_HEIGHT)));
-  const ROWS_PER_PAGE = dynamicRows;
-  const rowHeight = Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / dynamicRows));
+  const lockedRowsRef = useRef<number | null>(null);
+
+  const availableGridHeight = Math.max(70, measuredHeight - INDICATOR_HEIGHT);
+
+  // Compute ideal rows from current height
+  const idealRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / 70)));
+
+  // Lock on first valid measurement (collapsed state gives us the max rows)
+  if (lockedRowsRef.current === null && measuredHeight > 100) {
+    lockedRowsRef.current = idealRows;
+  }
+
+  // Use locked rows if available, otherwise use ideal
+  const ROWS_PER_PAGE = lockedRowsRef.current ?? idealRows;
+
+  // rowHeight adapts to available space but PAGE_SIZE stays constant
+  const rowHeight = Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / ROWS_PER_PAGE));
   const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;
   const numPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
 

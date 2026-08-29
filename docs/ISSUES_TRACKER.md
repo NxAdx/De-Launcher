@@ -130,3 +130,19 @@ This document tracks all reported issues, technical root causes, implementation 
 * **Symptoms**: Toggling the Daily Focus widget showed a 1-frame visual collision where row 3 overlapped the dock before snapping to its new position.
 * **Root Cause**: `TodoStreakWidget` managed `isExpanded` locally, while `AppGrid` relied on asynchronous `onLayout` measurements. For 1-2 frames after expansion, `AppGrid` still rendered with the old 380px collapsed height before `onLayout` fired, rendering row 3 down into the dock.
 * **Resolution**: Lifted `isTodoExpanded` to `HomeScreen` and passed it synchronously into both `TodoStreakWidget` and `AppGrid`. `AppGrid` adjusts its baseline height on the exact same render frame, eliminating layout lag and visual collisions.
+
+### ISSUE-20: MMKV Hydration Duplicate Persistence (Canta×2, Canva×2 Still Present)
+* **Symptoms**: Even after adding `Set<string>` in render code, duplicates persisted visually (Canta appeared twice, Canva appeared twice) across app restarts.
+* **Root Cause**: The `allowedPackages` array stored in MMKV already contained duplicates from *before* the deduplication code was added. `setAppFocusState` used `.push()` without checking uniqueness. `setAllowedPackages` stored raw arrays. On MMKV hydration, Zustand loaded the stale duplicated array directly into state without sanitizing it.
+* **Resolution** (Inspired by Kvaesitso's clean data model):
+  1. Added `onRehydrateStorage` hook in Zustand persist config that force-deduplicates `allowedPackages` and `dockPackages` using `[...new Set()]` on every cold boot.
+  2. Wrapped `setAllowedPackages` and `setAppFocusState` with `[...new Set()]` at the setter level so duplicates can never enter the store again.
+
+### ISSUE-21: Widget Toggle Icon Shuffle (PAGE_SIZE Instability)
+* **Symptoms**: Expanding Daily Focus caused page 1 to show completely different apps (Calendar→Chalo, Camera→ChatGPT). Collapsing restored the original set. Icons appeared to "shuffle" or "jump" between pages.
+* **Root Cause**: `ROWS_PER_PAGE` was recalculated on every render from `Math.floor(availableGridHeight / 70)`. When the widget expanded, `measuredHeight` dropped from ~380px to ~240px, causing `dynamicRows` to drop from 3→2. This changed `PAGE_SIZE` from 15→10, causing `orderedItems.slice(0, PAGE_SIZE)` to show a completely different set of apps on page 1.
+* **Resolution** (Inspired by Lawnchair's stable grid architecture):
+  1. Introduced `lockedRowsRef` — a `useRef` that captures `ROWS_PER_PAGE` on the first valid `onLayout` measurement and never changes again.
+  2. `PAGE_SIZE = gridColumns * lockedRows` stays constant across widget expansions. Only `rowHeight` adapts (compresses from 88px → 60px) to fit within the available space.
+  3. Removed the `isTodoExpanded` effect that artificially overrode `measuredHeight`, which was fighting with `onLayout` and causing double state updates.
+
