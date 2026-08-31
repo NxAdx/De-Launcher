@@ -42,31 +42,33 @@ export function HomeSearchWidget({ styleOverride }: HomeSearchWidgetProps) {
         return [
           styles.pillContainer,
           {
-            backgroundColor: isDark
-              ? "rgba(255, 255, 255, 0.06)"
-              : "rgba(0, 0, 0, 0.05)",
-            borderColor: colors.border,
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
           },
         ];
       case "rounded":
         return [
           styles.roundedContainer,
           {
-            backgroundColor: isDark
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(0, 0, 0, 0.04)",
-            borderColor: colors.border,
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
           },
         ];
       case "minimal":
         return [
           styles.minimalContainer,
           {
-            borderBottomColor: colors.border,
+            borderBottomColor: colors.cardBorder,
           },
         ];
       default:
-        return styles.pillContainer;
+        return [
+          styles.pillContainer,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+          },
+        ];
     }
   };
 
@@ -82,9 +84,9 @@ export function HomeSearchWidget({ styleOverride }: HomeSearchWidgetProps) {
         accessibilityRole="button"
         accessibilityLabel="Search apps and actions"
       >
-        <Search size={18} color={colors.textTertiary} style={styles.icon} />
+        <Search size={18} color={colors.textSecondary} style={styles.icon} />
         <Text
-          style={[styles.placeholderText, { color: colors.textTertiary }]}
+          style={[styles.placeholderText, { color: colors.textSecondary }]}
           numberOfLines={1}
         >
           Search apps, settings, actions...
@@ -103,28 +105,28 @@ const styles = StyleSheet.create({
   baseContainer: {
     flexDirection: "row",
     alignItems: "center",
-    height: 46,
+    height: 48,
     paddingHorizontal: spacing.lg,
   },
   pillContainer: {
     borderRadius: 24,
-    borderWidth: 1,
+    borderWidth: 1.2,
   },
   roundedContainer: {
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.2,
   },
   minimalContainer: {
     borderRadius: 0,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     paddingHorizontal: spacing.xs,
-    height: 40,
+    height: 42,
   },
   icon: {
     marginRight: spacing.sm,
   },
   placeholderText: {
-    fontFamily: typography.family.regular,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     flex: 1,
   },

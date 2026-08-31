@@ -91,7 +91,7 @@ export function Clock() {
         <Text style={[styles.time, { color: colors.textPrimary }]}>
           {formatTime(now)}
         </Text>
-        <Text style={[styles.period, { color: colors.textTertiary }]}>
+        <Text style={[styles.period, { color: colors.textSecondary }]}>
           {formatPeriod(now)}
         </Text>
       </Animated.View>
@@ -99,7 +99,7 @@ export function Clock() {
       {/* Date */}
       <Animated.Text
         entering={FadeInUp.duration(400).delay(120)}
-        style={[styles.date, { color: colors.textSecondary }]}
+        style={[styles.date, { color: colors.textPrimary }]}
       >
         {formatDate(now)}
       </Animated.Text>
@@ -114,11 +114,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   greeting: {
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
-    letterSpacing: 1.5,
+    letterSpacing: 1.8,
     textTransform: "uppercase",
     marginBottom: spacing.xs,
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   timeRow: {
     flexDirection: "row",
@@ -130,16 +133,25 @@ const styles = StyleSheet.create({
     fontSize: 56,
     letterSpacing: -3,
     includeFontPadding: false,
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   period: {
-    fontFamily: typography.family.light,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.lg,
     marginBottom: spacing.sm,
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   date: {
-    fontFamily: typography.family.light,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     marginTop: spacing.xxs,
     letterSpacing: 0.5,
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });

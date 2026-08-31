@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
-import { Settings, ShieldAlert, Search, LayoutGrid } from "lucide-react-native";
+import { Settings, ShieldAlert, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
@@ -172,20 +172,20 @@ export default function HomeScreen() {
               <Pressable
                 onPress={handleOpenSearch}
                 hitSlop={16}
-                style={styles.iconButton}
+                style={[styles.iconButton, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
                 accessibilityRole="button"
                 accessibilityLabel="Open search and command bar"
               >
-                <Search size={22} color={colors.textSecondary} />
+                <Search size={20} color={colors.textPrimary} />
               </Pressable>
               <Pressable
                 onPress={handleOpenSettings}
                 hitSlop={16}
-                style={styles.iconButton}
+                style={[styles.iconButton, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
                 accessibilityRole="button"
                 accessibilityLabel="Open settings"
               >
-                <Settings size={22} color={colors.textSecondary} />
+                <Settings size={20} color={colors.textPrimary} />
               </Pressable>
             </View>
           </View>
@@ -223,27 +223,9 @@ export default function HomeScreen() {
               onPress={handleAppPress}
               onLongPress={handleAppLongPress}
               onFolderPress={handleFolderPress}
+              onAllAppsPress={handleOpenDrawer}
             />
           </Animated.View>
-
-          {/* All Apps Button — visible affordance for drawer */}
-          <View style={styles.allAppsContainer}>
-            <Pressable
-              onPress={handleOpenDrawer}
-              style={({ pressed }) => [
-                styles.allAppsButton,
-                { borderColor: colors.borderFocused },
-                pressed && { opacity: 0.7, transform: [{ scale: 0.97 }] },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Open all apps drawer"
-            >
-              <LayoutGrid size={16} color={colors.textSecondary} />
-              <Text style={[styles.allAppsText, { color: colors.textSecondary }]}>
-                All Apps
-              </Text>
-            </Pressable>
-          </View>
         </View>
       </GestureDetector>
 
@@ -309,12 +291,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   iconButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 21,
+    borderWidth: 1.2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   contentArea: {
     flex: 1,
@@ -340,23 +327,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   blockedBannerText: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
-  },
-  allAppsContainer: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-  allAppsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  allAppsText: {
     fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
   },

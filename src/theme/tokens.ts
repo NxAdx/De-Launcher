@@ -5,7 +5,7 @@
  * Based on an 8dp grid, OLED-first dark palette, and Inter typography.
  */
 
-// ─── Colors (Design System v1.0 — Sage Green Identity) ─────
+// ─── Colors (Design System v1.0 — Sage Green Identity & Wallpaper Contrast) ─────
 export const palette = {
   // Core
   black: "#000000",
@@ -17,6 +17,8 @@ export const palette = {
     surface: "#121212",
     surfaceElevated: "#181818",
     surfaceOverlay: "rgba(0,0,0,0.7)",
+    cardBg: "rgba(18, 18, 18, 0.78)",
+    cardBorder: "rgba(255, 255, 255, 0.16)",
     border: "#242424",
     borderFocused: "#343434",
   },
@@ -27,31 +29,33 @@ export const palette = {
     surface: "#FFFFFF",
     surfaceElevated: "#FFFFFF",
     surfaceOverlay: "rgba(255,255,255,0.7)",
+    cardBg: "rgba(255, 255, 255, 0.88)",
+    cardBorder: "rgba(0, 0, 0, 0.12)",
     border: "rgba(0, 0, 0, 0.08)",
     borderFocused: "rgba(0, 0, 0, 0.16)",
   },
 
-  // Text on dark bg
+  // Text on dark / wallpaper bg
   textDark: {
-    primary: "#F2F2F2",
-    secondary: "#9A9A9A",
-    tertiary: "#666666",
+    primary: "#FFFFFF",
+    secondary: "#E2E8F0",
+    tertiary: "#94A3B8",
     disabled: "rgba(255, 255, 255, 0.20)",
   },
 
   // Text on light bg
   textLight: {
     primary: "#171916",
-    secondary: "#60675E",
-    tertiary: "#747A72",
+    secondary: "#475569",
+    tertiary: "#64748B",
     disabled: "rgba(0, 0, 0, 0.20)",
   },
 
   // Accent — Sage Green. The single brand signal.
   accent: "#657D5C",
-  accentMuted: "rgba(101, 125, 92, 0.15)",
-  // Lighter tint for decorative elements (greeting text)
-  accentTint: "#9BAD93",
+  accentMuted: "rgba(101, 125, 92, 0.20)",
+  // Lighter tint for decorative elements & high readability over dark/photo wallpapers
+  accentTint: "#A3B899",
 
   // Semantic
   error: "#EF4444",
@@ -73,6 +77,8 @@ export function getThemeColors(mode: ThemeMode) {
     surfaceOverlay: isDark
       ? palette.dark.surfaceOverlay
       : palette.light.surfaceOverlay,
+    cardBg: isDark ? palette.dark.cardBg : palette.light.cardBg,
+    cardBorder: isDark ? palette.dark.cardBorder : palette.light.cardBorder,
     border: isDark ? palette.dark.border : palette.light.border,
     borderFocused: isDark
       ? palette.dark.borderFocused
@@ -90,7 +96,7 @@ export function getThemeColors(mode: ThemeMode) {
       ? palette.textDark.disabled
       : palette.textLight.disabled,
     accent: isDark ? palette.accent : "#4F6548",
-    accentMuted: isDark ? palette.accentMuted : "rgba(79, 101, 72, 0.15)",
+    accentMuted: isDark ? palette.accentMuted : "rgba(79, 101, 72, 0.20)",
     accentTint: isDark ? palette.accentTint : "#4F6548",
     error: palette.error,
     success: palette.success,

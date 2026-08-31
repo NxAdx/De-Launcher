@@ -165,5 +165,18 @@ This document tracks all reported issues, technical root causes, implementation 
   4. Updated `android/app/src/main/res/values/colors.xml` with `colorPrimary` set to brand sage green `#657D5C`.
   5. Integrated the logo into the Onboarding Welcome flow and Settings brand footer.
 
+### ISSUE-24: Wallpaper Legibility, Frosted Cards & All Apps Dock Collision Fix
+* **Symptoms**:
+  1. Search & Settings buttons in top header, Search widget text, Daily Focus widget text, Clock date, and app labels were faint or invisible against bright photo wallpapers (e.g. snow mountains, skies).
+  2. `All Apps` pill button rendered behind/underneath the floating Capsule Dock, causing a visual collision.
+* **Root Cause**:
+  1. Widgets and buttons used 3%–6% opacity backgrounds with `#666666`/`#9A9A9A` text and no text shadows, causing complete loss of contrast over wallpaper.
+  2. `All Apps` was rendered outside `gridContainer` in `index.tsx` at the bottom of `contentArea`, overlapping the fixed `position: absolute` Dock.
+* **Resolution**:
+  1. Introduced `cardBg` (`rgba(18, 18, 18, 0.78)` dark / `rgba(255, 255, 255, 0.88)` light) and `cardBorder` (`rgba(255, 255, 255, 0.16)`) tokens across `HomeSearchWidget`, `TodoStreakWidget`, `AppGrid` footer, and top header `iconButton`s.
+  2. Added pixel-perfect text shadows across `Clock`, `AppIcon` labels, and greeting text for legibility over any wallpaper (bright snow, sunset, dark photo).
+  3. Moved `All Apps` pill button inside `AppGrid` footer directly above pagination dots, calculating proper available grid height so it never collides with the Dock.
+
+
 
 

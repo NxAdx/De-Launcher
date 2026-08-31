@@ -139,7 +139,7 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
   const completedCount = todos.filter((t) => t.completed).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
       {/* Compact Header — matching Design System mockup */}
       <Pressable
         onPress={toggleExpand}
@@ -147,7 +147,7 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
         accessibilityRole="button"
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.focusIconCircle, { borderColor: colors.accent }]}>
+          <View style={[styles.focusIconCircle, { borderColor: colors.accent, backgroundColor: colors.accentMuted }]}>
             <CircleDot size={16} color={colors.accent} />
           </View>
           <View style={styles.headerTextGroup}>
@@ -155,17 +155,17 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
               <Text style={[styles.title, { color: colors.textPrimary }]}>
                 DAILY FOCUS
               </Text>
-              <Text style={[styles.taskCount, { color: colors.textTertiary }]}>
+              <Text style={[styles.taskCount, { color: colors.accentTint }]}>
                 {completedCount} / {todos.length} completed
               </Text>
             </View>
-            <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Stay intentional. Make progress.
             </Text>
           </View>
         </View>
 
-        <ChevronRight size={20} color={colors.textTertiary} />
+        <ChevronRight size={20} color={colors.textSecondary} />
       </Pressable>
 
       {/* Expanded Content — animated height for smooth 120fps transition */}

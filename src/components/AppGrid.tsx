@@ -5,7 +5,7 @@
  * Supports interactive drag-to-reorder custom gestures with smooth spring tilt/scale animations.
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
+import { View, StyleSheet, ScrollView, useWindowDimensions, Pressable, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,11 +14,13 @@ import Animated, {
   SharedValue,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { LayoutGrid } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { useTheme } from "@/src/theme/ThemeContext";
 import { AppIcon } from "./AppIcon";
 import { FolderIcon } from "./FolderIcon";
 import { AppInfo, FolderInfo } from "@/src/types/app";
-import { spacing, springs } from "@/src/theme/tokens";
+import { spacing, springs, typography } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 
@@ -237,6 +239,7 @@ export interface AppGridProps {
   onLongPress: (app: AppInfo) => void;
   onFolderPress?: (folder: FolderInfo) => void;
   onFolderLongPress?: (folder: FolderInfo) => void;
+  onAllAppsPress?: () => void;
 }
 
 export function AppGrid({
@@ -247,7 +250,9 @@ export function AppGrid({
   onLongPress,
   onFolderPress,
   onFolderLongPress,
+  onAllAppsPress,
 }: AppGridProps) {
+  const { colors, isDark } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
@@ -290,10 +295,18 @@ export function AppGrid({
   // Lock ROWS_PER_PAGE on first measurement so PAGE_SIZE never changes when
   // the widget expands/collapses — only rowHeight compresses/expands.
   // This prevents apps from jumping between pages.
-  const INDICATOR_HEIGHT = 20;
   const lockedRowsRef = useRef<number | null>(null);
 
-  const availableGridHeight = Math.max(70, measuredHeight - INDICATOR_HEIGHT);
+  const numPagesEstimated = Math.max(1, Math.ceil(orderedItems.length / (gridColumns * 3)));
+  const FOOTER_HEIGHT = onAllAppsPress
+    ? numPagesEstimated > 1
+      ? 64
+      : 44
+    : numPagesEstimated > 1
+    ? 22
+    : 0;
+
+  const availableGridHeight = Math.max(70, measuredHeight - FOOTER_HEIGHT);
 
   // Compute ideal rows from current height
   const idealRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / 70)));
@@ -416,50 +429,72 @@ export function AppGrid({
         </ScrollView>
       </View>
 
-      {numPages > 1 ? (
-        <View style={styles.pageIndicator}>
-          {(() => {
-            const MAX_VISIBLE_DOTS = 6;
-            let start = 0;
-            let end = numPages;
-            if (numPages > MAX_VISIBLE_DOTS) {
-              start = Math.max(
-                0,
-                Math.min(
-                  activePage - Math.floor(MAX_VISIBLE_DOTS / 2),
-                  numPages - MAX_VISIBLE_DOTS
-                )
-              );
-              end = start + MAX_VISIBLE_DOTS;
-            }
-            return Array.from({ length: end - start }).map((_, idx) => {
-              const i = start + idx;
-              const isEdge =
-                numPages > MAX_VISIBLE_DOTS &&
-                (idx === 0 || idx === end - start - 1);
-              const isActive = i === activePage;
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor: isActive
-                        ? "#FFFFFF"
-                        : "rgba(255, 255, 255, 0.25)",
-                      transform: [
-                        { scale: isActive ? 1.25 : isEdge ? 0.65 : 1 },
-                      ],
-                    },
-                  ]}
-                />
-              );
-            });
-          })()}
-        </View>
-      ) : (
-        <View style={styles.indicatorSpacer} />
-      )}
+      {/* Grid Footer: All Apps pill button + Pagination dots */}
+      <View style={styles.gridFooter}>
+        {onAllAppsPress && (
+          <Pressable
+            onPress={onAllAppsPress}
+            style={({ pressed }) => [
+              styles.allAppsButton,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+              },
+              pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Open all apps drawer"
+          >
+            <LayoutGrid size={15} color={colors.textPrimary} />
+            <Text style={[styles.allAppsText, { color: colors.textPrimary }]}>
+              All Apps
+            </Text>
+          </Pressable>
+        )}
+
+        {numPages > 1 && (
+          <View style={styles.pageIndicator}>
+            {(() => {
+              const MAX_VISIBLE_DOTS = 6;
+              let start = 0;
+              let end = numPages;
+              if (numPages > MAX_VISIBLE_DOTS) {
+                start = Math.max(
+                  0,
+                  Math.min(
+                    activePage - Math.floor(MAX_VISIBLE_DOTS / 2),
+                    numPages - MAX_VISIBLE_DOTS
+                  )
+                );
+                end = start + MAX_VISIBLE_DOTS;
+              }
+              return Array.from({ length: end - start }).map((_, idx) => {
+                const i = start + idx;
+                const isEdge =
+                  numPages > MAX_VISIBLE_DOTS &&
+                  (idx === 0 || idx === end - start - 1);
+                const isActive = i === activePage;
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor: isActive
+                          ? "#FFFFFF"
+                          : "rgba(255, 255, 255, 0.35)",
+                        transform: [
+                          { scale: isActive ? 1.3 : isEdge ? 0.65 : 1 },
+                        ],
+                      },
+                    ]}
+                  />
+                );
+              });
+            })()}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -488,17 +523,40 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  gridFooter: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  allAppsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1.2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  allAppsText: {
+    fontFamily: typography.family.bold,
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
   pageIndicator: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: spacing.sm,
-    height: 18,
+    height: 14,
     width: "100%",
     marginTop: 2,
-  },
-  indicatorSpacer: {
-    height: 6,
   },
   dot: {
     width: 6,

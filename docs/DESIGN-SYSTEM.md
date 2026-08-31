@@ -27,11 +27,13 @@
 | `bg` | `transparent` (wallpaper shows through) | Primary background |
 | `surface` | `#121212` | Cards, grouped settings, elevated content |
 | `surfaceElevated` | `#181818` | Higher-elevation overlays |
+| `cardBg` | `rgba(18, 18, 18, 0.78)` | Frosted cards over active wallpaper |
+| `cardBorder` | `rgba(255, 255, 255, 0.16)` | Frosted card borders |
 | `border` | `#242424` | Dividers, card borders |
 | `borderFocused` | `#343434` | Focused input borders, interactive outlines |
-| `textPrimary` | `#F2F2F2` | Primary text |
-| `textSecondary` | `#9A9A9A` | Descriptions, secondary metadata |
-| `textTertiary` | `#666666` | Hints, tertiary content |
+| `textPrimary` | `#FFFFFF` | Primary text (with drop shadow on wallpaper) |
+| `textSecondary` | `#E2E8F0` | Descriptions, secondary metadata |
+| `textTertiary` | `#94A3B8` | Hints, tertiary content |
 
 ### Light Mode
 
@@ -39,9 +41,11 @@
 |---|---|---|
 | `bg` | `transparent` | Background |
 | `surface` | `#FFFFFF` | Cards |
+| `cardBg` | `rgba(255, 255, 255, 0.88)` | Semi-opaque cards over wallpaper |
+| `cardBorder` | `rgba(0, 0, 0, 0.12)` | Card borders |
 | `textPrimary` | `#171916` | Primary text |
-| `textSecondary` | `#60675E` | Secondary text |
-| `textTertiary` | `#747A72` | Tertiary text |
+| `textSecondary` | `#475569` | Secondary text |
+| `textTertiary` | `#64748B` | Tertiary text |
 
 ### Accent — Sage Green
 
@@ -49,8 +53,8 @@
 |---|---|---|
 | `accent` (dark) | `#657D5C` | Selected states, focus indicators, switches |
 | `accent` (light) | `#4F6548` | Same purpose, darker for light bg |
-| `accentMuted` | `rgba(101, 125, 92, 0.15)` | Hover/pressed states |
-| `accentTint` | `#9BAD93` | Greeting text, decorative elements |
+| `accentMuted` | `rgba(101, 125, 92, 0.20)` | Hover/pressed states, icon circles |
+| `accentTint` | `#A3B899` | Greeting text, decorative elements, tags |
 
 ### Semantic Colors
 
