@@ -16,7 +16,7 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { Check, Plus, Trash2, Flame, CircleDot, ChevronRight } from "lucide-react-native";
+import { Check, Plus, Trash2, Flame, Target, ChevronRight } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
@@ -148,7 +148,7 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
       >
         <View style={styles.headerLeft}>
           <View style={[styles.focusIconCircle, { borderColor: colors.accent, backgroundColor: colors.accentMuted }]}>
-            <CircleDot size={16} color={colors.accent} />
+            <Target size={15} color={colors.accent} strokeWidth={2.2} />
           </View>
           <View style={styles.headerTextGroup}>
             <View style={styles.headerTopRow}>
@@ -165,7 +165,7 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
           </View>
         </View>
 
-        <ChevronRight size={20} color={colors.textSecondary} />
+        <ChevronRight size={18} color={colors.textSecondary} style={{ marginRight: 2 }} />
       </Pressable>
 
       {/* Expanded Content — animated height for smooth 120fps transition */}
@@ -314,22 +314,23 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: spacing.xl,
     marginVertical: spacing.xs,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 24,
+    borderWidth: 1.2,
     overflow: "hidden",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    minHeight: 52,
   },
   headerLeft: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   streakBadge: {
     flexDirection: "row",
@@ -360,19 +361,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   title: {
-    fontFamily: typography.family.semiBold,
-    fontSize: typography.size.xs,
+    fontFamily: typography.family.bold,
+    fontSize: 12,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   taskCount: {
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
+    fontFamily: typography.family.medium,
+    fontSize: 12,
   },
   subtitle: {
     fontFamily: typography.family.regular,
     fontSize: 11,
-    marginTop: 1,
+    marginTop: 2,
   },
   headerRight: {
     flexDirection: "row",

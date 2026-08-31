@@ -39,7 +39,7 @@ import { signalNavigation } from "./_layout";
 import { AppInfo, FolderInfo } from "@/src/types/app";
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const statusBarHeight = RNStatusBar.currentHeight ?? insets.top ?? 24;
 
@@ -172,7 +172,13 @@ export default function HomeScreen() {
               <Pressable
                 onPress={handleOpenSearch}
                 hitSlop={16}
-                style={[styles.iconButton, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                style={[
+                  styles.iconButton,
+                  {
+                    backgroundColor: isDark ? "rgba(22, 22, 22, 0.9)" : "rgba(250, 250, 250, 0.95)",
+                    borderColor: isDark ? "rgba(255, 255, 255, 0.16)" : "rgba(0, 0, 0, 0.1)",
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Open search and command bar"
               >
@@ -181,7 +187,13 @@ export default function HomeScreen() {
               <Pressable
                 onPress={handleOpenSettings}
                 hitSlop={16}
-                style={[styles.iconButton, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                style={[
+                  styles.iconButton,
+                  {
+                    backgroundColor: isDark ? "rgba(22, 22, 22, 0.9)" : "rgba(250, 250, 250, 0.95)",
+                    borderColor: isDark ? "rgba(255, 255, 255, 0.16)" : "rgba(0, 0, 0, 0.1)",
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Open settings"
               >
@@ -296,12 +308,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 21,
-    borderWidth: 1.2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
   },
   contentArea: {
     flex: 1,

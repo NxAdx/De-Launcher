@@ -166,16 +166,27 @@ This document tracks all reported issues, technical root causes, implementation 
   5. Integrated the logo into the Onboarding Welcome flow and Settings brand footer.
 
 ### ISSUE-24: Wallpaper Legibility, Frosted Cards & All Apps Dock Collision Fix
+* **Symptoms**: Search/settings buttons and widget text washed out on bright wallpaper; All Apps collided with Dock.
+* **Root Cause**: Low card opacity (<6%) and rendering All Apps outside grid container.
+* **Resolution**: Introduced `cardBg` frosted tokens, text shadows on Clock/AppIcon labels, and moved All Apps into AppGrid footer.
+
+### ISSUE-25: Elimination of Double-Layer Ghost Shadows, Daily Focus Pill Alignment & Dock Artifacts
 * **Symptoms**:
-  1. Search & Settings buttons in top header, Search widget text, Daily Focus widget text, Clock date, and app labels were faint or invisible against bright photo wallpapers (e.g. snow mountains, skies).
-  2. `All Apps` pill button rendered behind/underneath the floating Capsule Dock, causing a visual collision.
+  1. Top-right Search and Settings header buttons appeared with an unwanted blurry "double-layer" (dark shadow offset behind translucent button).
+  2. Daily Focus widget shape looked mismatched (rectangular 16px radius vs 24px pill search bar) and the chevron arrow was jammed against the right border.
+  3. Concentric triple-ring visual defect in Daily Focus icon circle.
+  4. Faint rectangular shadow line artifact visible under the floating Dock.
 * **Root Cause**:
-  1. Widgets and buttons used 3%–6% opacity backgrounds with `#666666`/`#9A9A9A` text and no text shadows, causing complete loss of contrast over wallpaper.
-  2. `All Apps` was rendered outside `gridContainer` in `index.tsx` at the bottom of `contentArea`, overlapping the fixed `position: absolute` Dock.
+  1. React Native `elevation` on Android applied to semi-transparent backgrounds (`rgba(...)`) causes Android RenderNode to cast a harsh bounding shadow behind the transparent fill, creating a double-layer visual artifact.
+  2. `TodoStreakWidget` used `borderRadius: 16` instead of `24`, and `header` had insufficient horizontal padding.
+  3. `CircleDot` icon was rendered inside a bordered circular View, creating three concentric rings.
+  4. `Dock.tsx` `frostedCard` had `elevation: 6` on a translucent card.
 * **Resolution**:
-  1. Introduced `cardBg` (`rgba(18, 18, 18, 0.78)` dark / `rgba(255, 255, 255, 0.88)` light) and `cardBorder` (`rgba(255, 255, 255, 0.16)`) tokens across `HomeSearchWidget`, `TodoStreakWidget`, `AppGrid` footer, and top header `iconButton`s.
-  2. Added pixel-perfect text shadows across `Clock`, `AppIcon` labels, and greeting text for legibility over any wallpaper (bright snow, sunset, dark photo).
-  3. Moved `All Apps` pill button inside `AppGrid` footer directly above pagination dots, calculating proper available grid height so it never collides with the Dock.
+  1. Removed `elevation` across all semi-transparent headers, docks, and buttons (`iconButton`, `frostedCard`, `allAppsButton`), replacing with clean borders (`1.0–1.2px`) and solid frosted fills (`rgba(18, 18, 18, 0.85)`).
+  2. Updated `TodoStreakWidget` to `borderRadius: 24` with `paddingHorizontal: spacing.lg` and `minHeight: 52`, harmoniously matching `HomeSearchWidget`.
+  3. Replaced `CircleDot` inside Daily Focus with crisp `Target` icon.
+  4. Right-aligned `ChevronRight` with proper margin and padding.
+
 
 
 

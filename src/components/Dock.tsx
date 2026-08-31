@@ -273,11 +273,11 @@ export function Dock({ onLongPress }: DockProps) {
             styles.frostedCard,
             {
               backgroundColor: isDark
-                ? "rgba(255, 255, 255, 0.08)"
-                : "rgba(255, 255, 255, 0.75)",
+                ? "rgba(18, 18, 18, 0.85)"
+                : "rgba(255, 255, 255, 0.88)",
               borderColor: isDark
-                ? "rgba(255, 255, 255, 0.14)"
-                : "rgba(0, 0, 0, 0.08)",
+                ? "rgba(255, 255, 255, 0.16)"
+                : "rgba(0, 0, 0, 0.12)",
             },
           ],
         ]}
@@ -333,11 +333,6 @@ const styles = StyleSheet.create({
   },
   frostedCard: {
     borderWidth: 1.2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
   },
   iconsContainer: {
     flex: 1,
