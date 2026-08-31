@@ -10,6 +10,8 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
 import { CommandItem, performSearch } from "@/src/services/commandEngine";
+import { isKnownDistraction } from "@/src/services/appManager";
+import { signalNavigation } from "./_layout";
 import { AppIcon } from "@/src/components/AppIcon";
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
@@ -73,10 +75,41 @@ export default function SearchScreen() {
         ]}
         onPress={() => {
           Keyboard.dismiss();
+          if (item.type === "app" && item.appInfo) {
+            const pkg = item.appInfo.packageName;
+            const schedule = useAppStore.getState().isAppWithinSchedule(pkg);
+            if (!schedule.allowed) {
+              signalNavigation();
+              router.push(
+                `/intent-pause?pkg=${pkg}&reason=${encodeURIComponent(
+                  schedule.reason || ""
+                )}` as any
+              );
+              return;
+            }
+
+            const state = useAppStore.getState().getAppFocusState(pkg);
+            const distraction = isKnownDistraction(pkg);
+            const hasExemption = useAppStore.getState().hasActiveExemption(pkg);
+
+            if (
+              (state === "intent_pause" || state === "blocked" || distraction) &&
+              !hasExemption
+            ) {
+              signalNavigation();
+              router.push(`/intent-pause?pkg=${pkg}` as any);
+              return;
+            }
+
+            item.action();
+            signalNavigation();
+            router.back();
+            return;
+          }
+
           item.action();
-          // We can optionally dismiss the search screen here, but often actions launch new apps.
-          // For settings actions, it might be good to dismiss.
           if (item.type === "action") {
+            signalNavigation();
             router.back();
           }
         }}

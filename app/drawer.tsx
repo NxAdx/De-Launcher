@@ -34,6 +34,8 @@ export default function DrawerScreen() {
   const getAppFocusState = useAppStore((s) => s.getAppFocusState);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const scheduleRules = useAppStore((s) => s.scheduleRules);
+  const isAppWithinSchedule = useAppStore((s) => s.isAppWithinSchedule);
+  const hasActiveExemption = useAppStore((s) => s.hasActiveExemption);
 
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
 
@@ -60,11 +62,38 @@ export default function DrawerScreen() {
     return apps;
   }, [installedApps, searchQuery, filterMode, allowedPackages]);
 
-  const handleAppPress = useCallback((app: AppInfo) => {
-    launchApp(app.packageName);
-    signalNavigation();
-    router.back();
-  }, []);
+  const handleAppPress = useCallback(
+    (app: AppInfo) => {
+      const schedule = isAppWithinSchedule(app.packageName);
+      if (!schedule.allowed) {
+        signalNavigation();
+        router.push(
+          `/intent-pause?pkg=${app.packageName}&reason=${encodeURIComponent(
+            schedule.reason || ""
+          )}` as any
+        );
+        return;
+      }
+
+      const state = getAppFocusState(app.packageName);
+      const distraction = isKnownDistraction(app.packageName);
+      const hasExemption = hasActiveExemption(app.packageName);
+
+      if (
+        (state === "intent_pause" || state === "blocked" || distraction) &&
+        !hasExemption
+      ) {
+        signalNavigation();
+        router.push(`/intent-pause?pkg=${app.packageName}` as any);
+        return;
+      }
+
+      launchApp(app.packageName);
+      signalNavigation();
+      router.back();
+    },
+    [isAppWithinSchedule, getAppFocusState, hasActiveExemption]
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: AppInfo }) => {

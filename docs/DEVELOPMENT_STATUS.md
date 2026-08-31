@@ -8,6 +8,11 @@ De-Launcher is a functional prototype on Expo SDK 55. The React Native interface
 
 ## Completed
 
+- Psychological Intentionality Engine:
+  - Intentional Pinning Checkpoint (`IntentionalPinModal.tsx`) requiring thoughtful reasons to add apps to Home/Dock with anti-copy-paste protection.
+  - Persistent pinning commitment reasons displayed on App Context Menus.
+  - 4-Step Mindful Opening Protocol (`intent-pause.tsx`) with Goal Definition (anti-copy-paste), Session Time Limits (3m/5m/10m/15m), Daily Focus Prerequisite Check, and 3-second Mindfulness Cooldown.
+  - Universal Mindful Gate protection applied across Home, Drawer, Search Command Bar, and Dock.
 - Official Brand Icon & Adaptive Icon integration across `assets/`, native Android mipmaps (`mdpi` through `xxxhdpi`), splashscreen drawables, onboarding, and settings.
 - Design System v1.0 UI overhaul with Sage Green (`#657D5C`) identity, OLED surface tokens, 56px light clock display, compact Daily Focus card, and "All Apps" pill button.
 - 120 FPS buttery-smooth spring physics engine and continuous widget expansion worklets.

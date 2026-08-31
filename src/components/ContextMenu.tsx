@@ -27,6 +27,7 @@ import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { AppInfo, ScheduleType } from "@/src/types/app";
+import { IntentionalPinModal } from "./IntentionalPinModal";
 
 interface ContextMenuProps {
   selectedApp: AppInfo | null;
@@ -46,6 +47,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const addAppToFolder = useAppStore((s) => s.addAppToFolder);
   const setAppScheduleRule = useAppStore((s) => s.setAppScheduleRule);
   const scheduleRules = useAppStore((s) => s.scheduleRules) || {};
+  const appReasons = useAppStore((s) => s.appReasons) || {};
 
   const dockPackages = useAppStore((s) => s.dockPackages) || [];
   const allowedPackages = useAppStore((s) => s.allowedPackages) || [];
@@ -54,6 +56,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinTarget, setPinTarget] = useState<"home" | "dock">("home");
 
   if (!selectedApp) return null;
 
@@ -108,6 +112,13 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
             <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
               {selectedApp.packageName}
             </Text>
+            {appReasons[selectedApp.packageName] && (
+              <View style={[styles.reasonBadge, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
+                <Text style={[styles.reasonBadgeText, { color: colors.accent }]} numberOfLines={2}>
+                  📌 Pinned for: {appReasons[selectedApp.packageName]}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Sub-view: Schedule Picker */}
@@ -327,13 +338,13 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                     <Pressable
                       style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                       onPress={() => {
-                        addToDock(selectedApp.packageName);
-                        onClose();
+                        setPinTarget("dock");
+                        setShowPinModal(true);
                       }}
                     >
                       <Plus size={18} color={colors.textPrimary} />
                       <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Add to Dock
+                        Add to Dock (Requires Reason)
                       </Text>
                     </Pressable>
                   )}
@@ -373,13 +384,13 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                 <Pressable
                   style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                   onPress={() => {
-                    setAppFocusState(selectedApp.packageName, "allowed");
-                    onClose();
+                    setPinTarget("home");
+                    setShowPinModal(true);
                   }}
                 >
                   <Plus size={18} color={colors.textPrimary} />
                   <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                    Add to Home Screen
+                    Add to Home Screen (Requires Reason)
                   </Text>
                 </Pressable>
               )}
@@ -396,6 +407,16 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
           )}
         </Animated.View>
       </Pressable>
+
+      {/* Intentional Pinning Checkpoint Modal */}
+      <IntentionalPinModal
+        app={showPinModal ? selectedApp : null}
+        target={pinTarget}
+        onClose={() => {
+          setShowPinModal(false);
+          onClose();
+        }}
+      />
     </Modal>
   );
 }
@@ -427,6 +448,19 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     marginTop: 2,
+  },
+  reasonBadge: {
+    marginTop: spacing.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxWidth: "100%",
+  },
+  reasonBadgeText: {
+    fontFamily: typography.family.medium,
+    fontSize: 11,
+    lineHeight: 15,
   },
   sectionTitle: {
     fontFamily: typography.family.bold,

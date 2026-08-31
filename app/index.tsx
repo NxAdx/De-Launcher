@@ -34,7 +34,7 @@ import { TodoStreakWidget } from "@/src/components/TodoStreakWidget";
 import { FolderModal } from "@/src/components/FolderModal";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { launchApp } from "@/src/services/appManager";
+import { launchApp, isKnownDistraction } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { AppInfo, FolderInfo } from "@/src/types/app";
 
@@ -51,6 +51,8 @@ export default function HomeScreen() {
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const folders = useAppStore((s) => s.folders) || [];
   const isAppWithinSchedule = useAppStore((s) => s.isAppWithinSchedule);
+  const getAppFocusState = useAppStore((s) => s.getAppFocusState);
+  const hasActiveExemption = useAppStore((s) => s.hasActiveExemption);
 
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<FolderInfo | null>(null);
@@ -112,9 +114,20 @@ export default function HomeScreen() {
         router.push(`/intent-pause?pkg=${app.packageName}&reason=${encodeURIComponent(schedule.reason || "")}` as any);
         return;
       }
+
+      const state = getAppFocusState(app.packageName);
+      const distraction = isKnownDistraction(app.packageName);
+      const hasExemption = hasActiveExemption(app.packageName);
+
+      if ((state === "intent_pause" || state === "blocked" || distraction) && !hasExemption) {
+        if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        router.push(`/intent-pause?pkg=${app.packageName}` as any);
+        return;
+      }
+
       launchApp(app.packageName);
     },
-    [isAppWithinSchedule, hapticEnabled]
+    [isAppWithinSchedule, getAppFocusState, hasActiveExemption, hapticEnabled]
   );
 
   const handleAppLongPress = useCallback((app: AppInfo) => {

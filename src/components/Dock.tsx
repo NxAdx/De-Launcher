@@ -26,8 +26,9 @@ import { spacing, layout, springs } from "@/src/theme/tokens";
 import { AppIcon } from "./AppIcon";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
+import { router } from "expo-router";
 import { AppInfo } from "@/src/types/app";
-import { launchApp } from "@/src/services/appManager";
+import { launchApp, isKnownDistraction } from "@/src/services/appManager";
 
 interface DockProps {
   onLongPress: (app: AppInfo) => void;
@@ -214,9 +215,36 @@ export function Dock({ onLongPress }: DockProps) {
     setOrderedApps(dockApps);
   }, [dockApps]);
 
-  const handlePress = useCallback((app: AppInfo) => {
-    launchApp(app.packageName);
-  }, []);
+  const handlePress = useCallback(
+    (app: AppInfo) => {
+      const schedule = useAppStore.getState().isAppWithinSchedule(app.packageName);
+      if (!schedule.allowed) {
+        if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        router.push(
+          `/intent-pause?pkg=${app.packageName}&reason=${encodeURIComponent(
+            schedule.reason || ""
+          )}` as any
+        );
+        return;
+      }
+
+      const state = useAppStore.getState().getAppFocusState(app.packageName);
+      const distraction = isKnownDistraction(app.packageName);
+      const hasExemption = useAppStore.getState().hasActiveExemption(app.packageName);
+
+      if (
+        (state === "intent_pause" || state === "blocked" || distraction) &&
+        !hasExemption
+      ) {
+        if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        router.push(`/intent-pause?pkg=${app.packageName}` as any);
+        return;
+      }
+
+      launchApp(app.packageName);
+    },
+    [hapticEnabled]
+  );
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     setDockWidth(event.nativeEvent.layout.width);

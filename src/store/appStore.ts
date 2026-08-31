@@ -23,11 +23,15 @@ interface AppState {
   folders: FolderInfo[];
   scheduleRules: Record<string, AppScheduleRule>;
   exemptions: Record<string, number>; // packageName -> expiry timestamp (ms)
+  appReasons: Record<string, string>; // packageName -> reason why pinned to home/dock
+  activeSessions: Record<string, { goal: string; expiresAt: number; durationMin: number }>; // active intentionality sessions
 
   // Actions
   setInstalledApps: (apps: AppInfo[]) => void;
   setAppFocusState: (packageName: string, state: AppFocusState) => void;
   setAllowedPackages: (packages: string[]) => void;
+  pinAppWithReason: (packageName: string, reason: string, target: "home" | "dock") => void;
+  setAppReason: (packageName: string, reason: string) => void;
   addToDock: (packageName: string) => void;
   removeFromDock: (packageName: string) => void;
   reorderDock: (packages: string[]) => void;
@@ -50,8 +54,9 @@ interface AppState {
   autoArrangeHome: (nonDistractionPackages: string[]) => void;
 
   // Focus Rule Actions
-  grantExemption: (packageName: string, durationMs: number) => void;
+  grantExemption: (packageName: string, durationMs: number, goal?: string) => void;
   pruneExemptions: () => void;
+  isSessionActive: (packageName: string) => boolean;
 
   // Computed helpers
   getAppFocusState: (packageName: string) => AppFocusState;
@@ -69,6 +74,8 @@ export const useAppStore = create<AppState>()(
       folders: [],
       scheduleRules: {},
       exemptions: {},
+      appReasons: {},
+      activeSessions: {},
 
       setInstalledApps: (apps) => {
         const installedPackageNames = new Set(apps.map((a) => a.packageName));
@@ -110,6 +117,36 @@ export const useAppStore = create<AppState>()(
           folders: sanitizedFolders,
           ...(exemptionsChanged && { exemptions: sanitizedExemptions }),
         });
+      },
+
+      setAppReason: (packageName, reason) => {
+        const current = { ...(get().appReasons || {}) };
+        current[packageName] = reason.trim();
+        set({ appReasons: current });
+      },
+
+      pinAppWithReason: (packageName, reason, target) => {
+        const currentReasons = { ...(get().appReasons || {}) };
+        if (reason.trim()) {
+          currentReasons[packageName] = reason.trim();
+        }
+
+        if (target === "home") {
+          const currentAllowed = get().allowedPackages || [];
+          set({
+            allowedPackages: [...new Set([...currentAllowed, packageName])],
+            appReasons: currentReasons,
+          });
+          get().syncNativeWhitelist();
+        } else if (target === "dock") {
+          const currentDock = get().dockPackages || [];
+          if (currentDock.length < 6 && !currentDock.includes(packageName)) {
+            set({
+              dockPackages: [...currentDock, packageName],
+              appReasons: currentReasons,
+            });
+          }
+        }
       },
 
       moveApp: (packageName, direction) => {
@@ -328,18 +365,34 @@ export const useAppStore = create<AppState>()(
         get().syncNativeWhitelist();
       },
 
-      grantExemption: (packageName, durationMs) => {
+      grantExemption: (packageName, durationMs, goal) => {
+        const expiresAt = Date.now() + durationMs;
         const currentExemptions = { ...get().exemptions };
-        currentExemptions[packageName] = Date.now() + durationMs;
-        set({ exemptions: currentExemptions });
+        currentExemptions[packageName] = expiresAt;
+
+        const currentSessions = { ...(get().activeSessions || {}) };
+        if (goal) {
+          currentSessions[packageName] = {
+            goal,
+            expiresAt,
+            durationMin: Math.round(durationMs / 60000),
+          };
+        }
+
+        set({
+          exemptions: currentExemptions,
+          activeSessions: currentSessions,
+        });
         get().syncNativeWhitelist();
       },
 
       pruneExemptions: () => {
         const currentExemptions = get().exemptions || {};
+        const currentSessions = get().activeSessions || {};
         const now = Date.now();
         let changed = false;
         const nextExemptions: Record<string, number> = {};
+        const nextSessions: Record<string, { goal: string; expiresAt: number; durationMin: number }> = {};
 
         for (const [pkg, expiry] of Object.entries(currentExemptions)) {
           if (expiry > now) {
@@ -349,10 +402,27 @@ export const useAppStore = create<AppState>()(
           }
         }
 
+        for (const [pkg, session] of Object.entries(currentSessions)) {
+          if (session.expiresAt > now) {
+            nextSessions[pkg] = session;
+          } else {
+            changed = true;
+          }
+        }
+
         if (changed) {
-          set({ exemptions: nextExemptions });
+          set({
+            exemptions: nextExemptions,
+            activeSessions: nextSessions,
+          });
           get().syncNativeWhitelist();
         }
+      },
+
+      isSessionActive: (packageName) => {
+        const exemptions = get().exemptions || {};
+        const expiry = exemptions[packageName];
+        return expiry !== undefined && expiry > Date.now();
       },
 
       getAppFocusState: (packageName) => {
@@ -408,6 +478,8 @@ export const useAppStore = create<AppState>()(
         folders: state.folders,
         scheduleRules: state.scheduleRules,
         exemptions: state.exemptions,
+        appReasons: state.appReasons,
+        activeSessions: state.activeSessions,
       }),
       // On MMKV hydration, force-deduplicate any stale duplicate entries
       onRehydrateStorage: () => (state) => {
