@@ -16,7 +16,7 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { Check, Plus, Trash2, ChevronDown, ChevronUp, Flame } from "lucide-react-native";
+import { Check, Plus, Trash2, Flame, CircleDot, ChevronRight } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
@@ -140,55 +140,51 @@ export function TodoStreakWidget({ isExpanded: controlledExpanded, onToggleExpan
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: colors.border }]}>
-      {/* Header Bar */}
+      {/* Compact Header — matching Design System mockup */}
       <Pressable
         onPress={toggleExpand}
         style={styles.header}
         accessibilityRole="button"
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.streakBadge, { backgroundColor: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)" }]}>
-            <Flame size={14} color="#EF4444" />
-            <Text style={[styles.streakText, { color: isDark ? "#FCA5A5" : "#DC2626" }]}>
-              {currentStreak}d
+          <View style={[styles.focusIconCircle, { borderColor: colors.accent }]}>
+            <CircleDot size={16} color={colors.accent} />
+          </View>
+          <View style={styles.headerTextGroup}>
+            <View style={styles.headerTopRow}>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>
+                DAILY FOCUS
+              </Text>
+              <Text style={[styles.taskCount, { color: colors.textTertiary }]}>
+                {completedCount} / {todos.length} completed
+              </Text>
+            </View>
+            <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
+              Stay intentional. Make progress.
             </Text>
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Daily Focus
-          </Text>
-          <Text style={[styles.taskCount, { color: colors.textTertiary }]}>
-            ({completedCount}/{todos.length})
-          </Text>
         </View>
 
-        <View style={styles.headerRight}>
-          {/* Mini Heatmap Preview */}
-          <View style={styles.miniHeatmap}>
-            {heatmapData.slice(-7).map((day, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.miniCell,
-                  { backgroundColor: getHeatmapColor(day.level) },
-                ]}
-              />
-            ))}
-          </View>
-          {isExpanded ? (
-            <ChevronUp size={18} color={colors.textTertiary} />
-          ) : (
-            <ChevronDown size={18} color={colors.textTertiary} />
-          )}
-        </View>
+        <ChevronRight size={20} color={colors.textTertiary} />
       </Pressable>
 
       {/* Expanded Content — animated height for smooth 120fps transition */}
       <ExpandableBody isExpanded={isExpanded}>
         {/* GitHub-style Contribution Heatmap Matrix (4 columns of 7 days) */}
           <View style={styles.heatmapSection}>
-            <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
-              Consistency (Last 4 Weeks)
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary, marginBottom: 0 }]}>
+                Consistency (Last 4 Weeks)
+              </Text>
+              {currentStreak > 0 && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                  <Flame size={12} color="#EF4444" />
+                  <Text style={{ fontSize: 10, fontFamily: typography.family.bold, color: isDark ? "#FCA5A5" : "#DC2626" }}>
+                    {currentStreak}d streak
+                  </Text>
+                </View>
+              )}
+            </View>
             <View style={styles.heatmapGrid}>
               {heatmapData.map((day, idx) => (
                 <View
@@ -347,13 +343,36 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: 11,
   },
+  focusIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTextGroup: {
+    flex: 1,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
   title: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
+    fontFamily: typography.family.semiBold,
+    fontSize: typography.size.xs,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   taskCount: {
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
+  },
+  subtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: 11,
+    marginTop: 1,
   },
   headerRight: {
     flexDirection: "row",

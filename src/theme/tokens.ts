@@ -5,7 +5,7 @@
  * Based on an 8dp grid, OLED-first dark palette, and Inter typography.
  */
 
-// ─── Colors ─────────────────────────────────────────────
+// ─── Colors (Design System v1.0 — Sage Green Identity) ─────
 export const palette = {
   // Core
   black: "#000000",
@@ -14,11 +14,11 @@ export const palette = {
   // Dark Mode Surfaces
   dark: {
     bg: "transparent",
-    surface: "#0A0A0A",
-    surfaceElevated: "#141414",
+    surface: "#121212",
+    surfaceElevated: "#181818",
     surfaceOverlay: "rgba(0,0,0,0.7)",
-    border: "rgba(255, 255, 255, 0.08)",
-    borderFocused: "rgba(255, 255, 255, 0.16)",
+    border: "#242424",
+    borderFocused: "#343434",
   },
 
   // Light Mode Surfaces
@@ -33,23 +33,25 @@ export const palette = {
 
   // Text on dark bg
   textDark: {
-    primary: "rgba(255, 255, 255, 0.87)",
-    secondary: "rgba(255, 255, 255, 0.60)",
-    tertiary: "rgba(255, 255, 255, 0.38)",
+    primary: "#F2F2F2",
+    secondary: "#9A9A9A",
+    tertiary: "#666666",
     disabled: "rgba(255, 255, 255, 0.20)",
   },
 
   // Text on light bg
   textLight: {
-    primary: "rgba(0, 0, 0, 0.87)",
-    secondary: "rgba(0, 0, 0, 0.60)",
-    tertiary: "rgba(0, 0, 0, 0.38)",
+    primary: "#171916",
+    secondary: "#60675E",
+    tertiary: "#747A72",
     disabled: "rgba(0, 0, 0, 0.20)",
   },
 
-  // Accent — a single, muted tone. Intentionally subdued.
-  accent: "#94A3B8", // Slate-400 — subdued, intentional
-  accentMuted: "rgba(148, 163, 184, 0.15)",
+  // Accent — Sage Green. The single brand signal.
+  accent: "#657D5C",
+  accentMuted: "rgba(101, 125, 92, 0.15)",
+  // Lighter tint for decorative elements (greeting text)
+  accentTint: "#9BAD93",
 
   // Semantic
   error: "#EF4444",
@@ -87,8 +89,9 @@ export function getThemeColors(mode: ThemeMode) {
     textDisabled: isDark
       ? palette.textDark.disabled
       : palette.textLight.disabled,
-    accent: isDark ? palette.accent : "#475569",
-    accentMuted: isDark ? palette.accentMuted : "rgba(71, 85, 105, 0.15)",
+    accent: isDark ? palette.accent : "#4F6548",
+    accentMuted: isDark ? palette.accentMuted : "rgba(79, 101, 72, 0.15)",
+    accentTint: isDark ? palette.accentTint : "#4F6548",
     error: palette.error,
     success: palette.success,
     warning: palette.warning,
@@ -149,7 +152,7 @@ export const radii = {
   none: 0,
   sm: 4,
   md: 8,
-  lg: 12,
+  lg: 16,
   xl: 16,
   "2xl": 20,
   "3xl": 24,

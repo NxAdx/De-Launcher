@@ -78,7 +78,7 @@ export function Clock() {
       {/* Greeting — staggered entrance */}
       <Animated.Text
         entering={FadeInUp.duration(400)}
-        style={[styles.greeting, { color: colors.textTertiary }]}
+        style={[styles.greeting, { color: colors.accentTint }]}
       >
         {getGreeting(now)}
       </Animated.Text>
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   time: {
     fontFamily: typography.family.thin,
-    fontSize: typography.size["7xl"],
+    fontSize: 56,
     letterSpacing: -3,
     includeFontPadding: false,
   },

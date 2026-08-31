@@ -315,7 +315,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: mode === tOpt ? "#0A0A0A" : colors.textSecondary },
+                        { color: mode === tOpt ? "#FFFFFF" : colors.textSecondary },
                       ]}
                     >
                       {tOpt === "dark" ? "Dark" : "Light"}
@@ -349,7 +349,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: iconSize === opt ? "#0A0A0A" : colors.textSecondary },
+                        { color: iconSize === opt ? "#FFFFFF" : colors.textSecondary },
                       ]}
                     >
                       {opt.charAt(0).toUpperCase()}
@@ -383,7 +383,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: gridColumns === cols ? "#0A0A0A" : colors.textSecondary },
+                        { color: gridColumns === cols ? "#FFFFFF" : colors.textSecondary },
                       ]}
                     >
                       {cols}
@@ -479,7 +479,7 @@ export default function SettingsScreen() {
                       <Text
                         style={[
                           styles.segmentText,
-                          { color: searchWidgetStyle === styleOpt ? "#0A0A0A" : colors.textSecondary },
+                          { color: searchWidgetStyle === styleOpt ? "#FFFFFF" : colors.textSecondary },
                         ]}
                       >
                         {styleOpt.charAt(0).toUpperCase()}
@@ -518,7 +518,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: dockBackground === bgOpt ? "#0A0A0A" : colors.textSecondary },
+                        { color: dockBackground === bgOpt ? "#FFFFFF" : colors.textSecondary },
                       ]}
                     >
                       {bgOpt === "frosted" ? "Frosted" : "Clear"}
@@ -552,7 +552,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: maxDockIcons === num ? "#0A0A0A" : colors.textSecondary },
+                        { color: maxDockIcons === num ? "#FFFFFF" : colors.textSecondary },
                       ]}
                     >
                       {num}

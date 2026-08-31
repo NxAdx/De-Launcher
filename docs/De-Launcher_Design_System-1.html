@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>De-Launcher — Design System</title>
+<style>
+:root{
+  --green-500:#657D5C; --green-400:#718A67; --green-700:#4F6548;
+  --bg:#0A0A0A; --surface:#121212; --surface-2:#181818; --border:#242424;
+  --text:#F2F2F2; --muted:#9A9A9A; --subtle:#666;
+  --light:#FFFFFF; --light-surface:#F7F7F5; --light-text:#171916;
+  --radius-card:16px; --radius-control:12px; --radius-pill:999px;
+}
+*{box-sizing:border-box} body{margin:0;background:#f2f3f0;color:#1b1d1a;font-family:Inter,Manrope,system-ui,-apple-system,Segoe UI,sans-serif}
+.container{max-width:1180px;margin:auto;padding:56px 28px 90px}
+.hero{background:var(--bg);color:var(--text);border-radius:28px;padding:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.kicker{letter-spacing:.18em;text-transform:uppercase;color:#9bad93;font-size:12px;font-weight:700}
+h1{font-size:54px;line-height:1;margin:14px 0 10px;letter-spacing:-.04em}
+h2{font-size:28px;margin:54px 0 18px;letter-spacing:-.02em}
+h3{font-size:17px;margin:0 0 8px}.lead{font-size:18px;line-height:1.6;color:#c6c9c5;max-width:570px}
+.logo-wrap{display:grid;place-items:center;min-height:310px}
+.logo{width:260px;height:260px}
+.section-note{color:#656b63;line-height:1.6;margin-top:-6px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:white;border:1px solid #e0e2dc;border-radius:18px;padding:22px}
+.swatch{height:90px;border-radius:14px;margin-bottom:15px;border:1px solid #ddd}
+.code{font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#596056;background:#f0f1ed;padding:3px 7px;border-radius:6px}
+.token-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e0e2dc;border-radius:16px;overflow:hidden}
+.token-table th,.token-table td{text-align:left;padding:14px 16px;border-bottom:1px solid #e8e9e5;font-size:14px}
+.token-table th{background:#f5f6f2;color:#60675e}.token-table tr:last-child td{border-bottom:0}
+.type-demo{background:#0A0A0A;color:#F2F2F2;border-radius:18px;padding:28px}.display{font-size:42px;font-weight:300;letter-spacing:-.04em}.body{font-size:16px}.caption{font-size:12px;color:#9a9a9a}
+.spacing{display:flex;align-items:end;gap:18px;height:130px}.bar{background:var(--green-500);border-radius:6px;width:38px}.s4{height:8px}.s8{height:16px}.s12{height:24px}.s16{height:32px}.s24{height:48px}.s32{height:64px}
+.component{background:#0A0A0A;color:#f2f2f2;border-radius:18px;padding:22px}
+.row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #242424}.row:last-child{border:0}
+.icon{width:28px;text-align:center;color:#dfe3dd;font-size:20px}.muted{color:#8f958e;font-size:12px;margin-top:3px}
+.switch{margin-left:auto;width:42px;height:24px;border-radius:999px;background:var(--green-500);position:relative}.switch:after{content:"";position:absolute;width:20px;height:20px;background:white;border-radius:50%;right:2px;top:2px}
+.segment{margin-left:auto;background:#202020;padding:4px;border-radius:10px;display:flex;gap:2px}.segment b{padding:8px 11px;border-radius:8px;font-size:12px}.segment .active{background:var(--green-500)}
+.pill{display:inline-flex;padding:9px 14px;border:1px solid #343834;border-radius:999px;color:#d9ddd7}
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.app-icon{height:64px;width:64px;margin:auto;border-radius:18px;background:#151715;border:1px solid #2b2e2a;display:grid;place-items:center}.app-icon svg{width:42px;height:42px}.small{font-size:12px;color:#777d75;margin-top:8px}
+.do{border-left:4px solid var(--green-500);padding:12px 16px;background:#eef2eb;border-radius:10px}.dont{border-left:4px solid #999;padding:12px 16px;background:#f3f3f1;border-radius:10px}
+.footer{margin-top:60px;color:#747a72;font-size:12px}
+@media(max-width:800px){.hero{grid-template-columns:1fr;padding:34px}.grid{grid-template-columns:1fr}h1{font-size:42px}.container{padding:28px 16px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<section class="hero">
+  <div>
+    <div class="kicker">De-Launcher · Design System v1.0</div>
+    <h1>Focus.<br>Simplified.</h1>
+    <p class="lead">A calm, intentional visual system for a focus-first Android launcher. Neutral surfaces carry the interface; sage green signals attention, progress and action.</p>
+    <p class="lead"><b>Logo direction:</b> abstract D + eye/leaf form, no internal “e”.</p>
+  </div>
+  <div class="logo-wrap">
+    <svg class="logo" viewBox="0 0 512 512" aria-label="De-Launcher logo">
+      <g fill="none" stroke="#657D5C" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M122 402V110"/>
+        <path d="M122 110 C220 104 292 163 292 268"/>
+        <path d="M122 402 C122 320 184 264 292 264"/>
+        <path d="M292 264 H406"/>
+        <path d="M406 264 C395 337 332 402 246 402 H122"/>
+      </g>
+      <path d="M406 264 L391 304" fill="none" stroke="#657D5C" stroke-width="18" stroke-linecap="round"/>
+    </svg>
+  </div>
+</section>
+
+<h2>01 · Brand foundations</h2>
+<div class="grid">
+  <div class="card"><h3>Focus</h3><p>Eye-like horizontal form represents attention and awareness.</p></div>
+  <div class="card"><h3>De-clutter</h3><p>The D structure and open negative space represent removing the unnecessary.</p></div>
+  <div class="card"><h3>Forward</h3><p>The open right tip suggests direction without adding visual noise.</p></div>
+</div>
+
+<h2>02 · Color tokens</h2>
+<div class="grid">
+  <div class="card"><div class="swatch" style="background:#657D5C"></div><h3>Brand Green</h3><span class="code">#657D5C</span><p>Primary identity, selected states, focus indicators.</p></div>
+  <div class="card"><div class="swatch" style="background:#0A0A0A"></div><h3>OLED Black</h3><span class="code">#0A0A0A</span><p>Primary dark-mode background.</p></div>
+  <div class="card"><div class="swatch" style="background:#121212"></div><h3>Surface</h3><span class="code">#121212</span><p>Cards, grouped settings and elevated content.</p></div>
+  <div class="card"><div class="swatch" style="background:#F7F7F5"></div><h3>Warm Light</h3><span class="code">#F7F7F5</span><p>Preferred light-mode background.</p></div>
+  <div class="card"><div class="swatch" style="background:#F2F2F2"></div><h3>Primary Text</h3><span class="code">#F2F2F2</span><p>Dark-mode primary text.</p></div>
+  <div class="card"><div class="swatch" style="background:#9A9A9A"></div><h3>Secondary Text</h3><span class="code">#9A9A9A</span><p>Descriptions and secondary metadata.</p></div>
+</div>
+
+<h2>03 · Typography</h2>
+<div class="type-demo">
+  <div class="display">12:37</div>
+  <div style="font-size:22px;margin-top:8px">Monday, August 31</div>
+  <p class="body">Search apps, settings, actions…</p>
+  <p class="caption">DAILY FOCUS · 0 / 0 COMPLETED</p>
+</div>
+<p class="section-note">Recommended family: Manrope or Inter. Use Light/Regular for the clock, Medium for controls, and SemiBold for important labels. Avoid decorative or futuristic fonts.</p>
+
+<h2>04 · Spacing & shape</h2>
+<div class="card">
+  <div class="spacing">
+    <div><div class="bar s4"></div><small>4</small></div>
+    <div><div class="bar s8"></div><small>8</small></div>
+    <div><div class="bar s12"></div><small>12</small></div>
+    <div><div class="bar s16"></div><small>16</small></div>
+    <div><div class="bar s24"></div><small>24</small></div>
+    <div><div class="bar s32"></div><small>32</small></div>
+  </div>
+  <table class="token-table">
+    <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+    <tr><td>Screen padding</td><td>24dp</td><td>Main horizontal content inset</td></tr>
+    <tr><td>Card radius</td><td>16dp</td><td>Settings groups / focus card</td></tr>
+    <tr><td>Control radius</td><td>12dp</td><td>Buttons / segmented controls</td></tr>
+    <tr><td>Pill radius</td><td>999dp</td><td>Search / compact actions</td></tr>
+    <tr><td>Row height</td><td>64–72dp</td><td>Settings rows</td></tr>
+  </table>
+</div>
+
+<h2>05 · Components</h2>
+<div class="grid">
+  <div class="component">
+    <h3>Settings row</h3>
+    <div class="row"><div class="icon">◯</div><div><b>Daily Focus & Streaks</b><div class="muted">Habit streak & intentional tasks</div></div><div class="switch"></div></div>
+  </div>
+  <div class="component">
+    <h3>Segmented control</h3>
+    <div class="row"><b>Icon Sizing</b><div class="segment"><b class="active">S</b><b>M</b><b>L</b></div></div>
+  </div>
+  <div class="component">
+    <h3>Search</h3>
+    <div style="margin-top:20px" class="pill">⌕ &nbsp; Search apps, settings, actions…</div>
+  </div>
+</div>
+
+<h2>06 · App icon system</h2>
+<div class="card">
+  <div class="icon-grid">
+    <div><div class="app-icon" style="background:#657D5C;border:0"><svg viewBox="0 0 100 100"><path d="M24 78V22 M24 22 C45 21 59 34 59 57 M24 78 C25 58 38 49 59 49 H82 C78 67 63 78 45 78 H24" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="small">Primary icon</div></div>
+    <div><div class="app-icon"><svg viewBox="0 0 100 100"><path d="M24 78V22 M24 22 C45 21 59 34 59 57 M24 78 C25 58 38 49 59 49 H82 C78 67 63 78 45 78 H24" fill="none" stroke="#F2F2F2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="small">Dark / neutral</div></div>
+    <div><div class="app-icon" style="background:#fff"><svg viewBox="0 0 100 100"><path d="M24 78V22 M24 22 C45 21 59 34 59 57 M24 78 C25 58 38 49 59 49 H82 C78 67 63 78 45 78 H24" fill="none" stroke="#657D5C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="small">Light logo</div></div>
+    <div><div class="app-icon" style="background:#657D5C;border-radius:20px"><svg viewBox="0 0 100 100"><path d="M24 78V22 M24 22 C45 21 59 34 59 57 M24 78 C25 58 38 49 59 49 H82 C78 67 63 78 45 78 H24" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="small">Recommended</div></div>
+  </div>
+</div>
+
+<h2>07 · UX principles</h2>
+<div class="grid">
+  <div class="do"><h3>Do</h3><p>Keep 90% of the UI neutral and let green identify intentional actions.</p></div>
+  <div class="do"><h3>Do</h3><p>Prefer fewer, larger decisions on the home screen over dense app grids.</p></div>
+  <div class="do"><h3>Do</h3><p>Use motion sparingly: 180–250ms, ease-out, no decorative animation.</p></div>
+</div>
+<div style="height:16px"></div>
+<div class="grid">
+  <div class="dont"><h3>Avoid</h3><p>Bright wallpapers behind text and colorful icons competing for attention.</p></div>
+  <div class="dont"><h3>Avoid</h3><p>Using green on every control; it destroys its meaning as a focus signal.</p></div>
+  <div class="dont"><h3>Avoid</h3><p>Adding an “e” back into the mark unless it materially improves recognition.</p></div>
+</div>
+
+<h2>08 · Product UI direction</h2>
+<table class="token-table">
+<tr><th>Screen</th><th>Recommended direction</th></tr>
+<tr><td>Home</td><td>Quiet wallpaper, large clock, one Daily Focus surface, essential apps first.</td></tr>
+<tr><td>Search</td><td>Single low-emphasis entry point; search everything without becoming visually dominant.</td></tr>
+<tr><td>Settings</td><td>Grouped cards, concise descriptions, green selected states, progressive disclosure where possible.</td></tr>
+<tr><td>Focus tools</td><td>Make “Auto-Arrange Non-Distractions” and Daily Focus feel like core product features, not secondary toggles.</td></tr>
+</table>
+
+<div class="footer">De-Launcher · Focus • Simplified · Design System v1.0 · Use this as the visual source of truth, then validate dimensions against current Android/iOS platform guidance before implementation.</div>
+</div>
+</body>
+</html>
