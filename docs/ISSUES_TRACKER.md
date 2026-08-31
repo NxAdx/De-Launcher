@@ -155,4 +155,15 @@ This document tracks all reported issues, technical root causes, implementation 
   3. Removed enter delays across `AppGrid`, `Dock`, and `Drawer`, making all launcher transitions instant.
   4. Updated `scrollEventThrottle` to `16ms` for frame-synchronized page indicators and horizontal momentum physics.
 
+### ISSUE-23: Official Brand Identity & Adaptive Icon Asset Integration
+* **Symptoms**: App used generic Expo default placeholder icon grids on home screen, splash screen, and app drawer.
+* **Root Cause**: Icon assets in `assets/` and `android/app/src/main/res/` were legacy scaffolding files.
+* **Resolution**:
+  1. Integrated the official De-Launcher brand mark (abstract D + focus leaf) from `docs/Icons/` into `assets/icon.png`, `assets/adaptive-icon.png`, `assets/splash-icon.png`, and `assets/favicon.png`.
+  2. Generated complete multi-density Android mipmaps (`mipmap-mdpi` through `mipmap-xxxhdpi`) for standard and adaptive launcher foregrounds.
+  3. Generated splashscreen drawables (`drawable-mdpi` through `drawable-xxxhdpi`).
+  4. Updated `android/app/src/main/res/values/colors.xml` with `colorPrimary` set to brand sage green `#657D5C`.
+  5. Integrated the logo into the Onboarding Welcome flow and Settings brand footer.
+
+
 

@@ -8,8 +8,11 @@ De-Launcher is a functional prototype on Expo SDK 55. The React Native interface
 
 ## Completed
 
+- Official Brand Icon & Adaptive Icon integration across `assets/`, native Android mipmaps (`mdpi` through `xxxhdpi`), splashscreen drawables, onboarding, and settings.
+- Design System v1.0 UI overhaul with Sage Green (`#657D5C`) identity, OLED surface tokens, 56px light clock display, compact Daily Focus card, and "All Apps" pill button.
+- 120 FPS buttery-smooth spring physics engine and continuous widget expansion worklets.
 - Expo Router screens: home, app drawer, settings, dock settings, onboarding.
-- Dynamic responsive App Grid with auto row-height calculation & dedicated non-overlapping pagination.
+- Dynamic responsive App Grid with stable row locking, adaptive row compression, and frame-synchronized horizontal pagination.
 - Intentional Daily Focus & GitHub-style activity streak heatmap widget with instant reactive updates.
 - Floating Frosted & Transparent Capsule Dock with snappy reordering physics.
 - Multi-theme engine (Dark Mode / Light Mode) with high-contrast token palettes.

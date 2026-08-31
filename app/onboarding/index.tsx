@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -10,8 +10,13 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + spacing.xl }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing["2xl"], paddingBottom: insets.bottom + spacing.xl }]}>
       <View style={styles.content}>
+        <Image
+          source={require("@/assets/icon.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           Welcome to{"\n"}De-Launcher
         </Text>
@@ -44,6 +49,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    marginBottom: spacing.xl,
   },
   title: {
     fontFamily: typography.family.bold,

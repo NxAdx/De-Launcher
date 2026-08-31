@@ -20,6 +20,7 @@ import {
   Switch,
   Pressable,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
 import { router } from "expo-router";
@@ -800,6 +801,21 @@ export default function SettingsScreen() {
             }
           />
         </View>
+
+        {/* ─── Brand Footer ──────────────────────────── */}
+        <View style={styles.brandFooter}>
+          <Image
+            source={require("@/assets/icon.png")}
+            style={styles.brandFooterLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.brandFooterTitle, { color: colors.textPrimary }]}>
+            De-Launcher
+          </Text>
+          <Text style={[styles.brandFooterSubtitle, { color: colors.textTertiary }]}>
+            Focus. Simplified. · v1.0.0
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -962,5 +978,26 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 18,
+  },
+  brandFooter: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: spacing["2xl"],
+    paddingBottom: spacing.lg,
+  },
+  brandFooterLogo: {
+    width: 48,
+    height: 48,
+    marginBottom: spacing.xs,
+  },
+  brandFooterTitle: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    letterSpacing: 0.5,
+  },
+  brandFooterSubtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    marginTop: 2,
   },
 });
