@@ -234,7 +234,6 @@ function DraggableGridItem({
 export interface AppGridProps {
   apps: AppInfo[];
   folders?: FolderInfo[];
-  isTodoExpanded?: boolean;
   onPress: (app: AppInfo) => void;
   onLongPress: (app: AppInfo) => void;
   onFolderPress?: (folder: FolderInfo) => void;
@@ -245,7 +244,6 @@ export interface AppGridProps {
 export function AppGrid({
   apps,
   folders = [],
-  isTodoExpanded = false,
   onPress,
   onLongPress,
   onFolderPress,
@@ -255,25 +253,30 @@ export function AppGrid({
   const { colors, isDark } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
+  const iconSizeSetting = useSettingsStore((s) => s.iconSize);
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
-  const [measuredHeight, setMeasuredHeight] = useState(isTodoExpanded ? 240 : 380);
+  const [measuredHeight, setMeasuredHeight] = useState(380);
   const [activePage, setActivePage] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isAnyDragging = useSharedValue(false);
 
-  // Combine folders and apps into unified grid items with strict deduplication
+  // Combine folders and apps into unified grid items with strict package & label deduplication
   const combinedItems: GridItemData[] = useMemo(() => {
     const folderItems: GridItemData[] = folders.map((f) => ({
       id: f.id,
       type: "folder",
       folder: f,
     }));
-    const seen = new Set<string>();
+    const seenPkgs = new Set<string>();
+    const seenLabels = new Set<string>();
     const appItems: GridItemData[] = [];
+
     for (const a of apps) {
-      if (!seen.has(a.packageName)) {
-        seen.add(a.packageName);
+      const normLabel = a.label.toLowerCase().trim();
+      if (!seenPkgs.has(a.packageName) && !seenLabels.has(normLabel)) {
+        seenPkgs.add(a.packageName);
+        seenLabels.add(normLabel);
         appItems.push({
           id: a.packageName,
           type: "app",
@@ -292,37 +295,27 @@ export function AppGrid({
     setOrderedItems(combinedItems);
   }, [combinedItems]);
 
-  // Lock ROWS_PER_PAGE on first measurement so PAGE_SIZE never changes when
-  // the widget expands/collapses — only rowHeight compresses/expands.
-  // This prevents apps from jumping between pages.
-  const lockedRowsRef = useRef<number | null>(null);
+  const targetRowHeight = useMemo(() => {
+    switch (iconSizeSetting) {
+      case "small":
+        return 78;
+      case "large":
+        return 94;
+      case "medium":
+      default:
+        return 86;
+    }
+  }, [iconSizeSetting]);
 
-  const numPagesEstimated = Math.max(1, Math.ceil(orderedItems.length / (gridColumns * 3)));
-  const FOOTER_HEIGHT = onAllAppsPress
-    ? numPagesEstimated > 1
-      ? 64
-      : 44
-    : numPagesEstimated > 1
-    ? 22
-    : 0;
+  const FOOTER_HEIGHT = onAllAppsPress ? 52 : 0;
+  const availableGridHeight = Math.max(targetRowHeight, measuredHeight - FOOTER_HEIGHT);
 
-  const availableGridHeight = Math.max(70, measuredHeight - FOOTER_HEIGHT);
-
-  // Compute ideal rows from current height
-  const idealRows = Math.max(1, Math.min(4, Math.floor(availableGridHeight / 70)));
-
-  // Lock on first valid measurement (collapsed state gives us the max rows)
-  if (lockedRowsRef.current === null && measuredHeight > 100) {
-    lockedRowsRef.current = idealRows;
-  }
-
-  // Use locked rows if available, otherwise use ideal
-  const ROWS_PER_PAGE = lockedRowsRef.current ?? idealRows;
-
-  // rowHeight adapts to available space but PAGE_SIZE stays constant
-  const rowHeight = Math.min(BASE_ROW_HEIGHT, Math.floor(availableGridHeight / ROWS_PER_PAGE));
+  // Calculate dynamic rows cleanly fitting the available space
+  const idealRows = Math.max(1, Math.min(5, Math.floor(availableGridHeight / targetRowHeight)));
+  const ROWS_PER_PAGE = idealRows;
+  const rowHeight = Math.min(targetRowHeight, Math.floor(availableGridHeight / ROWS_PER_PAGE));
   const PAGE_SIZE = gridColumns * ROWS_PER_PAGE;
-  const numPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
+  const numPages = Math.max(1, Math.ceil(orderedItems.length / Math.max(1, PAGE_SIZE)));
 
   const usableWidth = SCREEN_WIDTH - spacing.xl * 2;
   const itemWidth = usableWidth / gridColumns;

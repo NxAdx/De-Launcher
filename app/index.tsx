@@ -56,7 +56,6 @@ export default function HomeScreen() {
 
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<FolderInfo | null>(null);
-  const [isTodoExpanded, setIsTodoExpanded] = useState(false);
 
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
   const [showBlockedBanner, setShowBlockedBanner] = useState(false);
@@ -93,13 +92,20 @@ export default function HomeScreen() {
 
   const allowedApps = useMemo(() => {
     const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
-    const seen = new Set<string>();
+    const seenPkgs = new Set<string>();
+    const seenLabels = new Set<string>();
     const result: AppInfo[] = [];
+
     for (const pkg of allowedPackages) {
-      if (seen.has(pkg)) continue;
+      if (seenPkgs.has(pkg)) continue;
       const app = appsMap.get(pkg);
       if (app) {
-        seen.add(pkg);
+        const normLabel = app.label.toLowerCase().trim();
+        // Prevent duplicate app labels on the home screen (e.g. Dual Contacts/Calculator)
+        if (seenLabels.has(normLabel)) continue;
+
+        seenPkgs.add(pkg);
+        seenLabels.add(normLabel);
         result.push(app);
       }
     }
@@ -226,10 +232,7 @@ export default function HomeScreen() {
           <HomeSearchWidget />
 
           {/* Daily Focus Tasks & Streak Widget */}
-          <TodoStreakWidget
-            isExpanded={isTodoExpanded}
-            onToggleExpand={() => setIsTodoExpanded((prev) => !prev)}
-          />
+          <TodoStreakWidget />
 
           {/* App & Folder Grid */}
           <Animated.View
@@ -244,7 +247,6 @@ export default function HomeScreen() {
             <AppGrid
               apps={allowedApps}
               folders={folders}
-              isTodoExpanded={isTodoExpanded}
               onPress={handleAppPress}
               onLongPress={handleAppLongPress}
               onFolderPress={handleFolderPress}

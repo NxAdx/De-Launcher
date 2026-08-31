@@ -187,7 +187,23 @@ This document tracks all reported issues, technical root causes, implementation 
   3. Replaced `CircleDot` inside Daily Focus with crisp `Target` icon.
   4. Right-aligned `ChevronRight` with proper margin and padding.
 
-
-
-
-
+### ISSUE-26: Daily Focus Dedicated Sheet UX, Zero-Bleed Mindful Barrier, Homescreen App Deduplication & Permanent Frosted Dock
+* **Symptoms**:
+  1. Expanding the Daily Focus widget on the home screen squished the App Grid, causing app icons to crush and label texts to collide/overlap with the icons below them.
+  2. The Daily Focus widget expanded content (heatmap dots, add task) was off-center and only occupied half the width.
+  3. Opening a distracting app (Mindful Gate / `intent-pause.tsx`) showed underlying drawer text and icons bleeding through semi-transparent cards.
+  4. Duplicate app icons with the identical name (e.g. dual "Contacts", "Calculator") appeared on the home screen due to dual OEM/Google package installations.
+  5. Toggling off widgets (Clock, Search) or changing icon sizes caused grid row misalignment.
+  6. Redundant dock background customization setting was present when the current frosted style was already preferred.
+* **Root Cause**:
+  1. In-place widget height expansion reduced available grid height from 380px to 220px while rows were locked to 4, forcing row heights below the minimum 72px required for icon + label text.
+  2. Heatmap grid lacked uniform column/flex distribution inside the widget card.
+  3. `intent-pause.tsx` used `backgroundColor: "transparent"` and low-opacity card fills, causing background screens to show through.
+  4. `autoArrangeHome` and `allowedApps` only deduplicated by `packageName`, not normalized app `label`.
+  5. `AppGrid` used a static locked ref instead of calculating row heights dynamically from icon size tokens and available height.
+* **Resolution**:
+  1. **Daily Focus Modal (`DailyFocusModal.tsx`)**: Refactored Daily Focus on the home screen into a permanent compact, perfectly centered 52px single-row pill card. Tapping it opens a dedicated, rich bottom sheet containing the full 28-day consistency heatmap (centered with 7 columns x 4 rows) and interactive task checklist. This permanently prevents any layout squishing on the App Grid.
+  2. **Zero-Bleed Mindful Barrier (`intent-pause.tsx`)**: Rebuilt the screen with solid OLED black (`#0A0A0A` / `#181818`) card surfaces, dedicated header card, crisp goal text input, and high-contrast action buttons so background screens never bleed through.
+  3. **Label-Level Deduplication Engine**: Updated `appStore.ts`, `app/index.tsx`, and `AppGrid.tsx` to deduplicate by both `packageName` AND normalized `label` (`app.label.toLowerCase().trim()`), permanently preventing duplicate apps on the home screen.
+  4. **Dynamic Icon Sizing & Widget Responsiveness**: `AppGrid` now dynamically computes row heights (Small: 78px, Medium: 86px, Large: 94px) and seamlessly expands when Clock or Search widgets are toggled off.
+  5. **Permanent Frosted Dock**: Locked in the beloved frosted glass dock design and removed the redundant background customization option from settings.

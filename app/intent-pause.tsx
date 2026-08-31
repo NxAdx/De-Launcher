@@ -7,6 +7,8 @@
  * 2. Time Budget (Explicit session minutes)
  * 3. Daily Focus Check (Premack's principle - acknowledgment of daily priority)
  * 4. 3-second Mindfulness Cooldown before launch
+ *
+ * Fully opaque OLED / solid surface with zero background bleed-through.
  */
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -28,9 +30,7 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInUp,
-  FadeInDown,
 } from "react-native-reanimated";
-import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import {
@@ -42,9 +42,10 @@ import {
   Flame,
   ArrowRight,
   ShieldAlert,
+  X,
 } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, radii } from "@/src/theme/tokens";
+import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
 import { useTodoStore } from "@/src/store/todoStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
@@ -166,14 +167,12 @@ export default function IntentPauseScreen() {
     router.back();
   };
 
-  return (
-    <View style={styles.container}>
-      <BlurView
-        intensity={isDark ? 85 : 45}
-        tint={isDark ? "dark" : "light"}
-        style={StyleSheet.absoluteFill}
-      />
+  const cardSurface = isDark ? "#181818" : "#FFFFFF";
+  const cardBorderColor = isDark ? "#282828" : "#E2E8F0";
+  const inputSurface = isDark ? "#101010" : "#F8FAFC";
 
+  return (
+    <View style={[styles.container, { backgroundColor: isDark ? "#0A0A0A" : "#F5F5F5" }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardAvoid}
@@ -182,7 +181,7 @@ export default function IntentPauseScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: insets.top + spacing.lg,
+              paddingTop: insets.top + spacing.md,
               paddingBottom: insets.bottom + spacing.xl,
             },
           ]}
@@ -214,7 +213,7 @@ export default function IntentPauseScreen() {
               <Text style={[styles.cooldownSubtitle, { color: colors.textSecondary }]}>
                 Unlocking {appLabel} for {selectedDuration.minutes} minutes.
               </Text>
-              <View style={[styles.activeGoalBadge, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+              <View style={[styles.activeGoalBadge, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
                 <Target size={14} color={colors.accentTint} />
                 <Text style={[styles.activeGoalText, { color: colors.textPrimary }]} numberOfLines={2}>
                   Goal: &ldquo;{goal}&rdquo;
@@ -223,44 +222,54 @@ export default function IntentPauseScreen() {
             </Animated.View>
           ) : (
             /* Phase 1: Mindful Opening Protocol Form */
-            <Animated.View entering={FadeInUp.duration(350)} style={styles.formContainer}>
-              {/* Header Badge */}
-              <View style={styles.header}>
-                <View style={styles.appIconWrapper}>
-                  {app && <AppIcon app={app} size={48} showLabel={false} onPress={() => {}} />}
-                </View>
-                <View style={styles.headerTextGroup}>
-                  <View style={styles.titleRow}>
-                    <Text style={[styles.appTitle, { color: colors.textPrimary }]}>
-                      {appLabel}
-                    </Text>
-                    <View style={[styles.gateBadge, { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: colors.error }]}>
-                      <ShieldAlert size={11} color={colors.error} />
-                      <Text style={[styles.gateBadgeText, { color: colors.error }]}>
-                        Mindful Gate
-                      </Text>
-                    </View>
+            <Animated.View entering={FadeInUp.duration(250)} style={styles.formContainer}>
+              {/* Header Card */}
+              <View style={[styles.headerCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
+                <View style={styles.headerTop}>
+                  <View style={styles.appIconWrapper}>
+                    {app && <AppIcon app={app} size={44} showLabel={false} onPress={() => {}} />}
                   </View>
-                  {scheduleReason ? (
-                    <View style={styles.reasonRow}>
-                      <Clock size={12} color={colors.warning} />
-                      <Text style={[styles.reasonText, { color: colors.warning }]}>
-                        {scheduleReason}
+                  <View style={styles.headerTextGroup}>
+                    <View style={styles.titleRow}>
+                      <Text style={[styles.appTitle, { color: colors.textPrimary }]}>
+                        {appLabel}
                       </Text>
+                      <View style={[styles.gateBadge, { backgroundColor: "rgba(239, 68, 68, 0.15)", borderColor: "#EF4444" }]}>
+                        <ShieldAlert size={11} color="#EF4444" />
+                        <Text style={[styles.gateBadgeText, { color: "#EF4444" }]}>
+                          Mindful Gate
+                        </Text>
+                      </View>
                     </View>
-                  ) : (
-                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-                      Set your intention before opening.
-                    </Text>
-                  )}
+                    {scheduleReason ? (
+                      <View style={styles.reasonRow}>
+                        <Clock size={12} color={colors.warning} />
+                        <Text style={[styles.reasonText, { color: colors.warning }]}>
+                          {scheduleReason}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                        Set your intentional goal before proceeding.
+                      </Text>
+                    )}
+                  </View>
+
+                  <Pressable
+                    onPress={handleCancel}
+                    hitSlop={12}
+                    style={[styles.closeBtn, { backgroundColor: isDark ? "#222222" : "#F1F5F9" }]}
+                  >
+                    <X size={16} color={colors.textSecondary} />
+                  </Pressable>
                 </View>
               </View>
 
               {/* Step 1: Goal Definition */}
-              <View style={[styles.stepCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+              <View style={[styles.stepCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
                 <View style={styles.stepHeader}>
                   <View style={[styles.stepNumberBadge, { backgroundColor: colors.accentMuted }]}>
-                    <Target size={13} color={colors.accent} />
+                    <Target size={13} color={colors.accent} strokeWidth={2.2} />
                   </View>
                   <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
                     1. What is your specific goal?
@@ -280,8 +289,8 @@ export default function IntentPauseScreen() {
                     styles.goalInput,
                     {
                       color: colors.textPrimary,
-                      backgroundColor: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.03)",
-                      borderColor: isGoalValid ? colors.accent : colors.cardBorder,
+                      backgroundColor: inputSurface,
+                      borderColor: isGoalValid ? colors.accent : cardBorderColor,
                     },
                   ]}
                 />
@@ -304,8 +313,8 @@ export default function IntentPauseScreen() {
                       style={({ pressed }) => [
                         styles.sugChip,
                         {
-                          backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-                          borderColor: colors.cardBorder,
+                          backgroundColor: isDark ? "#222222" : "#F1F5F9",
+                          borderColor: cardBorderColor,
                         },
                         pressed && { opacity: 0.7 },
                       ]}
@@ -319,10 +328,10 @@ export default function IntentPauseScreen() {
               </View>
 
               {/* Step 2: Time Budget */}
-              <View style={[styles.stepCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+              <View style={[styles.stepCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
                 <View style={styles.stepHeader}>
                   <View style={[styles.stepNumberBadge, { backgroundColor: colors.accentMuted }]}>
-                    <Clock size={13} color={colors.accent} />
+                    <Clock size={13} color={colors.accent} strokeWidth={2.2} />
                   </View>
                   <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
                     2. Planned Session Time Limit
@@ -345,9 +354,9 @@ export default function IntentPauseScreen() {
                             backgroundColor: isSelected
                               ? colors.accent
                               : isDark
-                              ? "rgba(255,255,255,0.05)"
-                              : "rgba(0,0,0,0.04)",
-                            borderColor: isSelected ? colors.accent : colors.cardBorder,
+                              ? "#222222"
+                              : "#F1F5F9",
+                            borderColor: isSelected ? colors.accent : cardBorderColor,
                           },
                         ]}
                       >
@@ -371,10 +380,10 @@ export default function IntentPauseScreen() {
               </View>
 
               {/* Step 3: Daily Focus Prerequisite Check */}
-              <View style={[styles.stepCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+              <View style={[styles.stepCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
                 <View style={styles.stepHeader}>
                   <View style={[styles.stepNumberBadge, { backgroundColor: colors.accentMuted }]}>
-                    <Sparkles size={13} color={colors.accent} />
+                    <Sparkles size={13} color={colors.accent} strokeWidth={2.2} />
                   </View>
                   <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
                     3. Daily Focus Progress
@@ -390,8 +399,8 @@ export default function IntentPauseScreen() {
                     style={[
                       styles.taskCheckRow,
                       {
-                        backgroundColor: isDark ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.02)",
-                        borderColor: taskAcknowledged ? colors.accent : colors.cardBorder,
+                        backgroundColor: inputSurface,
+                        borderColor: taskAcknowledged ? colors.accent : cardBorderColor,
                       },
                     ]}
                   >
@@ -436,7 +445,11 @@ export default function IntentPauseScreen() {
                   style={[
                     styles.primaryButton,
                     {
-                      backgroundColor: canProceed ? colors.accent : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+                      backgroundColor: canProceed
+                        ? colors.accent
+                        : isDark
+                        ? "#222222"
+                        : "#E2E8F0",
                       borderColor: canProceed ? colors.accent : "transparent",
                     },
                   ]}
@@ -452,8 +465,17 @@ export default function IntentPauseScreen() {
                   <ArrowRight size={16} color={canProceed ? "#FFFFFF" : colors.textTertiary} />
                 </Pressable>
 
-                <Pressable onPress={handleCancel} style={styles.cancelButton}>
-                  <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                <Pressable
+                  onPress={handleCancel}
+                  style={[
+                    styles.cancelOutlineButton,
+                    {
+                      backgroundColor: isDark ? "#161616" : "#FFFFFF",
+                      borderColor: cardBorderColor,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.cancelOutlineText, { color: colors.textSecondary }]}>
                     I actually don&apos;t need this right now
                   </Text>
                 </Pressable>
@@ -469,7 +491,6 @@ export default function IntentPauseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "transparent",
   },
   keyboardAvoid: {
     flex: 1,
@@ -485,18 +506,21 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     gap: spacing.md,
   },
-  header: {
+  headerCard: {
+    borderRadius: 20,
+    borderWidth: 1.2,
+    padding: spacing.md,
+  },
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.xs,
   },
   appIconWrapper: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTextGroup: {
     flex: 1,
@@ -508,7 +532,7 @@ const styles = StyleSheet.create({
   },
   appTitle: {
     fontFamily: typography.family.bold,
-    fontSize: 20,
+    fontSize: 18,
   },
   gateBadge: {
     flexDirection: "row",
@@ -539,6 +563,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: 12,
     marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   stepCard: {
     borderRadius: 20,
@@ -684,12 +715,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.3,
   },
-  cancelButton: {
-    paddingVertical: spacing.sm,
+  cancelOutlineButton: {
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.2,
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelButtonText: {
+  cancelOutlineText: {
     fontFamily: typography.family.medium,
     fontSize: 13,
   },

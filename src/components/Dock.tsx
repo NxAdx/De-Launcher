@@ -166,7 +166,6 @@ export function Dock({ onLongPress }: DockProps) {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
-  const dockBackground = useSettingsStore((s) => s.dockBackground);
   const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
   const iconSizeOption = useSettingsStore((s) => s.iconSize);
 
@@ -282,8 +281,6 @@ export function Dock({ onLongPress }: DockProps) {
 
   const maxIndex = Math.max(0, orderedApps.length - 1);
 
-  const isFrosted = dockBackground === "frosted";
-
   return (
     <Animated.View
       entering={FadeInDown.duration(200)}
@@ -297,20 +294,18 @@ export function Dock({ onLongPress }: DockProps) {
       <View
         style={[
           styles.dockCard,
-          isFrosted && [
-            styles.frostedCard,
-            {
-              backgroundColor: isDark
-                ? "rgba(18, 18, 18, 0.85)"
-                : "rgba(255, 255, 255, 0.88)",
-              borderColor: isDark
-                ? "rgba(255, 255, 255, 0.16)"
-                : "rgba(0, 0, 0, 0.12)",
-            },
-          ],
+          styles.frostedCard,
+          {
+            backgroundColor: isDark
+              ? "rgba(18, 18, 18, 0.85)"
+              : "rgba(255, 255, 255, 0.88)",
+            borderColor: isDark
+              ? "rgba(255, 255, 255, 0.16)"
+              : "rgba(0, 0, 0, 0.12)",
+          },
         ]}
       >
-        {isFrosted && Platform.OS === "ios" && (
+        {Platform.OS === "ios" && (
           <BlurView
             intensity={40}
             tint={isDark ? "dark" : "light"}

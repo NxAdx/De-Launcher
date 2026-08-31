@@ -167,8 +167,6 @@ export default function SettingsScreen() {
   const searchWidgetStyle = useSettingsStore((s) => s.searchWidgetStyle);
   const setSearchWidgetStyle = useSettingsStore((s) => s.setSearchWidgetStyle);
 
-  const dockBackground = useSettingsStore((s) => s.dockBackground);
-  const setDockBackground = useSettingsStore((s) => s.setDockBackground);
   const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
   const setMaxDockIcons = useSettingsStore((s) => s.setMaxDockIcons);
 
@@ -496,40 +494,6 @@ export default function SettingsScreen() {
         {/* ─── Dock Customization ──────────────────────── */}
         <SectionHeader title="Dock Settings" colors={colors} />
         <View style={styles.sectionGroup}>
-          <SettingRow
-            icon={<Layers size={20} color={colors.textSecondary} />}
-            label="Dock Background"
-            description={dockBackground === "frosted" ? "Frosted Translucent" : "Transparent Clean"}
-            colors={colors}
-            isDark={isDark}
-            right={
-              <View style={styles.segmentContainer}>
-                {(["frosted", "transparent"] as DockBackgroundStyle[]).map((bgOpt) => (
-                  <Pressable
-                    key={bgOpt}
-                    onPress={() => {
-                      if (hapticFeedback) Haptics.selectionAsync();
-                      setDockBackground(bgOpt);
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      dockBackground === bgOpt && { backgroundColor: colors.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        { color: dockBackground === bgOpt ? "#FFFFFF" : colors.textSecondary },
-                      ]}
-                    >
-                      {bgOpt === "frosted" ? "Frosted" : "Clear"}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            }
-          />
-
           <SettingRow
             icon={<LayoutGrid size={20} color={colors.textSecondary} />}
             label="Max Dock Icons"

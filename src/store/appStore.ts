@@ -361,7 +361,28 @@ export const useAppStore = create<AppState>()(
       },
 
       autoArrangeHome: (nonDistractionPackages) => {
-        set({ allowedPackages: nonDistractionPackages });
+        const apps = get().installedApps;
+        const appsMap = new Map(apps.map((a) => [a.packageName, a]));
+        const seenPkgs = new Set<string>();
+        const seenLabels = new Set<string>();
+        const deduplicated: string[] = [];
+
+        for (const pkg of nonDistractionPackages) {
+          if (seenPkgs.has(pkg)) continue;
+          const app = appsMap.get(pkg);
+          if (app) {
+            const normLabel = app.label.toLowerCase().trim();
+            if (seenLabels.has(normLabel)) continue;
+            seenPkgs.add(pkg);
+            seenLabels.add(normLabel);
+            deduplicated.push(pkg);
+          } else {
+            seenPkgs.add(pkg);
+            deduplicated.push(pkg);
+          }
+        }
+
+        set({ allowedPackages: deduplicated });
         get().syncNativeWhitelist();
       },
 
