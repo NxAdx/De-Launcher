@@ -12,6 +12,15 @@ import { updateWhitelist } from "../../modules/de-launcher-native";
 
 export type AppFocusState = "allowed" | "intent_pause" | "blocked";
 
+export interface SessionReflectionItem {
+  id: string;
+  packageName: string;
+  appLabel: string;
+  goal: string;
+  durationMin: number;
+  completedAt: number;
+}
+
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface AppState {
@@ -25,6 +34,8 @@ interface AppState {
   exemptions: Record<string, number>; // packageName -> expiry timestamp (ms)
   appReasons: Record<string, string>; // packageName -> reason why pinned to home/dock
   activeSessions: Record<string, { goal: string; expiresAt: number; durationMin: number }>; // active intentionality sessions
+  recentCompletedSession: SessionReflectionItem | null;
+  reflectionHistory: Array<{ packageName: string; goal: string; outcome: "completed" | "distracted"; timestamp: number }>;
 
   // Actions
   setInstalledApps: (apps: AppInfo[]) => void;
@@ -58,6 +69,11 @@ interface AppState {
   pruneExemptions: () => void;
   isSessionActive: (packageName: string) => boolean;
 
+  // Reflection Actions
+  setRecentCompletedSession: (session: SessionReflectionItem | null) => void;
+  clearRecentCompletedSession: () => void;
+  recordSessionReflection: (outcome: "completed" | "distracted") => void;
+
   // Computed helpers
   getAppFocusState: (packageName: string) => AppFocusState;
   hasActiveExemption: (packageName: string) => boolean;
@@ -76,6 +92,8 @@ export const useAppStore = create<AppState>()(
       exemptions: {},
       appReasons: {},
       activeSessions: {},
+      recentCompletedSession: null,
+      reflectionHistory: [],
 
       setInstalledApps: (apps) => {
         const installedPackageNames = new Set(apps.map((a) => a.packageName));
@@ -446,6 +464,29 @@ export const useAppStore = create<AppState>()(
         return expiry !== undefined && expiry > Date.now();
       },
 
+      setRecentCompletedSession: (session) => set({ recentCompletedSession: session }),
+      clearRecentCompletedSession: () => set({ recentCompletedSession: null }),
+
+      recordSessionReflection: (outcome) => {
+        const session = get().recentCompletedSession;
+        if (!session) return;
+
+        const nextHistory = [
+          {
+            packageName: session.packageName,
+            goal: session.goal,
+            outcome,
+            timestamp: Date.now(),
+          },
+          ...(get().reflectionHistory || []).slice(0, 49), // retain last 50 reflections
+        ];
+
+        set({
+          reflectionHistory: nextHistory,
+          recentCompletedSession: null,
+        });
+      },
+
       getAppFocusState: (packageName) => {
         if ((get().allowedPackages || []).includes(packageName)) return "allowed";
         if ((get().intentPausePackages || []).includes(packageName)) return "intent_pause";
@@ -501,6 +542,8 @@ export const useAppStore = create<AppState>()(
         exemptions: state.exemptions,
         appReasons: state.appReasons,
         activeSessions: state.activeSessions,
+        recentCompletedSession: state.recentCompletedSession,
+        reflectionHistory: state.reflectionHistory,
       }),
       // On MMKV hydration, force-deduplicate any stale duplicate entries
       onRehydrateStorage: () => (state) => {

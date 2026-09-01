@@ -68,11 +68,13 @@ export const AppIcon = memo(function AppIcon({
   size: sizeProp,
   showLabel: showLabelProp,
 }: AppIconProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const globalShowLabels = useSettingsStore((s) => s.showLabels);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
   const activeIconPack = useSettingsStore((s) => s.activeIconPack);
   const iconSizeOption = useSettingsStore((s) => s.iconSize);
+  const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
+  const isMonochrome = iconTheme === "monochrome";
 
   const getBaseSize = () => {
     switch (iconSizeOption) {
@@ -102,9 +104,6 @@ export const AppIcon = memo(function AppIcon({
   // Load custom icon from icon pack when pack or package changes
   useEffect(() => {
     if (!activeIconPack) return;
-
-    const cached = getCachedIcon(activeIconPack, app.packageName);
-    if (cached !== undefined) return;
 
     let isMounted = true;
     getIconFromPack(activeIconPack, app.packageName).then((icon) => {
@@ -180,7 +179,11 @@ export const AppIcon = memo(function AppIcon({
       : app.icon;
 
   const iconSource = customIcon || systemIcon || app.icon;
-  const avatarBg = getAvatarColor(app.packageName);
+  const avatarBg = isMonochrome
+    ? isDark
+      ? "#262626"
+      : "#E2E8F0"
+    : getAvatarColor(app.packageName);
   const initials = getInitials(app.label);
 
   const borderRadius = Math.round(size * 0.28);
@@ -208,6 +211,7 @@ export const AppIcon = memo(function AppIcon({
         {iconSource ? (
           <Image
             source={{ uri: iconSource }}
+            tintColor={isMonochrome ? (isDark ? "rgba(220, 220, 220, 0.88)" : "rgba(50, 50, 50, 0.88)") : undefined}
             style={[
               styles.iconImage,
               {
@@ -239,6 +243,7 @@ export const AppIcon = memo(function AppIcon({
                 styles.initials,
                 {
                   fontSize: Math.round(size * 0.36),
+                  color: isMonochrome ? (isDark ? "#E5E7EB" : "#1F2937") : "#FFFFFF",
                 },
               ]}
             >

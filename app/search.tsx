@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -66,6 +66,53 @@ export default function SearchScreen() {
     );
   };
 
+  const handleExecuteItem = useCallback((item: CommandItem) => {
+    Keyboard.dismiss();
+    if (item.type === "app" && item.appInfo) {
+      const pkg = item.appInfo.packageName;
+      const schedule = useAppStore.getState().isAppWithinSchedule(pkg);
+      if (!schedule.allowed) {
+        signalNavigation();
+        router.push(
+          `/intent-pause?pkg=${pkg}&reason=${encodeURIComponent(
+            schedule.reason || ""
+          )}` as any
+        );
+        return;
+      }
+
+      const state = useAppStore.getState().getAppFocusState(pkg);
+      const distraction = isKnownDistraction(pkg);
+      const hasExemption = useAppStore.getState().hasActiveExemption(pkg);
+
+      if (
+        (state === "intent_pause" || state === "blocked" || distraction) &&
+        !hasExemption
+      ) {
+        signalNavigation();
+        router.push(`/intent-pause?pkg=${pkg}` as any);
+        return;
+      }
+
+      item.action();
+      signalNavigation();
+      router.back();
+      return;
+    }
+
+    item.action();
+    if (item.type === "action") {
+      signalNavigation();
+      router.back();
+    }
+  }, []);
+
+  const handleKeyboardSubmit = useCallback(() => {
+    if (results.length > 0) {
+      handleExecuteItem(results[0]);
+    }
+  }, [results, handleExecuteItem]);
+
   const renderItem = ({ item }: { item: CommandItem }) => {
     return (
       <Pressable
@@ -73,46 +120,7 @@ export default function SearchScreen() {
           styles.resultItem,
           pressed && { backgroundColor: "rgba(255,255,255,0.05)" },
         ]}
-        onPress={() => {
-          Keyboard.dismiss();
-          if (item.type === "app" && item.appInfo) {
-            const pkg = item.appInfo.packageName;
-            const schedule = useAppStore.getState().isAppWithinSchedule(pkg);
-            if (!schedule.allowed) {
-              signalNavigation();
-              router.push(
-                `/intent-pause?pkg=${pkg}&reason=${encodeURIComponent(
-                  schedule.reason || ""
-                )}` as any
-              );
-              return;
-            }
-
-            const state = useAppStore.getState().getAppFocusState(pkg);
-            const distraction = isKnownDistraction(pkg);
-            const hasExemption = useAppStore.getState().hasActiveExemption(pkg);
-
-            if (
-              (state === "intent_pause" || state === "blocked" || distraction) &&
-              !hasExemption
-            ) {
-              signalNavigation();
-              router.push(`/intent-pause?pkg=${pkg}` as any);
-              return;
-            }
-
-            item.action();
-            signalNavigation();
-            router.back();
-            return;
-          }
-
-          item.action();
-          if (item.type === "action") {
-            signalNavigation();
-            router.back();
-          }
-        }}
+        onPress={() => handleExecuteItem(item)}
       >
         {renderIcon(item)}
         <View style={styles.resultTextContainer}>
@@ -161,7 +169,8 @@ export default function SearchScreen() {
             placeholderTextColor={colors.textTertiary}
             value={query}
             onChangeText={setQuery}
-            returnKeyType="search"
+            returnKeyType="go"
+            onSubmitEditing={handleKeyboardSubmit}
             autoCapitalize="none"
             autoCorrect={false}
           />

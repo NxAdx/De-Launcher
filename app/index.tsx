@@ -16,6 +16,7 @@ import {
   Pressable,
   Text,
   StatusBar as RNStatusBar,
+  AppState,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
@@ -31,6 +32,7 @@ import { Dock } from "@/src/components/Dock";
 import { ContextMenu } from "@/src/components/ContextMenu";
 import { HomeSearchWidget } from "@/src/components/HomeSearchWidget";
 import { TodoStreakWidget } from "@/src/components/TodoStreakWidget";
+import { PostSessionReflectionCard } from "@/src/components/PostSessionReflectionCard";
 import { FolderModal } from "@/src/components/FolderModal";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
@@ -76,6 +78,38 @@ export default function HomeScreen() {
       }
     }
   }, [blocked_pkg, installedApps]);
+
+  // Listen for app coming to foreground to check for completed mindful sessions
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        useAppStore.getState().pruneExemptions();
+        const activeSessions = useAppStore.getState().activeSessions || {};
+        const installed = useAppStore.getState().installedApps;
+        const now = Date.now();
+
+        for (const [pkg, session] of Object.entries(activeSessions)) {
+          const app = installed.find((a) => a.packageName === pkg);
+          useAppStore.getState().setRecentCompletedSession({
+            id: `${pkg}-${now}`,
+            packageName: pkg,
+            appLabel: app?.label || pkg,
+            goal: session.goal,
+            durationMin: session.durationMin,
+            completedAt: now,
+          });
+          const nextSessions = { ...activeSessions };
+          delete nextSessions[pkg];
+          useAppStore.setState({ activeSessions: nextSessions });
+          break;
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const panGesture = useMemo(() => {
     return Gesture.Pan()
@@ -233,6 +267,9 @@ export default function HomeScreen() {
 
           {/* Daily Focus Tasks & Streak Widget */}
           <TodoStreakWidget />
+
+          {/* Mindful Session Goal Reflection Card */}
+          <PostSessionReflectionCard />
 
           {/* App & Folder Grid */}
           <Animated.View

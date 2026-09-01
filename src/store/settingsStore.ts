@@ -11,6 +11,7 @@ import { ThemeMode } from "@/src/theme/tokens";
 export type SearchWidgetStyle = "pill" | "rounded" | "minimal";
 export type DockBackgroundStyle = "transparent" | "frosted";
 export type IconSizeOption = "small" | "medium" | "large";
+export type IconThemeOption = "standard" | "monochrome";
 
 interface SettingsState {
   theme: ThemeMode;
@@ -19,6 +20,7 @@ interface SettingsState {
   showClock: boolean;
   hapticFeedback: boolean;
   activeIconPack: string | null; // packageName of selected icon pack
+  iconTheme: IconThemeOption;
   hasCompletedOnboarding: boolean;
 
   // Search Widget Options
@@ -42,6 +44,7 @@ interface SettingsState {
   setShowClock: (show: boolean) => void;
   setHapticFeedback: (enabled: boolean) => void;
   setActiveIconPack: (packageName: string | null) => void;
+  setIconTheme: (iconTheme: IconThemeOption) => void;
   setHasCompletedOnboarding: (completed: boolean) => void;
   setShowHomeSearchWidget: (show: boolean) => void;
   setSearchWidgetStyle: (style: SearchWidgetStyle) => void;
@@ -61,6 +64,7 @@ export const useSettingsStore = create<SettingsState>()(
       showClock: true,
       hapticFeedback: true,
       activeIconPack: null,
+      iconTheme: "standard",
       hasCompletedOnboarding: false,
 
       showHomeSearchWidget: true,
@@ -79,6 +83,7 @@ export const useSettingsStore = create<SettingsState>()(
       setShowClock: (showClock) => set({ showClock }),
       setHapticFeedback: (hapticFeedback) => set({ hapticFeedback }),
       setActiveIconPack: (activeIconPack) => set({ activeIconPack }),
+      setIconTheme: (iconTheme) => set({ iconTheme }),
       setHasCompletedOnboarding: (hasCompletedOnboarding) => set({ hasCompletedOnboarding }),
       setShowHomeSearchWidget: (showHomeSearchWidget) => set({ showHomeSearchWidget }),
       setSearchWidgetStyle: (searchWidgetStyle) => set({ searchWidgetStyle }),

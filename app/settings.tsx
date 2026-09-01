@@ -175,38 +175,14 @@ export default function SettingsScreen() {
 
   const iconSize = useSettingsStore((s) => s.iconSize);
   const setIconSize = useSettingsStore((s) => s.setIconSize);
+  const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
+  const setIconTheme = useSettingsStore((s) => s.setIconTheme);
 
   // App store
   const installedApps = useAppStore((s) => s.installedApps);
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
 
-  // Icon packs
-  const [iconPacks, setIconPacks] = useState<IconPackInfo[]>(
-    () => getCachedIconPacks() || []
-  );
-  const [loadingIconPacks, setLoadingIconPacks] = useState(
-    () => !getCachedIconPacks()
-  );
-  const [showIconPackDropdown, setShowIconPackDropdown] = useState(false);
   const [autoArrangeMessage, setAutoArrangeMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    getAvailableIconPacks()
-      .then((packs) => {
-        if (isMounted) {
-          setIconPacks(packs);
-          setLoadingIconPacks(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) setLoadingIconPacks(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleToggleHaptics = useCallback(
     (enabled: boolean) => {
@@ -318,6 +294,40 @@ export default function SettingsScreen() {
                       ]}
                     >
                       {tOpt === "dark" ? "Dark" : "Light"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
+          />
+
+          <SettingRow
+            icon={<Palette size={20} color={colors.textSecondary} />}
+            label="Icon Style"
+            description={iconTheme === "monochrome" ? "Dopamine-Free Monochrome" : "Standard Original Colors"}
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {(["standard", "monochrome"] as const).map((themeOpt) => (
+                  <Pressable
+                    key={themeOpt}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setIconTheme(themeOpt);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      iconTheme === themeOpt && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: iconTheme === themeOpt ? "#FFFFFF" : colors.textSecondary },
+                      ]}
+                    >
+                      {themeOpt === "standard" ? "Standard" : "Monochrome"}
                     </Text>
                   </Pressable>
                 ))}
@@ -578,130 +588,6 @@ export default function SettingsScreen() {
               <Text style={[styles.toastText, { color: colors.accent }]}>
                 {autoArrangeMessage}
               </Text>
-            </Animated.View>
-          )}
-        </View>
-
-        {/* ─── Icon Packs Dropdown ─────────────────────── */}
-        <SectionHeader title="Custom Icon Packs" colors={colors} />
-        <View style={styles.sectionGroup}>
-          <Pressable
-            onPress={() => {
-              if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowIconPackDropdown((prev) => !prev);
-            }}
-            style={[
-              styles.settingRow,
-              {
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(0,0,0,0.03)",
-              },
-            ]}
-          >
-            <View style={styles.settingLeft}>
-              <Palette size={20} color={colors.textSecondary} />
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                  Icon Pack Theme
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textTertiary }]}>
-                  {activeIconPack
-                    ? (iconPacks.find((p) => p.packageName === activeIconPack)?.label || activeIconPack)
-                    : "Default (System Icons)"}
-                </Text>
-              </View>
-            </View>
-            {showIconPackDropdown ? (
-              <ChevronUp size={20} color={colors.textSecondary} />
-            ) : (
-              <ChevronDown size={20} color={colors.textSecondary} />
-            )}
-          </Pressable>
-
-          {/* Dropdown Options */}
-          {showIconPackDropdown && (
-            <Animated.View entering={FadeIn.duration(200)} style={styles.dropdownContainer}>
-              {/* Option 1: Default System Icons */}
-              <Pressable
-                onPress={() => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setActiveIconPack(null);
-                  setShowIconPackDropdown(false);
-                }}
-                style={[
-                  styles.dropdownRow,
-                  activeIconPack === null && {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.08)"
-                      : "rgba(0,0,0,0.06)",
-                  },
-                ]}
-              >
-                <View style={styles.dropdownRowLeft}>
-                  <Smartphone size={18} color={activeIconPack === null ? colors.accent : colors.textSecondary} />
-                  <View style={{ marginLeft: spacing.sm }}>
-                    <Text style={[styles.dropdownLabel, { color: activeIconPack === null ? colors.accent : colors.textPrimary }]}>
-                      Default (System Icons)
-                    </Text>
-                    <Text style={[styles.dropdownSublabel, { color: colors.textTertiary }]}>
-                      Original app icons
-                    </Text>
-                  </View>
-                </View>
-                {activeIconPack === null && <Check size={18} color={colors.accent} />}
-              </Pressable>
-
-              {/* Detected Icon Packs */}
-              {loadingIconPacks ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator size="small" color={colors.accent} />
-                  <Text style={[styles.loadingText, { color: colors.textTertiary }]}>
-                    Scanning for icon packs...
-                  </Text>
-                </View>
-              ) : iconPacks.length === 0 ? (
-                <View style={styles.dropdownEmptyRow}>
-                  <Text style={[styles.dropdownEmptyText, { color: colors.textTertiary }]}>
-                    No third-party icon packs detected on device. Install icon packs from Google Play / F-Droid to customize icons.
-                  </Text>
-                </View>
-              ) : (
-                iconPacks.map((pack) => {
-                  const isSelected = activeIconPack === pack.packageName;
-                  return (
-                    <Pressable
-                      key={pack.packageName}
-                      onPress={() => {
-                        if (hapticFeedback) Haptics.selectionAsync();
-                        setActiveIconPack(isSelected ? null : pack.packageName);
-                        setShowIconPackDropdown(false);
-                      }}
-                      style={[
-                        styles.dropdownRow,
-                        isSelected && {
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(0,0,0,0.06)",
-                        },
-                      ]}
-                    >
-                      <View style={styles.dropdownRowLeft}>
-                        <Palette size={18} color={isSelected ? colors.accent : colors.textSecondary} />
-                        <View style={{ marginLeft: spacing.sm }}>
-                          <Text style={[styles.dropdownLabel, { color: isSelected ? colors.accent : colors.textPrimary }]}>
-                            {pack.label}
-                          </Text>
-                          <Text style={[styles.dropdownSublabel, { color: colors.textTertiary }]}>
-                            {pack.packageName}
-                          </Text>
-                        </View>
-                      </View>
-                      {isSelected && <Check size={18} color={colors.accent} />}
-                    </Pressable>
-                  );
-                })
-              )}
             </Animated.View>
           )}
         </View>
