@@ -273,6 +273,34 @@ class DeLauncherNativeModule : Module() {
       }
     }
 
+    AsyncFunction("getMonochromeAppIcon") { packageName: String ->
+      appContext.reactContext?.let { context ->
+        try {
+          val pm = context.packageManager
+          val cacheDir = context.cacheDir
+          val appInfo = pm.getApplicationInfo(packageName, 0)
+          val packageInfo = pm.getPackageInfo(packageName, 0)
+          val lastUpdateTime = packageInfo.lastUpdateTime
+          val maxSize = 192
+          val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
+          if (monoFile.exists() && monoFile.length() > 0) {
+            "file://" + monoFile.absolutePath
+          } else {
+            val drawable = appInfo.loadIcon(pm)
+            drawableToUri(context, drawable, packageName, lastUpdateTime)
+            if (monoFile.exists() && monoFile.length() > 0) {
+              "file://" + monoFile.absolutePath
+            } else {
+              null
+            }
+          }
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get mono app icon for $packageName", e)
+          null
+        }
+      }
+    }
+
     AsyncFunction("getSystemAppIcons") { packageNames: List<String> ->
       appContext.reactContext?.let { context ->
         val pm = context.packageManager
@@ -400,6 +428,25 @@ class DeLauncherNativeModule : Module() {
       scaledBitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
       out.flush()
       out.close()
+
+      // Generate monochrome / grayscale version
+      try {
+        val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
+        val monoBitmap = Bitmap.createBitmap(scaledBitmap.width, scaledBitmap.height, Bitmap.Config.ARGB_8888)
+        val monoCanvas = Canvas(monoBitmap)
+        val paint = android.graphics.Paint()
+        val colorMatrix = android.graphics.ColorMatrix()
+        colorMatrix.setSaturation(0f)
+        paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
+        monoCanvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
+
+        val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
+        monoBitmap.compress(Bitmap.CompressFormat.PNG, 90, monoOut)
+        monoOut.flush()
+        monoOut.close()
+      } catch (monoErr: Throwable) {
+        android.util.Log.w("DeLauncherNative", "Failed to cache mono icon for $packageName", monoErr)
+      }
       
       "file://" + iconFile.absolutePath
     } catch (t: Throwable) {

@@ -48,6 +48,10 @@ export async function getSystemAppIcon(packageName: string): Promise<string | nu
   return await DeLauncherNativeModule.getSystemAppIcon(packageName);
 }
 
+export async function getMonochromeAppIcon(packageName: string): Promise<string | null> {
+  return await DeLauncherNativeModule.getMonochromeAppIcon(packageName);
+}
+
 export async function getSystemAppIcons(packageNames: string[]): Promise<Record<string, string | null>> {
   return await DeLauncherNativeModule.getSystemAppIcons(packageNames);
 }

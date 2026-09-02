@@ -368,11 +368,6 @@ export default function IntentPauseScreen() {
                         >
                           {opt.label}
                         </Text>
-                        {opt.recommended && !isSelected && (
-                          <Text style={[styles.recBadge, { color: colors.accentTint }]}>
-                            Rec
-                          </Text>
-                        )}
                       </Pressable>
                     );
                   })}
@@ -641,7 +636,7 @@ const styles = StyleSheet.create({
   },
   durationButton: {
     flex: 1,
-    paddingVertical: 10,
+    height: 44,
     borderRadius: 14,
     borderWidth: 1.2,
     alignItems: "center",
@@ -650,12 +645,6 @@ const styles = StyleSheet.create({
   durationText: {
     fontFamily: typography.family.bold,
     fontSize: 12,
-  },
-  recBadge: {
-    fontFamily: typography.family.bold,
-    fontSize: 9,
-    marginTop: 1,
-    letterSpacing: 0.2,
   },
   taskCheckRow: {
     flexDirection: "row",

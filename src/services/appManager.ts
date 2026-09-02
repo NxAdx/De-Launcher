@@ -14,6 +14,7 @@ import {
   promptSetDefaultLauncher as nativePromptSetDefaultLauncher,
   changeWallpaper as nativeChangeWallpaper,
   getSystemAppIcon as nativeGetSystemAppIcon,
+  getMonochromeAppIcon as nativeGetMonochromeAppIcon,
   getSystemAppIcons as nativeGetSystemAppIcons,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
@@ -312,6 +313,44 @@ export async function getSystemAppIcon(packageName: string): Promise<string | nu
  */
 export function getCachedSystemIcon(packageName: string): string | null | undefined {
   return systemIconCache.get(packageName);
+}
+
+const monochromeIconCache = new Map<string, string | null>();
+const monochromeIconRequests = new Map<string, Promise<string | null>>();
+
+/**
+ * Get monochrome (grayscale) app icon on-demand.
+ */
+export async function getMonochromeAppIcon(packageName: string): Promise<string | null> {
+  if (monochromeIconCache.has(packageName)) {
+    return monochromeIconCache.get(packageName) ?? null;
+  }
+  const pending = monochromeIconRequests.get(packageName);
+  if (pending) return pending;
+
+  const request = nativeGetMonochromeAppIcon(packageName)
+    .then((iconUri) => {
+      monochromeIconCache.set(packageName, iconUri);
+      return iconUri;
+    })
+    .catch((err) => {
+      console.error(`[AppManager] Error getting mono icon for ${packageName}:`, err);
+      monochromeIconCache.set(packageName, null);
+      return null;
+    })
+    .finally(() => {
+      monochromeIconRequests.delete(packageName);
+    });
+
+  monochromeIconRequests.set(packageName, request);
+  return request;
+}
+
+/**
+ * Synchronously check if a monochrome icon is cached.
+ */
+export function getCachedMonochromeIcon(packageName: string): string | null | undefined {
+  return monochromeIconCache.get(packageName);
 }
 
 /**

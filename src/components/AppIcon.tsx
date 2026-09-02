@@ -26,6 +26,8 @@ import {
   getCachedIcon,
   getSystemAppIcon,
   getCachedSystemIcon,
+  getMonochromeAppIcon,
+  getCachedMonochromeIcon,
 } from "@/src/services/appManager";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -46,11 +48,13 @@ function getAvatarColor(packageName: string): string {
 }
 
 function getInitials(label: string): string {
-  const words = label.trim().split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
+  if (!label) return "?";
+  const trimmed = label.trim();
+  const parts = trimmed.split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-  return label.slice(0, 2).toUpperCase();
+  return trimmed.slice(0, 2).toUpperCase();
 }
 
 interface AppIconProps {
@@ -96,10 +100,12 @@ export const AppIcon = memo(function AppIcon({
   // Synchronous cache checks on current app.packageName
   const syncCustomIcon = activeIconPack ? getCachedIcon(activeIconPack, app.packageName) : undefined;
   const syncSystemIcon = getCachedSystemIcon(app.packageName) ?? app.icon ?? undefined;
+  const syncMonoIcon = isMonochrome ? getCachedMonochromeIcon(app.packageName) : undefined;
 
   // Package-keyed async state prevents recycled cells from displaying another app's icon
   const [asyncCustomIcon, setAsyncCustomIcon] = useState<{ pkg: string; pack: string; uri: string | null } | null>(null);
   const [asyncSystemIcon, setAsyncSystemIcon] = useState<{ pkg: string; uri: string | null } | null>(null);
+  const [asyncMonoIcon, setAsyncMonoIcon] = useState<{ pkg: string; uri: string | null } | null>(null);
 
   // Load custom icon from icon pack when pack or package changes
   useEffect(() => {
@@ -117,22 +123,34 @@ export const AppIcon = memo(function AppIcon({
     };
   }, [activeIconPack, app.packageName]);
 
-  // Load system icon on-demand if not already cached
+  // Load monochrome or system icon on-demand
   useEffect(() => {
-    const cached = getCachedSystemIcon(app.packageName);
-    if (cached !== undefined || app.icon) return;
-
     let isMounted = true;
-    getSystemAppIcon(app.packageName).then((icon) => {
-      if (isMounted) {
-        setAsyncSystemIcon({ pkg: app.packageName, uri: icon });
+
+    if (isMonochrome) {
+      const cachedMono = getCachedMonochromeIcon(app.packageName);
+      if (cachedMono === undefined) {
+        getMonochromeAppIcon(app.packageName).then((icon) => {
+          if (isMounted) {
+            setAsyncMonoIcon({ pkg: app.packageName, uri: icon });
+          }
+        });
       }
-    });
+    } else {
+      const cached = getCachedSystemIcon(app.packageName);
+      if (cached === undefined && !app.icon) {
+        getSystemAppIcon(app.packageName).then((icon) => {
+          if (isMounted) {
+            setAsyncSystemIcon({ pkg: app.packageName, uri: icon });
+          }
+        });
+      }
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [app.packageName, app.icon]);
+  }, [app.packageName, app.icon, isMonochrome]);
 
   const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.92, springs.snappy);
@@ -178,7 +196,16 @@ export const AppIcon = memo(function AppIcon({
       ? asyncSystemIcon.uri
       : app.icon;
 
-  const iconSource = customIcon || systemIcon || app.icon;
+  const monoIcon =
+    syncMonoIcon !== undefined
+      ? syncMonoIcon
+      : asyncMonoIcon?.pkg === app.packageName
+      ? asyncMonoIcon.uri
+      : systemIcon && systemIcon.includes("app_icon_")
+      ? systemIcon.replace("app_icon_", "app_icon_mono_")
+      : null;
+
+  const iconSource = isMonochrome ? monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
   const avatarBg = isMonochrome
     ? isDark
       ? "#262626"
@@ -211,7 +238,6 @@ export const AppIcon = memo(function AppIcon({
         {iconSource ? (
           <Image
             source={{ uri: iconSource }}
-            tintColor={isMonochrome ? (isDark ? "rgba(220, 220, 220, 0.88)" : "rgba(50, 50, 50, 0.88)") : undefined}
             style={[
               styles.iconImage,
               {

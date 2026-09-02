@@ -246,7 +246,10 @@ export default function DockSettingsScreen() {
         onDragEnd={handleDragEnd}
         keyExtractor={(item) => item.packageName}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 90 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />

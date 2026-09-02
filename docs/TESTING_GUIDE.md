@@ -1,120 +1,148 @@
-# 🧪 De-Launcher — Comprehensive Feature & Testing Guide
+# 🧪 De-Launcher — Comprehensive Feature, Architecture & Testing Guide
 
-This guide walks you through testing every feature in **De-Launcher** (both newly introduced digital minimalism features and established core workflows).
-
----
-
-## 📋 Feature Testing Checklist
-
-- [ ] **1. Dopamine-Free Monochrome Icons**
-- [ ] **2. Keyboard-Driven Instant Search Launch (KISS-style)**
-- [ ] **3. Post-Session Goal Reflection Banner**
-- [ ] **4. 4-Step Mindful Opening Protocol (Distraction Barrier)**
-- [ ] **5. Intentional Pinning Checkpoint (Reason Required)**
-- [ ] **6. Daily Focus & 28-Day Consistency Heatmap**
-- [ ] **7. Frosted Capsule Dock & Drag-to-Reorder**
-- [ ] **8. Cleaned-Up Minimalist Settings**
+This guide gives you an exhaustive reference to test and cross-check every single screen, widget, gesture, and behavioral mechanic in **De-Launcher**, benchmarked against **Kvaesitso**, **KISS Launcher**, **Olauncher**, and **Lawnchair**.
 
 ---
 
-## 🔍 Step-by-Step Test Scenarios
+## 📑 Feature Testing Matrix
 
-### 1. 🖤 Dopamine-Free Monochrome Icons
-* **Objective**: Remove dopamine triggers caused by saturated app icon colors (Instagram pink, YouTube red, TikTok neon).
-* **Steps**:
-  1. Open **Settings** (tap the gear icon in the top right of Home).
-  2. Under **Appearance**, locate **Icon Style**.
-  3. Tap **Monochrome**.
-  4. Return to Home, open the App Drawer, and open Search.
-  5. Verify all app icons are rendered in a sleek, desaturated grayscale palette.
-  6. Return to Settings and switch back to **Standard** to verify instant toggle back to original colors.
-
----
-
-### 2. ⌨️ Keyboard-Driven Instant Search Launch
-* **Objective**: Search and launch apps with zero mouse/finger tapping from the keyboard (KISS Launcher pattern).
-* **Steps**:
-  1. From Home, swipe down from the center of the screen (or tap the Search pill).
-  2. The keyboard opens automatically with cursor focused in the search input.
-  3. Type 1–2 letters of an app (e.g. `ch` for Chrome, `ca` for Calculator, `se` for Settings).
-  4. Notice the top matching result is highlighted at the top of the list.
-  5. Tap the **Go / Search / Enter** key on your virtual keyboard.
-  6. Verify the app launches immediately without requiring you to tap the list item.
+| # | Feature / Screen | Primary Purpose | Expected Behavior |
+|---|---|---|---|
+| **1** | **Daily Focus & Heatmap** | Habit consistency & intentional tasks | 4-week calendar heatmap + zero-flicker task checklist |
+| **2** | **Monochrome Icon Mode** | Dopamine-free grayscale phone UX | Native grayscale desaturation without blank/white silhouettes |
+| **3** | **Dock App Configuration** | Selective dock customization | Bottom safe insets so last app is never cut off |
+| **4** | **Mindful Gate (Intent Pause)** | Friction barrier for distracting apps | Solid OLED background + static fixed-height time buttons |
+| **5** | **Keyboard-Driven Search** | Instant System-2 navigation | Auto-focused keyboard + Enter/Return instant launch |
+| **6** | **Post-Session Goal Reflection** | Meta-awareness habit feedback | Prompt banner on return to launcher ("Did you finish goal?") |
+| **7** | **Intentional Pinning** | Strict home curation | Reason requirement (min 10 chars) before pinning to Home |
+| **8** | **Permanent Frosted Dock** | Tactile one-handed ergonomics | 120 FPS horizontal drag-to-reorder + haptic feedback |
 
 ---
 
-### 3. 🎯 Post-Session Goal Reflection Banner
-* **Objective**: Build meta-awareness and accountability for time spent inside distracting apps.
-* **Steps**:
-  1. Open a distracting app (e.g., Reddit, YouTube, Instagram) via Search or Drawer.
-  2. Pass the Mindful Gate by entering a goal (e.g. *"Check work message"*), selecting 3 or 5 minutes, and completing the 3-second breathing cooldown.
-  3. Use the app for a few moments, then press your Android Home button or gesture to return to De-Launcher.
-  4. On the Home screen, verify the **Post-Session Reflection Card** appears:
-     > *"Did you accomplish your goal? 'Check work message' in Reddit"*
-  5. Test tapping **✅ Yes, done**:
-     - Light haptic triggers, positive feedback *"Great focus! Goal logged"* displays, and card dismisses.
-  6. Repeat with another session and tap **⚠️ Got distracted**:
-     - Encouraging feedback *"Awareness is progress. Keep focused!"* displays and card dismisses.
+## 🔍 Detailed Component & Verification Guides
 
 ---
 
-### 4. 🛡️ 4-Step Mindful Opening Protocol (Distraction Gate)
-* **Objective**: Prevent mindless impulsive app opening.
-* **Steps**:
-  1. Open Drawer and tap any distracting app (e.g., Instagram, YouTube, Reddit).
-  2. Verify the **Mindful Gate** screen opens with a solid, deep OLED dark surface (zero background bleed-through from underlying screens).
-  3. Try pasting text into the Goal field — verify paste is disabled to prevent mindless bypass.
-  4. Type your intentional goal (minimum 8 characters).
-  5. Select a time limit (`3 min`, `5 min`, `10 min`, `15 min`).
-  6. Check the **Daily Focus Progress** acknowledgment.
-  7. Tap **Unlock for X Minutes** ➔ Observe the 3-second pulsating breathing circle ➔ App launches smoothly.
+### 1. 📊 Daily Focus Modal & Heatmap Sheet
+* **How to Trigger**: Tap the **DAILY FOCUS** pill widget on the Home Screen.
+* **Key Elements**:
+  * **Header**: Target icon badge + Completed count (`"X of Y tasks completed today"`) + Close button.
+  * **Consistency Heatmap**:
+    * Clean weekday header row: `M`, `T`, `W`, `T`, `F`, `S`, `S`.
+    * 4 solid horizontal rows representing 28 days of consistency.
+    * 5 distinct color levels (`Level 0` = faint card outline, `Level 1–4` = graduating sage/emerald tones).
+    * Streak flame badge: Displays active consecutive streak count.
+    * Legend row: `Less` `[0] [1] [2] [3] [4]` `More`.
+  * **Task Checklist**:
+    * Interactive task rows with custom rounded checkbox.
+    * Tapping checkbox: Strikes through text, reduces opacity to 65%, and plays success haptic.
+    * Trash icon: Deletes task with medium haptic.
+    * Inline `+ Add Task`: Expands an inline input field without layout flicker or double keyboard jumps.
+* **Verification Checks**:
+  - [ ] Heatmap squares have fixed height (26px) and are evenly distributed across all 7 columns.
+  - [ ] Tapping `+ Add Task` opens the input smoothly without any screen flicker.
+  - [ ] Completing a task updates the Home screen pill widget immediately upon closing the sheet.
 
 ---
 
-### 5. 📌 Intentional Pinning Checkpoint (Home & Dock Curation)
-* **Objective**: Keep the Home screen as a sacred, low-distraction space (Max 8–12 apps).
-* **Steps**:
-  1. Open the App Drawer (swipe up from Home).
-  2. Long-press any app and tap **"Add to Home Screen (Requires Reason)"**.
-  3. Verify the **Intentional Pin Modal** appears: *"Why does this app belong on your Home Screen?"*.
-  4. Type a reason (min 10 chars) or tap an inspiration chip (e.g., *"Work communication"*).
-  5. Tap **Pin to Home** ➔ App is added to Home.
-  6. On Home, long-press the newly pinned app:
-     - Verify the context menu header displays: *"📌 Pinned for: [Your Reason]"*.
+### 2. 🖤 Dopamine-Free Monochrome Icons
+* **How to Trigger**: Open **Settings** ➔ **Appearance** ➔ Tap **Monochrome**.
+* **Key Elements**:
+  * Home Grid app icons.
+  * Dock capsule icons.
+  * App Drawer list icons.
+  * Search results list icons.
+* **Expected Behavior**:
+  * System app icons (PNG / WebP bitmaps) are converted natively into crisp, high-resolution grayscale images.
+  * Internal glyphs, brand marks, letters, and shapes (e.g. Chrome circle, WhatsApp phone, YouTube play button) remain **100% visible and sharp**.
+  * No icons are turned into flat solid white or gray blocks.
+  * Tapping **Standard** in Settings instantly restores full vibrant colors.
+* **Verification Checks**:
+  - [ ] Switch to Monochrome ➔ Verify all icons on Home & Dock show complete icon details in grayscale.
+  - [ ] Switch back to Standard ➔ Verify original brand colors reappear immediately.
 
 ---
 
-### 6. 📊 Daily Focus & 28-Day Consistency Heatmap
-* **Objective**: Anchor your day around 1–3 high-priority focus tasks.
-* **Steps**:
-  1. Look at the **DAILY FOCUS** widget pill in the center of Home.
-  2. Tap the pill ➔ The **Daily Focus Bottom Sheet** slides up smoothly with background blur.
-  3. Check the **28-Day Heatmap**:
-     - 7-column × 4-row matrix representing the last 4 weeks of habit consistency.
-     - Flame badge displaying your active streak.
-  4. Add a new task using the **+ Add Task** input.
-  5. Tap a task checkbox ➔ Watch it strike through with satisfying haptic feedback.
-  6. Dismiss the sheet and observe the Home pill update in real-time (`1 / 2 completed today`).
+### 3. 🧊 Dock Configuration (`dock-settings.tsx`)
+* **How to Trigger**: Open **Settings** ➔ **Dock** ➔ Tap **Configure Dock Apps →**.
+* **Key Elements**:
+  * Slot indicator dots (`4 / 5 slots` filled).
+  * Search input to quickly filter installed apps.
+  * Reorderable list of docked apps (with drag handle `≡` on the left) and toggle switch on the right.
+  * Alphabetical list of available apps with toggle switches.
+* **Expected Behavior**:
+  * Smooth drag-and-drop to reorder docked shortcuts with haptics.
+  * Scrolling all the way to the bottom of the list reveals the last app (e.g. `YouTube`, `Workspace`) with full clearance above the Android system navigation bar.
+* **Verification Checks**:
+  - [ ] Scroll to the very bottom of the app list ➔ Verify the bottom-most app is 100% visible and toggle switch is easy to tap.
 
 ---
 
-### 7. 🧊 Permanent Frosted Dock & Drag-to-Reorder
-* **Objective**: Ergonomic, one-handed dock with tactile drag-and-drop.
-* **Steps**:
-  1. Long-press an icon in the bottom Dock until it scales up slightly.
-  2. Drag it horizontally left or right into a new slot.
-  3. Release ➔ The icon snaps into place with smooth spring physics and haptics.
-  4. Notice the frosted glass card design with high-contrast borders that stays legible across any wallpaper.
+### 4. 🛡️ Mindful Gate Friction Barrier (`intent-pause.tsx`)
+* **How to Trigger**: Tap any distracting app (e.g. Reddit, YouTube, Instagram) in Search or Drawer.
+* **Key Elements**:
+  * **Top Card**: Full-bleed solid OLED dark surface (`#0D0D0D`) with app icon, app label, and `🛡️ MINDFUL GATE` badge.
+  * **Step 1: Goal Input**: Multiline text input with copy-paste prevention (`contextMenuHidden`). Must enter at least 8 characters. Quick suggestion chips available below.
+  * **Step 2: Time Budget**: 4 fixed-height buttons (`3 min`, `5 min`, `10 min`, `15 min`).
+  * **Step 3: Daily Focus Progress**: Checkbox acknowledging today's intentional progress.
+  * **Action Button**: Primary `[ Unlock for X Minutes -> ]` + Secondary `[ I actually don't need this right now ]`.
+  * **Breathing Cooldown**: 3-second pulsating circle before launching.
+* **Expected Behavior**:
+  * Absolutely **zero background bleed-through** (the underlying App Drawer or Home screen never shows through).
+  * Tapping between `3 min`, `5 min`, `10 min`, and `15 min` buttons **does NOT resize or jump any button dimensions**.
+* **Verification Checks**:
+  - [ ] Tap between all 4 time buttons ➔ Verify they remain identical in size and layout is completely stable.
+  - [ ] Verify that background drawer text does not show through behind the cards.
 
 ---
 
-### 8. ⚙️ Cleaned-Up Minimalist Settings
-* **Objective**: Eliminate the "tinkering trap" so settings remain simple and fast.
-* **Steps**:
-  1. Open **Settings**.
-  2. Verify the 4 clean sections:
-     - **Appearance**: Theme (Dark/Light), Icon Style (Standard/Monochrome), Icon Sizing (S/M/L), Grid Columns, App Labels.
-     - **Dock**: Maximum Dock Icons (4–6), Configure Dock Apps.
-     - **Productivity & Focus**: Daily Focus & Streaks toggle, Auto-Arrange Non-Distractions button.
-     - **System & Recovery**: Set as Default Home, Accessibility Service, System Wallpaper.
-  3. Verify no legacy icon pack dropdowns or cluttered animation sliders remain.
+### 5. ⌨️ Keyboard-Driven Instant Search Launch
+* **How to Trigger**: Swipe down on Home screen (or tap Search bar).
+* **Key Elements**:
+  * Search input automatically focused with virtual keyboard open.
+  * Real-time fuzzy filtering of apps, commands, and settings shortcuts.
+  * Top matching result highlighted at the top of the list.
+* **Expected Behavior**:
+  * Typing `ch` brings `Chrome` to the top.
+  * Pressing the **Go / Search / Enter** key on the virtual keyboard launches `Chrome` directly.
+* **Verification Checks**:
+  - [ ] Open search, type 2 letters, press keyboard Enter ➔ Verify top match opens immediately.
+
+---
+
+### 6. 🎯 Post-Session Goal Reflection Banner
+* **How to Trigger**: Complete an intentional session in a gated app and return to Home.
+* **Key Elements**:
+  * Floating frosted card appearing directly above the App Grid on Home.
+  * Target badge + `"Mindful Session • [App Name]"`.
+  * Prompt: *"Did you accomplish your goal? '[Your Goal]' in [App Name]"*.
+  * Action 1: `[ ✅ Yes, done ]` ➔ Positive toast, logs outcome, dismisses card.
+  * Action 2: `[ ⚠️ Got distracted ]` ➔ Mindful encouraging toast, logs outcome, dismisses card.
+* **Verification Checks**:
+  - [ ] Open gated app for 3 min ➔ Press Home button ➔ Verify reflection card appears.
+  - [ ] Tap `Yes, done` ➔ Verify success toast and smooth exit animation.
+
+---
+
+### 7. 📌 Intentional Pinning Checkpoint
+* **How to Trigger**: Open App Drawer ➔ Long-press any app ➔ Tap **"Add to Home Screen (Requires Reason)"**.
+* **Key Elements**:
+  * Pin Modal asking *"Why does this app belong on your Home Screen?"*.
+  * Minimum 10-character reason input or quick inspiration chips.
+* **Expected Behavior**:
+  * Pinned app appears on Home.
+  * Long-pressing the app on Home displays: *"📌 Pinned for: [Your Reason]"* in the context menu header.
+* **Verification Checks**:
+  - [ ] Add app with reason ➔ Verify reason is displayed in the context menu on Home.
+
+---
+
+### 8. 📱 Minimalist Settings Screen
+* **How to Trigger**: Tap Settings gear in top right of Home.
+* **Sections**:
+  1. **Appearance**: Theme (`Dark`/`Light`), Icon Style (`Standard`/`Monochrome`), Icon Sizing (`S`/`M`/`L`), Grid Columns (`3`/`4`/`5`), App Labels (`On`/`Off`).
+  2. **Dock**: Max Dock Icons (`4`/`5`/`6`), Configure Dock Apps.
+  3. **Productivity & Focus**: Daily Focus & Streaks switch, Auto-Arrange Non-Distractions button.
+  4. **System & Recovery**: Set as Default Home, Accessibility Service, System Wallpaper.
+* **Verification Checks**:
+  - [ ] All settings changes persist across app restart (backed by MMKV storage).

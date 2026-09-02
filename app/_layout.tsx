@@ -225,8 +225,8 @@ function RootLayoutContent() {
         <Stack.Screen
           name="intent-pause"
           options={{
-            animation: "fade",
-            presentation: "transparentModal",
+            animation: "slide_from_bottom",
+            presentation: "modal",
           }}
         />
       </Stack>

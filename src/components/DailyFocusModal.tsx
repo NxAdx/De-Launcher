@@ -1,8 +1,12 @@
 /**
- * DailyFocusModal Component
+ * DailyFocusModal Component — De-Launcher
  *
  * Full interactive bottom sheet / modal for Daily Focus & Consistency Heatmap.
- * Keeps the homescreen uncluttered while giving users a rich, dedicated focus space.
+ * Features:
+ * - Structured 4-week × 7-day consistency calendar heatmap with weekday headers
+ * - Interactive task checklist with smooth toggle, add, and delete
+ * - Solid OLED dark / clean light card surfaces
+ * - Zero-flicker task entry and keyboard handling
  */
 import React, { useState, useMemo } from "react";
 import {
@@ -31,6 +35,8 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useTodoStore, HeatmapDay } from "@/src/store/todoStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
+
+const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -65,8 +71,9 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
   const [newTodoText, setNewTodoText] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  const heatmapData = useMemo<HeatmapDay[]>(() => {
-    const result: HeatmapDay[] = [];
+  // Generate 28 days structured into 4 weeks of 7 days
+  const weeks = useMemo<HeatmapDay[][]>(() => {
+    const allDays: HeatmapDay[] = [];
     const now = new Date();
 
     for (let i = 27; i >= 0; i--) {
@@ -84,16 +91,20 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
       else if (count === 2) level = 2;
       else if (count === 1) level = 1;
 
-      result.push({ date: dateStr, count, level });
+      allDays.push({ date: dateStr, count, level });
     }
 
-    return result;
+    const structuredWeeks: HeatmapDay[][] = [];
+    for (let w = 0; w < 4; w++) {
+      structuredWeeks.push(allDays.slice(w * 7, (w + 1) * 7));
+    }
+    return structuredWeeks;
   }, [history]);
 
   const handleAdd = () => {
     if (!newTodoText.trim()) return;
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    addTodo(newTodoText);
+    addTodo(newTodoText.trim());
     setNewTodoText("");
     setIsAdding(false);
   };
@@ -111,21 +122,24 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
   const getHeatmapColor = (level: HeatmapDay["level"]) => {
     switch (level) {
       case 1:
-        return isDark ? "rgba(101, 125, 92, 0.4)" : "rgba(79, 101, 72, 0.35)";
+        return isDark ? "rgba(101, 125, 92, 0.45)" : "rgba(79, 101, 72, 0.4)";
       case 2:
-        return isDark ? "rgba(101, 125, 92, 0.65)" : "rgba(79, 101, 72, 0.6)";
+        return isDark ? "rgba(101, 125, 92, 0.7)" : "rgba(79, 101, 72, 0.65)";
       case 3:
-        return isDark ? "rgba(101, 125, 92, 0.85)" : "rgba(79, 101, 72, 0.85)";
+        return isDark ? "rgba(101, 125, 92, 0.9)" : "rgba(79, 101, 72, 0.85)";
       case 4:
         return isDark ? "#A3B899" : "#384B34";
       default:
-        return isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)";
+        return isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
     }
   };
 
   const completedCount = todos.filter((t) => t.completed).length;
 
   if (!visible) return null;
+
+  const cardSurface = isDark ? "#171717" : "#FFFFFF";
+  const cardBorderColor = isDark ? "#282828" : "#E2E8F0";
 
   return (
     <Modal
@@ -136,7 +150,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.modalOverlay}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
@@ -146,10 +160,8 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
           style={[
             styles.sheetContainer,
             {
-              backgroundColor: isDark
-                ? "rgba(20, 20, 20, 0.98)"
-                : "rgba(252, 252, 252, 0.98)",
-              borderColor: colors.cardBorder,
+              backgroundColor: isDark ? "#121212" : "#F8FAFC",
+              borderColor: cardBorderColor,
             },
           ]}
         >
@@ -157,7 +169,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
           <View style={styles.headerRow}>
             <View style={styles.headerTitleGroup}>
               <View style={[styles.targetIconCircle, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
-                <Target size={16} color={colors.accent} strokeWidth={2.2} />
+                <Target size={16} color={colors.accent} strokeWidth={2.4} />
               </View>
               <View>
                 <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
@@ -172,7 +184,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
             <Pressable
               onPress={onClose}
               hitSlop={12}
-              style={[styles.closeButton, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }]}
+              style={[styles.closeButton, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}
             >
               <X size={16} color={colors.textSecondary} />
             </Pressable>
@@ -184,7 +196,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Consistency Heatmap Card */}
-            <View style={[styles.heatmapCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+            <View style={[styles.heatmapCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
               <View style={styles.heatmapHeader}>
                 <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>
                   Consistency (Last 4 Weeks)
@@ -199,22 +211,36 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                 )}
               </View>
 
-              {/* Centered Heatmap Grid: 4 weeks (rows) of 7 days (cols) */}
-              <View style={styles.heatmapGrid}>
-                {heatmapData.map((day, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.heatmapCell,
-                      {
-                        backgroundColor: getHeatmapColor(day.level),
-                        borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-                      },
-                    ]}
-                  />
+              {/* Weekday Labels Header */}
+              <View style={styles.weekdayHeaderRow}>
+                {WEEKDAYS.map((dayLabel, idx) => (
+                  <Text key={idx} style={[styles.weekdayLabel, { color: colors.textTertiary }]}>
+                    {dayLabel}
+                  </Text>
                 ))}
               </View>
 
+              {/* 4 Rows of 7 Days Matrix */}
+              <View style={styles.weeksContainer}>
+                {weeks.map((week, wIdx) => (
+                  <View key={wIdx} style={styles.weekRow}>
+                    {week.map((day, dIdx) => (
+                      <View
+                        key={dIdx}
+                        style={[
+                          styles.heatmapCell,
+                          {
+                            backgroundColor: getHeatmapColor(day.level),
+                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ))}
+              </View>
+
+              {/* Heatmap Legend */}
               <View style={styles.legendRow}>
                 <Text style={[styles.legendText, { color: colors.textTertiary }]}>Less</Text>
                 <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(0) }]} />
@@ -247,19 +273,18 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
 
               {/* Add Task Input Form */}
               {isAdding && (
-                <View style={[styles.addInputCard, { backgroundColor: colors.cardBg, borderColor: colors.accent }]}>
+                <View style={[styles.addInputCard, { backgroundColor: cardSurface, borderColor: colors.accent }]}>
                   <TextInput
                     style={[styles.addInput, { color: colors.textPrimary }]}
-                    placeholder="What is your single main priority today?"
+                    placeholder="What is your main priority today?"
                     placeholderTextColor={colors.textTertiary}
                     value={newTodoText}
                     onChangeText={setNewTodoText}
-                    autoFocus
                     onSubmitEditing={handleAdd}
                     returnKeyType="done"
                   />
                   <View style={styles.addInputActions}>
-                    <Pressable onPress={() => setIsAdding(false)} style={styles.cancelAddBtn}>
+                    <Pressable onPress={() => { setIsAdding(false); setNewTodoText(""); }} style={styles.cancelAddBtn}>
                       <Text style={[styles.cancelAddText, { color: colors.textTertiary }]}>Cancel</Text>
                     </Pressable>
                     <Pressable
@@ -274,7 +299,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
 
               {/* Task Items */}
               {todos.length === 0 && !isAdding ? (
-                <View style={[styles.emptyCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+                <View style={[styles.emptyCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
                   <Sparkles size={20} color={colors.accentTint} />
                   <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
                     No tasks set for today
@@ -297,26 +322,28 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                     style={[
                       styles.todoItemRow,
                       {
-                        backgroundColor: colors.cardBg,
-                        borderColor: todo.completed ? "transparent" : colors.cardBorder,
+                        backgroundColor: cardSurface,
+                        borderColor: todo.completed ? "transparent" : cardBorderColor,
+                        opacity: todo.completed ? 0.65 : 1,
                       },
                     ]}
                   >
                     <Pressable
                       onPress={() => handleToggle(todo.id)}
-                      style={styles.todoCheckArea}
+                      style={styles.todoItemContent}
                     >
                       <View
                         style={[
                           styles.checkbox,
                           {
-                            borderColor: todo.completed ? colors.accent : colors.cardBorder,
+                            borderColor: todo.completed ? colors.accent : (isDark ? "#444444" : "#CBD5E1"),
                             backgroundColor: todo.completed ? colors.accent : "transparent",
                           },
                         ]}
                       >
                         {todo.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
                       </View>
+
                       <Text
                         style={[
                           styles.todoText,
@@ -356,7 +383,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
   },
   sheetContainer: {
     width: "100%",
@@ -434,17 +461,31 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: 11,
   },
-  heatmapGrid: {
+  weekdayHeaderRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 4,
+    paddingHorizontal: 2,
+    marginTop: 2,
+  },
+  weekdayLabel: {
+    flex: 1,
+    textAlign: "center",
+    fontFamily: typography.family.bold,
+    fontSize: 11,
+  },
+  weeksContainer: {
+    gap: 6,
     marginVertical: 4,
   },
+  weekRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 6,
+  },
   heatmapCell: {
-    width: "12.5%",
-    aspectRatio: 1,
-    borderRadius: 6,
+    flex: 1,
+    height: 26,
+    borderRadius: 7,
     borderWidth: 1,
   },
   legendRow: {
@@ -452,16 +493,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
     gap: 4,
-    marginTop: 2,
+    marginTop: 4,
   },
   legendText: {
     fontFamily: typography.family.regular,
     fontSize: 10,
+    marginHorizontal: 2,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 3,
   },
   tasksSection: {
     gap: spacing.sm,
@@ -470,14 +512,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 2,
   },
   addInlineButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   addInlineText: {
@@ -493,15 +534,16 @@ const styles = StyleSheet.create({
   addInput: {
     fontFamily: typography.family.regular,
     fontSize: 13,
+    padding: 0,
   },
   addInputActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   cancelAddBtn: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
   cancelAddText: {
@@ -509,7 +551,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   confirmAddBtn: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
   },
@@ -519,11 +561,11 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   emptyCard: {
-    borderRadius: 18,
-    borderWidth: 1.2,
-    padding: spacing.xl,
     alignItems: "center",
     justifyContent: "center",
+    padding: spacing.xl,
+    borderRadius: 20,
+    borderWidth: 1.2,
     gap: spacing.xs,
   },
   emptyTitle: {
@@ -535,16 +577,15 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: 12,
     textAlign: "center",
-    marginBottom: spacing.xs,
   },
   emptyAddButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
+    gap: 6,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   emptyAddText: {
     fontFamily: typography.family.bold,
@@ -557,9 +598,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: spacing.md,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 1.2,
   },
-  todoCheckArea: {
+  todoItemContent: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -576,11 +617,9 @@ const styles = StyleSheet.create({
   todoText: {
     fontFamily: typography.family.medium,
     fontSize: 13,
-    lineHeight: 18,
     flex: 1,
   },
   deleteButton: {
     padding: 4,
-    marginLeft: spacing.sm,
   },
 });
