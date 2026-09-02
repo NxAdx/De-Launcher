@@ -68,47 +68,59 @@ export default function SearchScreen() {
 
   const handleExecuteItem = useCallback((item: CommandItem) => {
     Keyboard.dismiss();
-    if (item.type === "app" && item.appInfo) {
-      const pkg = item.appInfo.packageName;
-      const schedule = useAppStore.getState().isAppWithinSchedule(pkg);
-      if (!schedule.allowed) {
-        signalNavigation();
-        router.push(
-          `/intent-pause?pkg=${pkg}&reason=${encodeURIComponent(
-            schedule.reason || ""
-          )}` as any
-        );
-        return;
-      }
+    try {
+      if (item.type === "app" && item.appInfo) {
+        const pkg = item.appInfo.packageName;
+        const schedule = useAppStore.getState().isAppWithinSchedule(pkg);
+        if (!schedule.allowed) {
+          signalNavigation();
+          router.push(
+            `/intent-pause?pkg=${pkg}&reason=${encodeURIComponent(
+              schedule.reason || ""
+            )}` as any
+          );
+          return;
+        }
 
-      const state = useAppStore.getState().getAppFocusState(pkg);
-      const distraction = isKnownDistraction(pkg);
-      const hasExemption = useAppStore.getState().hasActiveExemption(pkg);
+        const state = useAppStore.getState().getAppFocusState(pkg);
+        const distraction = isKnownDistraction(pkg);
+        const hasExemption = useAppStore.getState().hasActiveExemption(pkg);
 
-      if (
-        (state === "intent_pause" || state === "blocked" || distraction) &&
-        !hasExemption
-      ) {
+        if (
+          (state === "intent_pause" || state === "blocked" || distraction) &&
+          !hasExemption
+        ) {
+          signalNavigation();
+          router.push(`/intent-pause?pkg=${pkg}` as any);
+          return;
+        }
+
         signalNavigation();
-        router.push(`/intent-pause?pkg=${pkg}` as any);
+        item.action();
+        setTimeout(() => {
+          try {
+            if (router.canGoBack()) router.back();
+          } catch {}
+        }, 100);
         return;
       }
 
       item.action();
-      signalNavigation();
-      router.back();
-      return;
-    }
-
-    item.action();
-    if (item.type === "action") {
-      signalNavigation();
-      router.back();
+      if (item.type === "action") {
+        signalNavigation();
+        setTimeout(() => {
+          try {
+            if (router.canGoBack()) router.back();
+          } catch {}
+        }, 100);
+      }
+    } catch (err) {
+      console.error("[Search] Failed to execute item:", err);
     }
   }, []);
 
   const handleKeyboardSubmit = useCallback(() => {
-    if (results.length > 0) {
+    if (results && results.length > 0) {
       handleExecuteItem(results[0]);
     }
   }, [results, handleExecuteItem]);

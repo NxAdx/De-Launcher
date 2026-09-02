@@ -159,12 +159,19 @@ export function PostSessionReflectionCard() {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    position: "absolute",
+    top: 120,
+    left: spacing.lg,
+    right: spacing.lg,
     borderRadius: 20,
     borderWidth: 1.2,
     padding: spacing.md,
-    zIndex: 50,
+    zIndex: 999,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
   },
   header: {
     flexDirection: "row",

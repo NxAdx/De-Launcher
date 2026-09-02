@@ -156,10 +156,13 @@ export async function getInstalledApps(): Promise<AppInfo[]> {
       return PREVIEW_APPS;
     }
 
-    // Pre-populate systemIconCache with real icon URIs
+    // Pre-populate systemIconCache and monochromeIconCache with real icon URIs
     for (const app of apps) {
       if (app.icon) {
         systemIconCache.set(app.packageName, app.icon);
+      }
+      if (app.monoIcon) {
+        monochromeIconCache.set(app.packageName, app.monoIcon);
       }
     }
 

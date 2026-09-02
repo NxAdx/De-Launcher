@@ -197,15 +197,16 @@ export const AppIcon = memo(function AppIcon({
       : app.icon;
 
   const monoIcon =
-    syncMonoIcon !== undefined
+    app.monoIcon ||
+    (syncMonoIcon !== undefined
       ? syncMonoIcon
       : asyncMonoIcon?.pkg === app.packageName
       ? asyncMonoIcon.uri
       : systemIcon && systemIcon.includes("app_icon_")
       ? systemIcon.replace("app_icon_", "app_icon_mono_")
-      : null;
+      : null);
 
-  const iconSource = isMonochrome ? monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
+  const iconSource = isMonochrome ? monoIcon || app.monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
   const avatarBg = isMonochrome
     ? isDark
       ? "#262626"

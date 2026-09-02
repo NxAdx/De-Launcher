@@ -6,6 +6,7 @@ export interface AppInfo {
   packageName: string;
   label: string;
   icon: string | null;
+  monoIcon?: string | null;
   isSystem: boolean;
 }
 

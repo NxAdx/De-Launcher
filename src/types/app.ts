@@ -6,8 +6,10 @@ export interface AppInfo {
   packageName: string;
   /** User-facing app label */
   label: string;
-  /** Base64-encoded PNG icon from PackageManager (provided by native module) */
+  /** Base64-encoded or file URI PNG icon from PackageManager */
   icon: string | null;
+  /** Monochrome / desaturated icon file URI */
+  monoIcon?: string | null;
   /** Whether this is a system app */
   isSystem: boolean;
 }

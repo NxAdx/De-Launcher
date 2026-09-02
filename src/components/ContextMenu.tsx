@@ -1,4 +1,14 @@
-import React, { useState } from "react";
+/**
+ * ContextMenu Component — De-Launcher
+ *
+ * Bottom sheet options for any app (from Home, Dock, or Drawer).
+ * Features:
+ * - Direct Intentional Pinning Checkpoint (requires reason >= 10 chars)
+ * - Move left/right in Home & Dock
+ * - Focus scheduling & folder categorization
+ * - Require intent pause & remove from home
+ */
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -7,6 +17,8 @@ import {
   Text,
   ScrollView,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -21,13 +33,24 @@ import {
   FolderPlus,
   Briefcase,
   Moon,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { AppInfo, ScheduleType } from "@/src/types/app";
-import { IntentionalPinModal } from "./IntentionalPinModal";
+
+const INSPIRATION_CHIPS = [
+  "Work Communication",
+  "Daily Habit & Fitness",
+  "Essential Navigation",
+  "Creative Production",
+  "Financial Management",
+];
+
+const MIN_REASON_LENGTH = 10;
 
 interface ContextMenuProps {
   selectedApp: AppInfo | null;
@@ -35,12 +58,12 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const moveApp = useAppStore((s) => s.moveApp);
   const moveDockApp = useAppStore((s) => s.moveDockApp);
   const setAppFocusState = useAppStore((s) => s.setAppFocusState);
-  const addToDock = useAppStore((s) => s.addToDock);
   const removeFromDock = useAppStore((s) => s.removeFromDock);
   const folders = useAppStore((s) => s.folders) || [];
   const createFolder = useAppStore((s) => s.createFolder);
@@ -48,6 +71,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const setAppScheduleRule = useAppStore((s) => s.setAppScheduleRule);
   const scheduleRules = useAppStore((s) => s.scheduleRules) || {};
   const appReasons = useAppStore((s) => s.appReasons) || {};
+  const pinAppWithReason = useAppStore((s) => s.pinAppWithReason);
 
   const dockPackages = useAppStore((s) => s.dockPackages) || [];
   const allowedPackages = useAppStore((s) => s.allowedPackages) || [];
@@ -56,8 +80,18 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinCheckpoint, setShowPinCheckpoint] = useState(false);
   const [pinTarget, setPinTarget] = useState<"home" | "dock">("home");
+  const [pinReason, setPinReason] = useState("");
+
+  useEffect(() => {
+    if (selectedApp) {
+      setPinReason(appReasons[selectedApp.packageName] || "");
+      setShowFolderPicker(false);
+      setShowSchedulePicker(false);
+      setShowPinCheckpoint(false);
+    }
+  }, [selectedApp, appReasons]);
 
   if (!selectedApp) return null;
 
@@ -66,7 +100,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const currentRule = scheduleRules[selectedApp.packageName]?.scheduleType || "always_allowed";
 
   const handleScheduleSelect = (type: ScheduleType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setAppScheduleRule({
       packageName: selectedApp.packageName,
       scheduleType: type,
@@ -76,7 +110,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   };
 
   const handleAddToExistingFolder = (folderId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     addAppToFolder(folderId, selectedApp.packageName);
     setShowFolderPicker(false);
     onClose();
@@ -84,12 +118,33 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
 
   const handleCreateNewFolder = () => {
     if (!newFolderName.trim()) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     createFolder(newFolderName.trim(), [selectedApp.packageName]);
     setNewFolderName("");
     setShowFolderPicker(false);
     onClose();
   };
+
+  const isReasonValid = pinReason.trim().length >= MIN_REASON_LENGTH;
+
+  const handleConfirmPin = () => {
+    if (!isReasonValid) {
+      if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    pinAppWithReason(selectedApp.packageName, pinReason.trim(), pinTarget);
+    setShowPinCheckpoint(false);
+    onClose();
+  };
+
+  const handleChipPress = (chipText: string) => {
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPinReason((prev) => (prev ? `${prev} — ${chipText}` : chipText));
+  };
+
+  const targetLabel = pinTarget === "home" ? "Home Screen" : "Dock";
 
   return (
     <Modal
@@ -99,10 +154,15 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.modalOverlay}
+      >
+        <Pressable style={styles.backdrop} onPress={onClose} />
+
         <Animated.View
           entering={FadeInDown.duration(150)}
-          style={[styles.menuContainer, { backgroundColor: colors.surface }]}
+          style={[styles.menuContainer, { backgroundColor: isDark ? "#161616" : "#FFFFFF" }]}
         >
           {/* App Title inside Menu */}
           <View style={styles.menuHeader}>
@@ -112,7 +172,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
             <Text style={[styles.menuAppSubtitle, { color: colors.textTertiary }]}>
               {selectedApp.packageName}
             </Text>
-            {appReasons[selectedApp.packageName] && (
+            {appReasons[selectedApp.packageName] && !showPinCheckpoint && (
               <View style={[styles.reasonBadge, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
                 <Text style={[styles.reasonBadgeText, { color: colors.accent }]} numberOfLines={2}>
                   📌 Pinned for: {appReasons[selectedApp.packageName]}
@@ -121,8 +181,86 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
             )}
           </View>
 
-          {/* Sub-view: Schedule Picker */}
-          {showSchedulePicker ? (
+          {/* Sub-view: Intentional Pinning Checkpoint */}
+          {showPinCheckpoint ? (
+            <View style={styles.pinCheckpointContainer}>
+              <View style={[styles.checkpointBanner, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
+                <ShieldCheck size={16} color={colors.accent} />
+                <Text style={[styles.checkpointBannerText, { color: colors.accent }]}>
+                  Intentional Pinning Checkpoint ({targetLabel})
+                </Text>
+              </View>
+
+              <Text style={[styles.pinPromptText, { color: colors.textPrimary }]}>
+                Why does this app deserve prime real estate on your {targetLabel}?
+              </Text>
+
+              {/* Inspiration Chips */}
+              <View style={styles.chipRow}>
+                {INSPIRATION_CHIPS.map((chip, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() => handleChipPress(chip)}
+                    style={[styles.chip, { backgroundColor: isDark ? "#242424" : "#F1F5F9", borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.chipText, { color: colors.textSecondary }]}>
+                      + {chip}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Reason Input */}
+              <View style={[styles.reasonInputContainer, { backgroundColor: isDark ? "#101010" : "#F8FAFC", borderColor: isReasonValid ? colors.accent : colors.border }]}>
+                <TextInput
+                  placeholder="e.g., Only for client updates during work hours..."
+                  placeholderTextColor={colors.textTertiary}
+                  value={pinReason}
+                  onChangeText={setPinReason}
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.reasonInput, { color: colors.textPrimary }]}
+                  contextMenuHidden={true}
+                  autoFocus
+                />
+              </View>
+
+              {/* Validation Row */}
+              <View style={styles.validationRow}>
+                <Text style={[styles.charCountText, { color: isReasonValid ? colors.accent : colors.textTertiary }]}>
+                  {pinReason.trim().length} / {MIN_REASON_LENGTH} characters minimum
+                </Text>
+              </View>
+
+              {/* Confirm / Cancel Buttons */}
+              <View style={styles.pinActionRow}>
+                <Pressable
+                  onPress={() => setShowPinCheckpoint(false)}
+                  style={[styles.pinCancelBtn, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.pinCancelText, { color: colors.textSecondary }]}>Back</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleConfirmPin}
+                  disabled={!isReasonValid}
+                  style={[
+                    styles.pinConfirmBtn,
+                    {
+                      backgroundColor: isReasonValid ? colors.accent : (isDark ? "#282828" : "#E2E8F0"),
+                      opacity: isReasonValid ? 1 : 0.6,
+                    },
+                  ]}
+                >
+                  <Sparkles size={14} color={isReasonValid ? "#FFFFFF" : colors.textTertiary} />
+                  <Text style={[styles.pinConfirmText, { color: isReasonValid ? "#FFFFFF" : colors.textTertiary }]}>
+                    Pin to {targetLabel}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : showSchedulePicker ? (
+            /* Sub-view: Schedule Picker */
             <View style={styles.menuOptions}>
               <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
                 Select Allowed Hours
@@ -204,7 +342,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   onPress={handleCreateNewFolder}
                   style={[styles.createFolderBtn, { backgroundColor: colors.accent }]}
                 >
-                  <Text style={[styles.createFolderText, { color: "#0A0A0A" }]}>Create</Text>
+                  <Text style={[styles.createFolderText, { color: "#FFFFFF" }]}>Create</Text>
                 </Pressable>
               </View>
 
@@ -339,7 +477,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                       style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                       onPress={() => {
                         setPinTarget("dock");
-                        setShowPinModal(true);
+                        setShowPinCheckpoint(true);
                       }}
                     >
                       <Plus size={18} color={colors.textPrimary} />
@@ -352,7 +490,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   <Pressable
                     style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       onClose();
                       setTimeout(() => {
                         setAppFocusState(selectedApp.packageName, "intent_pause");
@@ -385,7 +523,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                   onPress={() => {
                     setPinTarget("home");
-                    setShowPinModal(true);
+                    setShowPinCheckpoint(true);
                   }}
                 >
                   <Plus size={18} color={colors.textPrimary} />
@@ -406,17 +544,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
             </ScrollView>
           )}
         </Animated.View>
-      </Pressable>
-
-      {/* Intentional Pinning Checkpoint Modal */}
-      <IntentionalPinModal
-        app={showPinModal ? selectedApp : null}
-        target={pinTarget}
-        onClose={() => {
-          setShowPinModal(false);
-          onClose();
-        }}
-      />
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -424,8 +552,11 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
   },
   menuContainer: {
     borderTopLeftRadius: 24,
@@ -434,7 +565,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing["3xl"],
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)",
-    maxHeight: 520,
+    maxHeight: 560,
   },
   menuHeader: {
     alignItems: "center",
@@ -520,5 +651,92 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderRadius: 14,
+  },
+  pinCheckpointContainer: {
+    gap: spacing.sm,
+  },
+  checkpointBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  checkpointBannerText: {
+    fontFamily: typography.family.bold,
+    fontSize: 11,
+  },
+  pinPromptText: {
+    fontFamily: typography.family.bold,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginVertical: 4,
+  },
+  chip: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontFamily: typography.family.medium,
+    fontSize: 11,
+  },
+  reasonInputContainer: {
+    borderRadius: 14,
+    borderWidth: 1.2,
+    padding: spacing.sm + 2,
+    minHeight: 64,
+  },
+  reasonInput: {
+    fontFamily: typography.family.regular,
+    fontSize: 13,
+    padding: 0,
+    textAlignVertical: "top",
+  },
+  validationRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  charCountText: {
+    fontFamily: typography.family.medium,
+    fontSize: 11,
+  },
+  pinActionRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  pinCancelBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinCancelText: {
+    fontFamily: typography.family.bold,
+    fontSize: 13,
+  },
+  pinConfirmBtn: {
+    flex: 2,
+    height: 42,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  pinConfirmText: {
+    fontFamily: typography.family.bold,
+    fontSize: 13,
   },
 });
