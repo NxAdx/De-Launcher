@@ -16,6 +16,7 @@ import {
   getSystemAppIcon as nativeGetSystemAppIcon,
   getMonochromeAppIcon as nativeGetMonochromeAppIcon,
   getSystemAppIcons as nativeGetSystemAppIcons,
+  getMonochromeAppIcons as nativeGetMonochromeAppIcons,
   type IconPackInfo,
 } from "../../modules/de-launcher-native";
 
@@ -394,6 +395,44 @@ export async function batchLoadSystemIcons(packageNames: string[]): Promise<void
           systemIconRequests.delete(pkg);
         });
       systemIconRequests.set(pkg, request);
+      pending.push(request);
+    }
+  }
+
+  await Promise.all(pending);
+}
+
+/**
+ * Batch-load all monochrome icons in a single native bridge call.
+ * Populates the monochromeIconCache so AppIcon components mount with crisp grayscale icons synchronously.
+ */
+export async function batchLoadMonochromeIcons(packageNames: string[]): Promise<void> {
+  const uniquePackages = [...new Set(packageNames)];
+  const pending = uniquePackages
+    .map((pkg) => monochromeIconRequests.get(pkg))
+    .filter((request): request is Promise<string | null> => request !== undefined);
+  const uncached = uniquePackages.filter(
+    (pkg) => !monochromeIconCache.has(pkg) && !monochromeIconRequests.has(pkg)
+  );
+
+  if (uncached.length > 0) {
+    const batchRequest = nativeGetMonochromeAppIcons(uncached);
+    for (const pkg of uncached) {
+      const request = batchRequest
+        .then((icons) => {
+          const iconUri = icons[pkg] ?? null;
+          monochromeIconCache.set(pkg, iconUri);
+          return iconUri;
+        })
+        .catch((error) => {
+          console.error("[AppManager] Batch mono icon loading failed:", error);
+          monochromeIconCache.set(pkg, null);
+          return null;
+        })
+        .finally(() => {
+          monochromeIconRequests.delete(pkg);
+        });
+      monochromeIconRequests.set(pkg, request);
       pending.push(request);
     }
   }

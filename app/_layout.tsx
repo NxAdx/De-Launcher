@@ -22,9 +22,11 @@ import {
 } from "@expo-google-fonts/inter";
 import { ThemeProvider, useTheme } from "@/src/theme/ThemeContext";
 import { useAppStore } from "@/src/store/appStore";
+import { useSettingsStore } from "@/src/store/settingsStore";
 import {
   getInstalledApps,
   batchLoadSystemIcons,
+  batchLoadMonochromeIcons,
   preloadIconPacks,
   resolveDefaultDockPackages,
   resolveDefaultAllowedPackages,
@@ -121,7 +123,8 @@ function RootLayoutContent() {
             (a, i) =>
               !currentApps[i] ||
               currentApps[i].packageName !== a.packageName ||
-              currentApps[i].icon !== a.icon
+              currentApps[i].icon !== a.icon ||
+              currentApps[i].monoIcon !== a.monoIcon
           );
 
         if (hasDiff || !hasCachedApps) {
@@ -133,6 +136,9 @@ function RootLayoutContent() {
         const activeAllowed = useAppStore.getState().allowedPackages;
         const visiblePackages = [...new Set([...activeDock, ...activeAllowed.slice(0, 20)])];
         batchLoadSystemIcons(visiblePackages).catch(() => {});
+        if (useSettingsStore.getState().iconTheme === "monochrome") {
+          batchLoadMonochromeIcons(visiblePackages).catch(() => {});
+        }
 
         // Preload icon packs in background without blocking launcher UI
         backgroundTask = InteractionManager.runAfterInteractions(() => {

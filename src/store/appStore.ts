@@ -151,8 +151,9 @@ export const useAppStore = create<AppState>()(
 
         if (target === "home") {
           const currentAllowed = get().allowedPackages || [];
+          const nextAllowed = [packageName, ...currentAllowed.filter((p) => p !== packageName)];
           set({
-            allowedPackages: [...new Set([...currentAllowed, packageName])],
+            allowedPackages: nextAllowed,
             appReasons: currentReasons,
           });
           get().syncNativeWhitelist();

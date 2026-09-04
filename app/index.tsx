@@ -18,7 +18,7 @@ import {
   StatusBar as RNStatusBar,
   AppState,
 } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInUp, runOnJS } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
 import { Settings, ShieldAlert, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -111,35 +111,48 @@ export default function HomeScreen() {
     };
   }, []);
 
+  const handleOpenSearch = useCallback(() => {
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    signalNavigation(1000);
+    router.push("/search" as any);
+  }, [hapticEnabled]);
+
+  const handleOpenSettings = useCallback(() => {
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    signalNavigation(1000);
+    router.push("/settings");
+  }, [hapticEnabled]);
+
+  const handleOpenDrawer = useCallback(() => {
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    signalNavigation(1000);
+    router.push("/drawer" as any);
+  }, [hapticEnabled]);
+
   const panGesture = useMemo(() => {
     return Gesture.Pan()
-      .activeOffsetY(35)
+      .activeOffsetY([-35, 35])
       .failOffsetX([-25, 25])
       .onEnd((e) => {
+        "worklet";
         if (e.velocityY > 600 || e.translationY > 70) {
-          router.push("/search" as any);
+          runOnJS(handleOpenSearch)();
         } else if (e.velocityY < -600 || e.translationY < -70) {
-          router.push("/drawer" as any);
+          runOnJS(handleOpenDrawer)();
         }
       });
-  }, []);
+  }, [handleOpenSearch, handleOpenDrawer]);
 
   const allowedApps = useMemo(() => {
     const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
     const seenPkgs = new Set<string>();
-    const seenLabels = new Set<string>();
     const result: AppInfo[] = [];
 
     for (const pkg of allowedPackages) {
       if (seenPkgs.has(pkg)) continue;
       const app = appsMap.get(pkg);
       if (app) {
-        const normLabel = app.label.toLowerCase().trim();
-        // Prevent duplicate app labels on the home screen (e.g. Dual Contacts/Calculator)
-        if (seenLabels.has(normLabel)) continue;
-
         seenPkgs.add(pkg);
-        seenLabels.add(normLabel);
         result.push(app);
       }
     }
@@ -177,24 +190,6 @@ export default function HomeScreen() {
   const handleFolderPress = useCallback((folder: FolderInfo) => {
     setSelectedFolder(folder);
   }, []);
-
-  const handleOpenSearch = useCallback(() => {
-    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
-    router.push("/search" as any);
-  }, [hapticEnabled]);
-
-  const handleOpenSettings = useCallback(() => {
-    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
-    router.push("/settings");
-  }, [hapticEnabled]);
-
-  const handleOpenDrawer = useCallback(() => {
-    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
-    router.push("/drawer" as any);
-  }, [hapticEnabled]);
 
   if (!hasCompletedOnboarding) {
     return <Redirect href={"/onboarding" as any} />;

@@ -106,6 +106,7 @@ export const AppIcon = memo(function AppIcon({
   const [asyncCustomIcon, setAsyncCustomIcon] = useState<{ pkg: string; pack: string; uri: string | null } | null>(null);
   const [asyncSystemIcon, setAsyncSystemIcon] = useState<{ pkg: string; uri: string | null } | null>(null);
   const [asyncMonoIcon, setAsyncMonoIcon] = useState<{ pkg: string; uri: string | null } | null>(null);
+  const [monoLoadFailed, setMonoLoadFailed] = useState(false);
 
   // Load custom icon from icon pack when pack or package changes
   useEffect(() => {
@@ -197,16 +198,18 @@ export const AppIcon = memo(function AppIcon({
       : app.icon;
 
   const monoIcon =
-    app.monoIcon ||
-    (syncMonoIcon !== undefined
-      ? syncMonoIcon
-      : asyncMonoIcon?.pkg === app.packageName
-      ? asyncMonoIcon.uri
-      : systemIcon && systemIcon.includes("app_icon_")
-      ? systemIcon.replace("app_icon_", "app_icon_mono_")
-      : null);
+    !monoLoadFailed
+      ? app.monoIcon ||
+        (syncMonoIcon !== undefined
+          ? syncMonoIcon
+          : asyncMonoIcon?.pkg === app.packageName
+          ? asyncMonoIcon.uri
+          : systemIcon && systemIcon.includes("app_icon_")
+          ? systemIcon.replace("app_icon_", "app_icon_mono_")
+          : null)
+      : null;
 
-  const iconSource = isMonochrome ? monoIcon || app.monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
+  const iconSource = isMonochrome ? monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
   const avatarBg = isMonochrome
     ? isDark
       ? "#262626"
@@ -252,6 +255,17 @@ export const AppIcon = memo(function AppIcon({
             priority="high"
             recyclingKey={app.packageName}
             transition={0}
+            onError={() => {
+              if (isMonochrome && !monoLoadFailed) {
+                setMonoLoadFailed(true);
+                getMonochromeAppIcon(app.packageName).then((uri) => {
+                  if (uri) {
+                    setAsyncMonoIcon({ pkg: app.packageName, uri });
+                    setMonoLoadFailed(false);
+                  }
+                });
+              }
+            }}
           />
         ) : (
           <View

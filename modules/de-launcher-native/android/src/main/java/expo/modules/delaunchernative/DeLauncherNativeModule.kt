@@ -351,6 +351,38 @@ class DeLauncherNativeModule : Module() {
       } ?: emptyMap<String, String?>()
     }
 
+    AsyncFunction("getMonochromeAppIcons") { packageNames: List<String> ->
+      appContext.reactContext?.let { context ->
+        val pm = context.packageManager
+        val cacheDir = context.cacheDir
+        val maxSize = 192
+        val result = mutableMapOf<String, String?>()
+        for (pkg in packageNames) {
+          try {
+            val packageInfo = pm.getPackageInfo(pkg, 0)
+            val lastUpdateTime = packageInfo.lastUpdateTime
+            val monoFile = java.io.File(cacheDir, "app_icon_mono_${pkg}_${lastUpdateTime}_${maxSize}.png")
+            if (monoFile.exists() && monoFile.length() > 0) {
+              result[pkg] = "file://" + monoFile.absolutePath
+            } else {
+              val appInfo = pm.getApplicationInfo(pkg, 0)
+              val drawable = appInfo.loadIcon(pm)
+              drawableToUri(context, drawable, pkg, lastUpdateTime)
+              if (monoFile.exists() && monoFile.length() > 0) {
+                result[pkg] = "file://" + monoFile.absolutePath
+              } else {
+                result[pkg] = null
+              }
+            }
+          } catch (e: Exception) {
+            android.util.Log.w("DeLauncherNative", "Failed to load mono icon for $pkg", e)
+            result[pkg] = null
+          }
+        }
+        result
+      } ?: emptyMap<String, String?>()
+    }
+
     AsyncFunction("allocateAppWidgetId") { ->
       appWidgetHost?.allocateAppWidgetId() ?: -1
     }

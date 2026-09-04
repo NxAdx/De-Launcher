@@ -83,7 +83,22 @@ export const useSettingsStore = create<SettingsState>()(
       setShowClock: (showClock) => set({ showClock }),
       setHapticFeedback: (hapticFeedback) => set({ hapticFeedback }),
       setActiveIconPack: (activeIconPack) => set({ activeIconPack }),
-      setIconTheme: (iconTheme) => set({ iconTheme }),
+      setIconTheme: (iconTheme) => {
+        set({ iconTheme });
+        if (iconTheme === "monochrome") {
+          try {
+            const { useAppStore } = require("./appStore");
+            const { batchLoadMonochromeIcons } = require("../services/appManager");
+            const apps = useAppStore.getState().installedApps || [];
+            const pkgs = apps.map((a: any) => a.packageName);
+            if (pkgs.length > 0) {
+              batchLoadMonochromeIcons(pkgs).catch(() => {});
+            }
+          } catch (e) {
+            // safely handled
+          }
+        }
+      },
       setHasCompletedOnboarding: (hasCompletedOnboarding) => set({ hasCompletedOnboarding }),
       setShowHomeSearchWidget: (showHomeSearchWidget) => set({ showHomeSearchWidget }),
       setSearchWidgetStyle: (searchWidgetStyle) => set({ searchWidgetStyle }),

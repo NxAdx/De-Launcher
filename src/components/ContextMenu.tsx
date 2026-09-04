@@ -19,6 +19,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+              ToastAndroid,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -135,6 +136,9 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
 
     if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     pinAppWithReason(selectedApp.packageName, pinReason.trim(), pinTarget);
+    if (Platform.OS === "android") {
+      ToastAndroid.show(`📌 Pinned ${selectedApp.label} to ${targetLabel}`, ToastAndroid.SHORT);
+    }
     setShowPinCheckpoint(false);
     onClose();
   };
@@ -183,7 +187,11 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
 
           {/* Sub-view: Intentional Pinning Checkpoint */}
           {showPinCheckpoint ? (
-            <View style={styles.pinCheckpointContainer}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.pinCheckpointContainer}
+            >
               <View style={[styles.checkpointBanner, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
                 <ShieldCheck size={16} color={colors.accent} />
                 <Text style={[styles.checkpointBannerText, { color: colors.accent }]}>
@@ -221,7 +229,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   numberOfLines={2}
                   style={[styles.reasonInput, { color: colors.textPrimary }]}
                   contextMenuHidden={true}
-                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleConfirmPin}
                 />
               </View>
 
@@ -258,7 +267,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   </Text>
                 </Pressable>
               </View>
-            </View>
+            </ScrollView>
           ) : showSchedulePicker ? (
             /* Sub-view: Schedule Picker */
             <View style={styles.menuOptions}>
@@ -654,6 +663,7 @@ const styles = StyleSheet.create({
   },
   pinCheckpointContainer: {
     gap: spacing.sm,
+    paddingBottom: spacing.lg,
   },
   checkpointBanner: {
     flexDirection: "row",
