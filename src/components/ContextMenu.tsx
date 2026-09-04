@@ -19,8 +19,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-              ToastAndroid,
+  ToastAndroid,
 } from "react-native";
+import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
@@ -51,7 +52,7 @@ const INSPIRATION_CHIPS = [
   "Financial Management",
 ];
 
-const MIN_REASON_LENGTH = 10;
+const MIN_REASON_LENGTH = 3;
 
 interface ContextMenuProps {
   selectedApp: AppInfo | null;
@@ -131,6 +132,17 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const handleConfirmPin = () => {
     if (!isReasonValid) {
       if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (Platform.OS === "android") {
+        ToastAndroid.show(`Please enter at least ${MIN_REASON_LENGTH} characters for why you need this app`, ToastAndroid.SHORT);
+      }
+      return;
+    }
+
+    if (pinTarget === "dock" && dockPackages.length >= maxDockIcons && !isSelectedAppInDock) {
+      if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (Platform.OS === "android") {
+        ToastAndroid.show(`Dock is full (max ${maxDockIcons} apps). Remove one first.`, ToastAndroid.SHORT);
+      }
       return;
     }
 
@@ -141,11 +153,24 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
     }
     setShowPinCheckpoint(false);
     onClose();
+
+    // If pinned to Home from another screen (like App Drawer), smoothly navigate to Home so user sees it
+    if (pinTarget === "home") {
+      setTimeout(() => {
+        try {
+          if (router.canGoBack()) {
+            router.replace("/");
+          } else {
+            router.push("/");
+          }
+        } catch {}
+      }, 100);
+    }
   };
 
   const handleChipPress = (chipText: string) => {
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPinReason((prev) => (prev ? `${prev} — ${chipText}` : chipText));
+    setPinReason(chipText);
   };
 
   const targetLabel = pinTarget === "home" ? "Home Screen" : "Dock";
@@ -159,7 +184,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         style={styles.modalOverlay}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
@@ -252,17 +278,16 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
 
                 <Pressable
                   onPress={handleConfirmPin}
-                  disabled={!isReasonValid}
                   style={[
                     styles.pinConfirmBtn,
                     {
                       backgroundColor: isReasonValid ? colors.accent : (isDark ? "#282828" : "#E2E8F0"),
-                      opacity: isReasonValid ? 1 : 0.6,
+                      opacity: isReasonValid ? 1 : 0.75,
                     },
                   ]}
                 >
-                  <Sparkles size={14} color={isReasonValid ? "#FFFFFF" : colors.textTertiary} />
-                  <Text style={[styles.pinConfirmText, { color: isReasonValid ? "#FFFFFF" : colors.textTertiary }]}>
+                  <Sparkles size={14} color={isReasonValid ? "#FFFFFF" : colors.textSecondary} />
+                  <Text style={[styles.pinConfirmText, { color: isReasonValid ? "#FFFFFF" : colors.textSecondary }]}>
                     Pin to {targetLabel}
                   </Text>
                 </Pressable>
@@ -574,7 +599,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing["3xl"],
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)",
-    maxHeight: 560,
+    maxHeight: "85%",
   },
   menuHeader: {
     alignItems: "center",

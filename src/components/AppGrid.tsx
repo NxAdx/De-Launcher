@@ -269,14 +269,11 @@ export function AppGrid({
       folder: f,
     }));
     const seenPkgs = new Set<string>();
-    const seenLabels = new Set<string>();
     const appItems: GridItemData[] = [];
 
     for (const a of apps) {
-      const normLabel = a.label.toLowerCase().trim();
-      if (!seenPkgs.has(a.packageName) && !seenLabels.has(normLabel)) {
+      if (!seenPkgs.has(a.packageName)) {
         seenPkgs.add(a.packageName);
-        seenLabels.add(normLabel);
         appItems.push({
           id: a.packageName,
           type: "app",

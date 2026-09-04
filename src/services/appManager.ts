@@ -417,6 +417,27 @@ export async function batchLoadMonochromeIcons(packageNames: string[]): Promise<
 
   if (uncached.length > 0) {
     const batchRequest = nativeGetMonochromeAppIcons(uncached);
+    batchRequest
+      .then((icons) => {
+        try {
+          const { useAppStore } = require("../store/appStore");
+          const currentApps = useAppStore.getState().installedApps;
+          let changed = false;
+          const updated = currentApps.map((app: any) => {
+            const newMono = icons[app.packageName];
+            if (newMono && app.monoIcon !== newMono) {
+              changed = true;
+              return { ...app, monoIcon: newMono };
+            }
+            return app;
+          });
+          if (changed) {
+            useAppStore.setState({ installedApps: updated });
+          }
+        } catch {}
+      })
+      .catch(() => {});
+
     for (const pkg of uncached) {
       const request = batchRequest
         .then((icons) => {

@@ -329,25 +329,35 @@ class DeLauncherNativeModule : Module() {
         val pm = context.packageManager
         val cacheDir = context.cacheDir
         val maxSize = 192
-        val result = mutableMapOf<String, String?>()
-        for (pkg in packageNames) {
-          try {
-            val appInfo = pm.getApplicationInfo(pkg, 0)
-            val packageInfo = pm.getPackageInfo(pkg, 0)
-            val lastUpdateTime = packageInfo.lastUpdateTime
-            val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${lastUpdateTime}_${maxSize}.png")
-            if (iconFile.exists() && iconFile.length() > 0) {
-              result[pkg] = "file://" + iconFile.absolutePath
-            } else {
-              val drawable = appInfo.loadIcon(pm)
-              result[pkg] = drawableToUri(context, drawable, pkg, lastUpdateTime)
+        val result = java.util.concurrent.ConcurrentHashMap<String, String?>()
+        val numThreads = Runtime.getRuntime().availableProcessors().coerceIn(4, 8)
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads)
+
+        try {
+          val tasks = packageNames.map { pkg ->
+            java.util.concurrent.Callable {
+              try {
+                val packageInfo = pm.getPackageInfo(pkg, 0)
+                val lastUpdateTime = packageInfo.lastUpdateTime
+                val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${lastUpdateTime}_${maxSize}.png")
+                if (iconFile.exists() && iconFile.length() > 0) {
+                  result[pkg] = "file://" + iconFile.absolutePath
+                } else {
+                  val appInfo = pm.getApplicationInfo(pkg, 0)
+                  val drawable = appInfo.loadIcon(pm)
+                  result[pkg] = drawableToUri(context, drawable, pkg, lastUpdateTime)
+                }
+              } catch (e: Exception) {
+                android.util.Log.w("DeLauncherNative", "Failed to load icon for $pkg", e)
+                result[pkg] = null
+              }
             }
-          } catch (e: Exception) {
-            android.util.Log.w("DeLauncherNative", "Failed to load icon for $pkg", e)
-            result[pkg] = null
           }
+          executor.invokeAll(tasks, 5, java.util.concurrent.TimeUnit.SECONDS)
+        } finally {
+          executor.shutdown()
         }
-        result
+        result.toMap()
       } ?: emptyMap<String, String?>()
     }
 
@@ -356,30 +366,40 @@ class DeLauncherNativeModule : Module() {
         val pm = context.packageManager
         val cacheDir = context.cacheDir
         val maxSize = 192
-        val result = mutableMapOf<String, String?>()
-        for (pkg in packageNames) {
-          try {
-            val packageInfo = pm.getPackageInfo(pkg, 0)
-            val lastUpdateTime = packageInfo.lastUpdateTime
-            val monoFile = java.io.File(cacheDir, "app_icon_mono_${pkg}_${lastUpdateTime}_${maxSize}.png")
-            if (monoFile.exists() && monoFile.length() > 0) {
-              result[pkg] = "file://" + monoFile.absolutePath
-            } else {
-              val appInfo = pm.getApplicationInfo(pkg, 0)
-              val drawable = appInfo.loadIcon(pm)
-              drawableToUri(context, drawable, pkg, lastUpdateTime)
-              if (monoFile.exists() && monoFile.length() > 0) {
-                result[pkg] = "file://" + monoFile.absolutePath
-              } else {
+        val result = java.util.concurrent.ConcurrentHashMap<String, String?>()
+        val numThreads = Runtime.getRuntime().availableProcessors().coerceIn(4, 8)
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads)
+
+        try {
+          val tasks = packageNames.map { pkg ->
+            java.util.concurrent.Callable {
+              try {
+                val packageInfo = pm.getPackageInfo(pkg, 0)
+                val lastUpdateTime = packageInfo.lastUpdateTime
+                val monoFile = java.io.File(cacheDir, "app_icon_mono_${pkg}_${lastUpdateTime}_${maxSize}.png")
+                if (monoFile.exists() && monoFile.length() > 0) {
+                  result[pkg] = "file://" + monoFile.absolutePath
+                } else {
+                  val appInfo = pm.getApplicationInfo(pkg, 0)
+                  val drawable = appInfo.loadIcon(pm)
+                  drawableToUri(context, drawable, pkg, lastUpdateTime)
+                  if (monoFile.exists() && monoFile.length() > 0) {
+                    result[pkg] = "file://" + monoFile.absolutePath
+                  } else {
+                    result[pkg] = null
+                  }
+                }
+              } catch (e: Exception) {
+                android.util.Log.w("DeLauncherNative", "Failed to load mono icon for $pkg", e)
                 result[pkg] = null
               }
             }
-          } catch (e: Exception) {
-            android.util.Log.w("DeLauncherNative", "Failed to load mono icon for $pkg", e)
-            result[pkg] = null
           }
+          executor.invokeAll(tasks, 5, java.util.concurrent.TimeUnit.SECONDS)
+        } finally {
+          executor.shutdown()
         }
-        result
+        result.toMap()
       } ?: emptyMap<String, String?>()
     }
 

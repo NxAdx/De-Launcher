@@ -9,7 +9,7 @@
  * - Floating Frosted Capsule Dock at the bottom
  * - Swipe up/down gestures for Command Bar & Drawer
  */
-import React, { useCallback, useState, useMemo, useEffect } from "react";
+import React, { useCallback, useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -111,22 +111,54 @@ export default function HomeScreen() {
     };
   }, []);
 
+  const isNavigatingRef = useRef(false);
+
   const handleOpenSearch = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     signalNavigation(1000);
-    router.push("/search" as any);
+    try {
+      router.push("/search" as any);
+    } catch (e) {
+      console.warn("[HomeScreen] Failed to navigate to search:", e);
+    }
   }, [hapticEnabled]);
 
   const handleOpenSettings = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     signalNavigation(1000);
-    router.push("/settings");
+    try {
+      router.push("/settings");
+    } catch (e) {
+      console.warn("[HomeScreen] Failed to navigate to settings:", e);
+    }
   }, [hapticEnabled]);
 
   const handleOpenDrawer = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     signalNavigation(1000);
-    router.push("/drawer" as any);
+    try {
+      router.push("/drawer" as any);
+    } catch (e) {
+      console.warn("[HomeScreen] Failed to navigate to drawer:", e);
+    }
   }, [hapticEnabled]);
 
   const panGesture = useMemo(() => {

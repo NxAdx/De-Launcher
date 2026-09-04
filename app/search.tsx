@@ -3,7 +3,6 @@ import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Pla
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
-import { BlurView } from "expo-blur";
 import { Settings, Home, Shield, Smartphone, Search, X } from "lucide-react-native";
 import Animated, { FadeIn, FadeOut, SlideInUp } from "react-native-reanimated";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -13,8 +12,6 @@ import { CommandItem, performSearch } from "@/src/services/commandEngine";
 import { isKnownDistraction } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
 import { AppIcon } from "@/src/components/AppIcon";
-
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 export default function SearchScreen() {
   const { colors, isDark } = useTheme();
@@ -154,18 +151,21 @@ export default function SearchScreen() {
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <AnimatedBlurView 
-        entering={FadeIn.duration(200)}
-        exiting={FadeOut.duration(200)}
-        intensity={isDark ? 40 : 80}
-        tint={isDark ? "dark" : "light"}
-        style={StyleSheet.absoluteFill} 
+      <Animated.View 
+        entering={FadeIn.duration(150)}
+        exiting={FadeOut.duration(150)}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: isDark ? "rgba(14, 14, 14, 0.95)" : "rgba(248, 249, 250, 0.96)",
+          },
+        ]} 
       />
       
       <Pressable style={StyleSheet.absoluteFill} onPress={() => router.back()} />
 
       <Animated.View 
-        entering={SlideInUp.duration(300).springify()}
+        entering={SlideInUp.duration(250).springify()}
         style={[
           styles.content, 
           { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }
@@ -176,6 +176,7 @@ export default function SearchScreen() {
           <Search size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             ref={inputRef}
+            autoFocus={true}
             style={[styles.input, { color: colors.textPrimary }]}
             placeholder="Search apps, commands..."
             placeholderTextColor={colors.textTertiary}
