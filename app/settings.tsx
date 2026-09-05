@@ -181,6 +181,7 @@ export default function SettingsScreen() {
   // App store
   const installedApps = useAppStore((s) => s.installedApps);
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
+  const allowedPackages = useAppStore((s) => s.allowedPackages) || [];
 
   const [autoArrangeMessage, setAutoArrangeMessage] = useState<string | null>(null);
 
@@ -582,6 +583,18 @@ export default function SettingsScreen() {
             isDark={isDark}
             onPress={handleAutoArrange}
             right={<Text style={[styles.linkText, { color: colors.accent }]}>Run ⚡</Text>}
+          />
+          <SettingRow
+            icon={<Sparkles size={20} color={colors.accent} />}
+            label="Home Apps & Intentions"
+            description={`${allowedPackages.length} curated apps on Home. Tap to manage & pin.`}
+            colors={colors}
+            isDark={isDark}
+            onPress={() => {
+              signalNavigation();
+              router.push("/drawer" as any);
+            }}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Manage →</Text>}
           />
           {autoArrangeMessage && (
             <Animated.View entering={FadeInRight} style={styles.toastBanner}>

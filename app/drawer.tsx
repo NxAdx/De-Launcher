@@ -100,6 +100,7 @@ export default function DrawerScreen() {
       const state = getAppFocusState(item.packageName);
       const distraction = isKnownDistraction(item.packageName);
       const schedule = scheduleRules[item.packageName]?.scheduleType;
+      const isHome = allowedPackages.includes(item.packageName);
 
       return (
         <Animated.View
@@ -133,7 +134,15 @@ export default function DrawerScreen() {
               >
                 {item.label}
               </Text>
-              {(distraction || state === "intent_pause" || (schedule && schedule !== "always_allowed")) && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+                {isHome && (
+                  <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)" }]}>
+                    <Text style={[styles.distractionText, { color: colors.accent }]}>
+                      📌 Home
+                    </Text>
+                  </View>
+                )}
+                {(distraction || state === "intent_pause" || (schedule && schedule !== "always_allowed")) && (
                 <View style={styles.distractionBadge}>
                   {schedule === "work_hours" ? (
                     <>
@@ -166,6 +175,7 @@ export default function DrawerScreen() {
                   )}
                 </View>
               )}
+              </View>
             </View>
           </Pressable>
 

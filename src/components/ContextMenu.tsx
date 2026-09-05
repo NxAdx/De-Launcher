@@ -476,6 +476,25 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
               {/* Homescreen Actions */}
               {isSelectedAppInHome && (
                 <>
+                  <Pressable
+                    style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      setPinTarget("home");
+                      setShowPinCheckpoint(true);
+                    }}
+                  >
+                    <Sparkles size={18} color={colors.accent} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        {appReasons[selectedApp.packageName] ? "Edit Intentional Reason" : "Set Intentional Reason"}
+                      </Text>
+                      <Text style={[styles.subLabel, { color: colors.textTertiary }]}>
+                        {appReasons[selectedApp.packageName]
+                          ? `📌 "${appReasons[selectedApp.packageName]}"`
+                          : "Define why this app belongs on your Home screen"}
+                      </Text>
+                    </View>
+                  </Pressable>
                   {allowedPackages.indexOf(selectedApp.packageName) > 0 && (
                     <Pressable
                       style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
