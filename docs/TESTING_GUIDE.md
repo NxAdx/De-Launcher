@@ -146,3 +146,26 @@ This guide gives you an exhaustive reference to test and cross-check every singl
   4. **System & Recovery**: Set as Default Home, Accessibility Service, System Wallpaper.
 * **Verification Checks**:
   - [ ] All settings changes persist across app restart (backed by MMKV storage).
+
+---
+
+### 9. 🚀 Onboarding & Default Launcher Flow
+* **How to Trigger**: Clear app storage in Android Settings (or fresh install) and make De-Launcher the default launcher.
+* **Flow Progression**:
+  1. **Welcome Screen (`/onboarding`)**:
+     * App logo, title, and *"Continue"* button.
+     * Tapping *"Continue"* plays medium haptic feedback and transitions immediately to Choose Apps (`/onboarding/apps`).
+     * Setting the app as default launcher before or during this step will **never** freeze, disable, or reset the *"Continue"* button.
+  2. **Choose Apps Screen (`/onboarding/apps`)**:
+     * Select which essential apps belong on your focused home screen.
+     * Tapping *"Next Step"* transitions smoothly to the Finish screen (`/onboarding/finish`).
+  3. **Finish Screen (`/onboarding/finish`)**:
+     * *"1. Set as Default Home"*: Tapping opens the native Android Home App chooser.
+     * Returning from Android Home Settings keeps you on the Finish screen without wiping state.
+     * *"Finish Setup"*: Activates the launcher and replaces route to the Home Screen (`/`).
+* **Verification Checks**:
+  - [ ] Reset app data in Android Settings ➔ Set De-Launcher as default launcher ➔ Open app.
+  - [ ] Tap "Continue" on Welcome screen ➔ Verify immediate vibration and transition to Choose Apps.
+  - [ ] Tap "Next Step" on Choose Apps ➔ Verify smooth transition to Finish Setup.
+  - [ ] Tap "Finish Setup" ➔ Verify home screen renders with Settings and Search buttons fully functional.
+

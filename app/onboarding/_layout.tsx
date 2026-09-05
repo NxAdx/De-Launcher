@@ -11,6 +11,10 @@ export default function OnboardingLayout() {
         contentStyle: { backgroundColor: colors.bg },
         animation: "slide_from_right",
       }}
-    />
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="apps" />
+      <Stack.Screen name="finish" />
+    </Stack>
   );
 }

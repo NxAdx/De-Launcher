@@ -70,6 +70,12 @@ function RootLayoutContent() {
       const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
         if (navigationGuardActive) return;
 
+        // CRITICAL: If the user hasn't completed onboarding, never reset navigation to "/".
+        // When De-Launcher is default launcher, returning from system settings fires CATEGORY_HOME.
+        // Dismissing routes during onboarding would cancel transitions and trap the user on Welcome.
+        const hasCompletedOnboarding = useSettingsStore.getState().hasCompletedOnboarding;
+        if (!hasCompletedOnboarding) return;
+
         try {
           router.dismissAll();
         } catch {
@@ -233,6 +239,13 @@ function RootLayoutContent() {
           options={{
             animation: "slide_from_bottom",
             presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            headerShown: false,
+            animation: "fade",
           }}
         />
       </Stack>

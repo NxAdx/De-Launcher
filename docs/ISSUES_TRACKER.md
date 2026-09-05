@@ -207,3 +207,15 @@ This document tracks all reported issues, technical root causes, implementation 
   3. **Label-Level Deduplication Engine**: Updated `appStore.ts`, `app/index.tsx`, and `AppGrid.tsx` to deduplicate by both `packageName` AND normalized `label` (`app.label.toLowerCase().trim()`), permanently preventing duplicate apps on the home screen.
   4. **Dynamic Icon Sizing & Widget Responsiveness**: `AppGrid` now dynamically computes row heights (Small: 78px, Medium: 86px, Large: 94px) and seamlessly expands when Clock or Search widgets are toggled off.
   5. **Permanent Frosted Dock**: Locked in the beloved frosted glass dock design and removed the redundant background customization option from settings.
+
+### ISSUE-27: Onboarding Next Button Blocked & Navigation Loop When Set as Default Launcher
+* **Symptoms**: When the app is reset (or installed fresh) and set as the default launcher in Android Settings, the user is trapped on the Welcome screen. Tapping the "Continue" (next) button does not proceed to the next step.
+* **Root Cause**:
+  1. **Native HOME Intent Reset Loop**: When set as default launcher, returning from system settings or tapping the home button delivers an Android `CATEGORY_HOME` intent via `MainActivity.onNewIntent()`. This broadcasted `HOME_PRESSED`, causing the JS listener in `app/_layout.tsx` to unconditionally call `router.dismissAll(); router.replace("/")`. When `!hasCompletedOnboarding`, `app/index.tsx` immediately executes `<Redirect href="/onboarding" />`, repeatedly resetting the router and cancelling in-flight onboarding transitions.
+  2. **Missing Root Stack Registration**: `app/onboarding` was not declared in the root `<Stack>` in `app/_layout.tsx`, and `app/onboarding/_layout.tsx` lacked explicit declarations for `index`, `apps`, and `finish`, causing nested route resolution issues.
+  3. **Absence of In-App Navigation Guards & HitSlop**: Onboarding buttons did not trigger `signalNavigation()`, leaving transitions unprotected against concurrent native broadcasts. Furthermore, buttons lacked generous `hitSlop` near Android gesture bar insets.
+* **Resolution**:
+  1. **Guarded `onHomePressed` in `app/_layout.tsx`**: Added an explicit check for `useSettingsStore.getState().hasCompletedOnboarding`. If `false`, the native event is ignored immediately so the onboarding flow is never interrupted.
+  2. **Registered `onboarding` Stack Screen**: Declared `<Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade" }} />` in root `_layout.tsx`, and declared `index`, `apps`, and `finish` in `app/onboarding/_layout.tsx`.
+  3. **Reinforced Onboarding Action Buttons**: Added `signalNavigation(2000)` guards, haptic feedback (`Haptics.impactAsync`), 16px `hitSlop`, and try-catch fallback navigation (`router.push` -> `router.navigate`) across `index.tsx`, `apps.tsx`, and `finish.tsx`.
+  4. **Native Default Launcher Intent Integration**: Upgraded `finish.tsx` to invoke `promptSetDefaultLauncher()` from the native module with safe fallbacks.

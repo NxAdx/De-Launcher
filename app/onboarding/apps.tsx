@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Switch, TextInput } from "react-native";
+import React, { useCallback, useState, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, Switch, TextInput, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
@@ -7,11 +7,15 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
+import { useSettingsStore } from "@/src/store/settingsStore";
+import { signalNavigation } from "@/app/_layout";
 import { AppInfo } from "@/src/types/app";
 
 export default function AppsScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
+  const isNavigatingRef = useRef(false);
   
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
@@ -22,6 +26,30 @@ export default function AppsScreen() {
   const filteredApps = installedApps
     .filter(app => app.label.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  const handleNext = () => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 800);
+
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    signalNavigation(2000);
+
+    try {
+      router.push("/onboarding/finish" as any);
+    } catch (pushErr) {
+      console.warn("[AppsScreen] router.push failed, attempting router.navigate:", pushErr);
+      try {
+        router.navigate("/onboarding/finish" as any);
+      } catch (navErr) {
+        console.error("[AppsScreen] Navigation to finish failed:", navErr);
+      }
+    }
+  };
 
   const renderAppItem = useCallback(
     ({ item }: { item: AppInfo }) => {
@@ -36,7 +64,7 @@ export default function AppsScreen() {
           <Switch
             value={isAllowed}
             onValueChange={(val) => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setAppFocusState(item.packageName, val ? "allowed" : "blocked");
             }}
             trackColor={{ false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", true: colors.accent }}
@@ -45,7 +73,7 @@ export default function AppsScreen() {
         </View>
       );
     },
-    [allowedPackages, colors, setAppFocusState, isDark]
+    [allowedPackages, colors, setAppFocusState, isDark, hapticEnabled]
   );
 
   return (
@@ -58,7 +86,7 @@ export default function AppsScreen() {
       </View>
 
       <TextInput
-        style={[styles.searchInput, { color: colors.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]}
+        style={[styles.searchInput, { color: colors.textPrimary, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
         placeholder="Search apps..."
         placeholderTextColor={colors.textTertiary}
         value={search}
@@ -66,23 +94,37 @@ export default function AppsScreen() {
       />
 
       <View style={styles.listContainer}>
-        <FlashList
-          data={filteredApps}
-          renderItem={renderAppItem}
-          keyExtractor={(item) => item.packageName}
-          extraData={{ allowedPackages, colors }}
-          showsVerticalScrollIndicator={false}
-        />
+        {installedApps.length === 0 ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Loading installed apps...</Text>
+          </View>
+        ) : filteredApps.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No apps matching &ldquo;{search}&rdquo;</Text>
+          </View>
+        ) : (
+          <FlashList
+            data={filteredApps}
+            renderItem={renderAppItem}
+            keyExtractor={(item) => item.packageName}
+            extraData={{ allowedPackages, colors }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </View>
 
       <View style={styles.footer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Proceed to finish setup"
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.accent },
-            pressed && { opacity: 0.8 },
+            pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
           ]}
-          onPress={() => router.push("/onboarding/finish" as any)}
+          onPress={handleNext}
         >
           <Text style={[styles.buttonText, { color: "#0A0A0A" }]}>Next Step</Text>
         </Pressable>
@@ -147,5 +189,16 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing["3xl"],
+    gap: spacing.md,
+  },
+  emptyText: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
   },
 });

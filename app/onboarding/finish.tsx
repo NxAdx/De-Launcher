@@ -1,33 +1,71 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as IntentLauncher from "expo-intent-launcher";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
+import { promptSetDefaultLauncher } from "@/src/services/appManager";
+import { signalNavigation } from "@/app/_layout";
 
 export default function FinishScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const setHasCompletedOnboarding = useSettingsStore((s) => s.setHasCompletedOnboarding);
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
+  const isNavigatingRef = useRef(false);
 
   const completeOnboarding = () => {
-    setHasCompletedOnboarding(true);
-    router.replace("/");
-  };
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 800);
 
-  const openHomeSettings = () => {
+    signalNavigation(2000);
+    if (hapticEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setHasCompletedOnboarding(true);
+
     try {
-      IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.HOME_SETTINGS);
-    } catch (e) {
-      console.warn("Could not open home settings", e);
+      router.replace("/");
+    } catch (err) {
+      console.warn("[FinishScreen] router.replace failed, trying router.navigate:", err);
+      try {
+        router.navigate("/");
+      } catch (e2) {
+        console.error("[FinishScreen] Failed to return to home:", e2);
+      }
     }
   };
 
-  const openAccessibilitySettings = () => {
+  const openHomeSettings = async () => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    signalNavigation(2000);
     try {
-      IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.ACCESSIBILITY_SETTINGS);
+      await promptSetDefaultLauncher();
+    } catch (e) {
+      console.warn("Could not open home settings via native module, trying IntentLauncher:", e);
+      try {
+        await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.HOME_SETTINGS);
+      } catch (err2) {
+        console.warn("Could not open home settings via IntentLauncher:", err2);
+      }
+    }
+  };
+
+  const openAccessibilitySettings = async () => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    signalNavigation(2000);
+    try {
+      await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.ACCESSIBILITY_SETTINGS);
     } catch (e) {
       console.warn("Could not open accessibility settings", e);
     }
@@ -49,7 +87,10 @@ export default function FinishScreen() {
             Make De-Launcher your default home screen so it appears when you press the home button.
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.secondaryButton, { backgroundColor: 'rgba(255,255,255,0.1)' }, pressed && { opacity: 0.8 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open Android Home Settings"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={({ pressed }) => [styles.secondaryButton, { backgroundColor: 'rgba(255,255,255,0.1)' }, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]}
             onPress={openHomeSettings}
           >
             <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }]}>Open Home Settings</Text>
@@ -62,7 +103,10 @@ export default function FinishScreen() {
             Enable the De-Launcher Accessibility Service to automatically block distracting apps.
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.secondaryButton, { backgroundColor: 'rgba(255,255,255,0.1)' }, pressed && { opacity: 0.8 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open Android Accessibility Settings"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={({ pressed }) => [styles.secondaryButton, { backgroundColor: 'rgba(255,255,255,0.1)' }, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]}
             onPress={openAccessibilitySettings}
           >
             <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }]}>Open Accessibility Settings</Text>
@@ -72,10 +116,13 @@ export default function FinishScreen() {
 
       <View style={styles.footer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Finish Setup and go to home screen"
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.accent },
-            pressed && { opacity: 0.8 },
+            pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
           ]}
           onPress={completeOnboarding}
         >

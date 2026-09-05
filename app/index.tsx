@@ -121,11 +121,16 @@ export default function HomeScreen() {
     }, 600);
 
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
+    signalNavigation(1500);
     try {
       router.push("/search" as any);
     } catch (e) {
-      console.warn("[HomeScreen] Failed to navigate to search:", e);
+      console.warn("[HomeScreen] router.push search failed, trying router.navigate:", e);
+      try {
+        router.navigate("/search" as any);
+      } catch (e2) {
+        console.error("[HomeScreen] Failed to navigate to search:", e2);
+      }
     }
   }, [hapticEnabled]);
 
@@ -137,11 +142,16 @@ export default function HomeScreen() {
     }, 600);
 
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
+    signalNavigation(1500);
     try {
       router.push("/settings");
     } catch (e) {
-      console.warn("[HomeScreen] Failed to navigate to settings:", e);
+      console.warn("[HomeScreen] router.push settings failed, trying router.navigate:", e);
+      try {
+        router.navigate("/settings");
+      } catch (e2) {
+        console.error("[HomeScreen] Failed to navigate to settings:", e2);
+      }
     }
   }, [hapticEnabled]);
 
@@ -153,11 +163,16 @@ export default function HomeScreen() {
     }, 600);
 
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    signalNavigation(1000);
+    signalNavigation(1500);
     try {
       router.push("/drawer" as any);
     } catch (e) {
-      console.warn("[HomeScreen] Failed to navigate to drawer:", e);
+      console.warn("[HomeScreen] router.push drawer failed, trying router.navigate:", e);
+      try {
+        router.navigate("/drawer" as any);
+      } catch (e2) {
+        console.error("[HomeScreen] Failed to navigate to drawer:", e2);
+      }
     }
   }, [hapticEnabled]);
 
