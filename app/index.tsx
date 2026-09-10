@@ -319,7 +319,7 @@ export default function HomeScreen() {
             style={[
               styles.gridContainer,
               {
-                marginBottom: layout.dockHeight + insets.bottom + spacing.xs,
+                marginBottom: layout.dockHeight + insets.bottom + spacing.sm,
               },
             ]}
           >
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
-    overflow: "hidden",
+    overflow: "visible",
   },
   blockedBanner: {
     position: "absolute",

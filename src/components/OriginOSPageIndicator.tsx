@@ -1,22 +1,26 @@
 /**
- * OriginOSPageIndicator Component
+ * OriginOSPageIndicator & DotsPageIndicator Components
  *
+ * OriginOSPageIndicator:
  * Modeled directly after Vivo (OriginOS / FuntouchOS) desktop page indicator.
- * Layout:
+ * Format:
  *   [ = ]   [ 3/11 ]
  * - Left: Two horizontal rounded grab bars (=)
  * - Right: Compact page fraction (e.g. 1/3, 3/11)
  * - Clean, distraction-free typography with soft drop shadow for perfect wallpaper legibility
  * - Interactive: Tap to advance to the next page with haptic feedback
+ *
+ * DotsPageIndicator:
+ * Classic minimalist dots indicator with active dot scaling.
  */
 import React, { useCallback } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { useSettingsStore } from "@/src/store/settingsStore";
-import { typography } from "@/src/theme/tokens";
+import { typography, spacing } from "@/src/theme/tokens";
 
-interface OriginOSPageIndicatorProps {
+export interface PageIndicatorProps {
   activePage: number;
   numPages: number;
   onPageSelect?: (pageIndex: number) => void;
@@ -26,7 +30,7 @@ export function OriginOSPageIndicator({
   activePage,
   numPages,
   onPageSelect,
-}: OriginOSPageIndicatorProps) {
+}: PageIndicatorProps) {
   const { colors, isDark } = useTheme();
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
@@ -42,28 +46,28 @@ export function OriginOSPageIndicator({
   if (numPages <= 1) return null;
 
   const textColor = isDark ? "#FFFFFF" : colors.textPrimary;
-  const barColor = isDark ? "rgba(255, 255, 255, 0.85)" : colors.textPrimary;
+  const barColor = isDark ? "#FFFFFF" : colors.textPrimary;
 
   return (
-    <View style={styles.outerContainer}>
+    <View style={vivoStyles.outerContainer}>
       <Pressable
         onPress={handlePress}
-        hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+        hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
         style={({ pressed }) => [
-          styles.container,
-          pressed && styles.pressed,
+          vivoStyles.container,
+          pressed && vivoStyles.pressed,
         ]}
         accessibilityRole="button"
         accessibilityLabel={`Page ${activePage + 1} of ${numPages}. Tap for next page.`}
       >
         {/* Vivo grab handle: Two stacked horizontal rounded bars (=) */}
-        <View style={styles.handleWrapper}>
-          <View style={[styles.handleBar, { backgroundColor: barColor }]} />
-          <View style={[styles.handleBar, { backgroundColor: barColor }]} />
+        <View style={vivoStyles.handleWrapper}>
+          <View style={[vivoStyles.handleBar, { backgroundColor: barColor }]} />
+          <View style={[vivoStyles.handleBar, { backgroundColor: barColor }]} />
         </View>
 
         {/* Vivo page fraction: e.g. 3/11 */}
-        <Text style={[styles.pageText, { color: textColor }]}>
+        <Text style={[vivoStyles.pageText, { color: textColor }]}>
           {activePage + 1}/{numPages}
         </Text>
       </Pressable>
@@ -71,20 +75,83 @@ export function OriginOSPageIndicator({
   );
 }
 
-const styles = StyleSheet.create({
+export function DotsPageIndicator({
+  activePage,
+  numPages,
+  onPageSelect,
+}: PageIndicatorProps) {
+  const { colors, isDark } = useTheme();
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
+  const MAX_VISIBLE_DOTS = 6;
+
+  let start = 0;
+  let end = numPages;
+  if (numPages > MAX_VISIBLE_DOTS) {
+    start = Math.max(
+      0,
+      Math.min(
+        activePage - Math.floor(MAX_VISIBLE_DOTS / 2),
+        numPages - MAX_VISIBLE_DOTS
+      )
+    );
+    end = start + MAX_VISIBLE_DOTS;
+  }
+
+  const handlePress = useCallback(
+    (pageIndex: number) => {
+      if (hapticEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onPageSelect?.(pageIndex);
+    },
+    [hapticEnabled, onPageSelect]
+  );
+
+  if (numPages <= 1) return null;
+
+  return (
+    <View style={dotsStyles.container}>
+      {Array.from({ length: end - start }).map((_, idx) => {
+        const i = start + idx;
+        const isEdge = numPages > MAX_VISIBLE_DOTS && (idx === 0 || idx === end - start - 1);
+        const isActive = i === activePage;
+        return (
+          <Pressable
+            key={i}
+            onPress={() => handlePress(i)}
+            hitSlop={8}
+            style={[
+              dotsStyles.dot,
+              {
+                backgroundColor: isActive
+                  ? (isDark ? "#FFFFFF" : colors.textPrimary)
+                  : (isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(0, 0, 0, 0.25)"),
+                transform: [
+                  { scale: isActive ? 1.3 : isEdge ? 0.65 : 1 },
+                ],
+              },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+const vivoStyles = StyleSheet.create({
   outerContainer: {
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    paddingVertical: 4,
+    paddingVertical: 1,
   },
   container: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   pressed: {
     opacity: 0.65,
@@ -94,7 +161,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 10,
     justifyContent: "center",
-    gap: 3,
+    gap: 2.5,
   },
   handleBar: {
     width: 14,
@@ -102,16 +169,33 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.65,
     shadowRadius: 2,
     elevation: 2,
   },
   pageText: {
-    fontFamily: typography.family.medium,
-    fontSize: 15,
+    fontFamily: typography.family.bold,
+    fontSize: 13,
     letterSpacing: 0.5,
-    textShadowColor: "rgba(0, 0, 0, 0.65)",
+    textShadowColor: "rgba(0, 0, 0, 0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+});
+
+const dotsStyles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: spacing.sm,
+    height: 16,
+    width: "100%",
+    paddingVertical: 2,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });
