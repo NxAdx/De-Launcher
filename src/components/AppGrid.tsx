@@ -5,13 +5,14 @@
  * Supports interactive drag-to-reorder custom gestures with smooth spring tilt/scale animations.
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { View, StyleSheet, ScrollView, useWindowDimensions, Pressable, Text } from "react-native";
+import { View, StyleSheet, useWindowDimensions, Pressable, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
   SharedValue,
+  useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { LayoutGrid } from "lucide-react-native";
@@ -19,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { AppIcon } from "./AppIcon";
 import { FolderIcon } from "./FolderIcon";
+import { OriginOSPageIndicator } from "./OriginOSPageIndicator";
 import { AppInfo, FolderInfo } from "@/src/types/app";
 import { spacing, springs, typography } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
@@ -51,7 +53,7 @@ interface DraggableGridItemProps {
   onDragEnd: () => void;
 }
 
-function DraggableGridItem({
+const DraggableGridItem = React.memo(function DraggableGridItem({
   item,
   index,
   items,
@@ -229,7 +231,7 @@ function DraggableGridItem({
       </Animated.View>
     </GestureDetector>
   );
-}
+});
 
 export interface AppGridProps {
   apps: AppInfo[];
@@ -316,6 +318,14 @@ export function AppGrid({
 
   const usableWidth = SCREEN_WIDTH - spacing.xl * 2;
   const itemWidth = usableWidth / gridColumns;
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+  const scrollX = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+  });
 
   const handleLayout = (e: any) => {
     const height = e.nativeEvent.layout.height;
@@ -324,11 +334,25 @@ export function AppGrid({
     }
   };
 
-  const handleScroll = (e: any) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / SCREEN_WIDTH);
-    setActivePage((prev) => (prev !== page ? page : prev));
-  };
+  const handleMomentumScrollEnd = useCallback(
+    (e: any) => {
+      const offsetX = e.nativeEvent.contentOffset.x;
+      const page = Math.round(offsetX / SCREEN_WIDTH);
+      setActivePage((prev) => (prev !== page ? page : prev));
+    },
+    [SCREEN_WIDTH]
+  );
+
+  const handlePageSelect = useCallback(
+    (pageIndex: number) => {
+      setActivePage(pageIndex);
+      scrollViewRef.current?.scrollTo({
+        x: pageIndex * SCREEN_WIDTH,
+        animated: true,
+      });
+    },
+    [SCREEN_WIDTH]
+  );
 
   const handleSwap = useCallback((itemId: string, toIndex: number) => {
     const current = orderedItemsRef.current;
@@ -361,13 +385,14 @@ export function AppGrid({
   return (
     <View style={styles.container} onLayout={handleLayout}>
       <View style={[styles.scrollWrapper, { height: availableGridHeight }]}>
-        <ScrollView
+        <Animated.ScrollView
+          ref={scrollViewRef}
           horizontal
           pagingEnabled
           scrollEnabled={scrollEnabled}
           showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          onMomentumScrollEnd={handleScroll}
+          onScroll={scrollHandler}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
           scrollEventThrottle={16}
           decelerationRate="fast"
           style={styles.scrollStyle}
@@ -416,7 +441,7 @@ export function AppGrid({
               </View>
             );
           })}
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
 
       {/* Grid Footer: All Apps pill button + Pagination dots */}
@@ -443,46 +468,11 @@ export function AppGrid({
         )}
 
         {numPages > 1 && (
-          <View style={styles.pageIndicator}>
-            {(() => {
-              const MAX_VISIBLE_DOTS = 6;
-              let start = 0;
-              let end = numPages;
-              if (numPages > MAX_VISIBLE_DOTS) {
-                start = Math.max(
-                  0,
-                  Math.min(
-                    activePage - Math.floor(MAX_VISIBLE_DOTS / 2),
-                    numPages - MAX_VISIBLE_DOTS
-                  )
-                );
-                end = start + MAX_VISIBLE_DOTS;
-              }
-              return Array.from({ length: end - start }).map((_, idx) => {
-                const i = start + idx;
-                const isEdge =
-                  numPages > MAX_VISIBLE_DOTS &&
-                  (idx === 0 || idx === end - start - 1);
-                const isActive = i === activePage;
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: isActive
-                          ? "#FFFFFF"
-                          : "rgba(255, 255, 255, 0.35)",
-                        transform: [
-                          { scale: isActive ? 1.3 : isEdge ? 0.65 : 1 },
-                        ],
-                      },
-                    ]}
-                  />
-                );
-              });
-            })()}
-          </View>
+          <OriginOSPageIndicator
+            activePage={activePage}
+            numPages={numPages}
+            onPageSelect={handlePageSelect}
+          />
         )}
       </View>
     </View>
@@ -533,19 +523,5 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: 12,
     letterSpacing: 0.3,
-  },
-  pageIndicator: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.sm,
-    height: 14,
-    width: "100%",
-    marginTop: 2,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
 });

@@ -103,7 +103,7 @@ export default function DrawerScreen() {
       const isHome = allowedPackages.includes(item.packageName);
 
       return (
-        <Animated.View
+        <View
           style={[
             styles.appRow,
             {
@@ -204,10 +204,10 @@ export default function DrawerScreen() {
                 : "Hidden"}
             </Text>
           </Pressable>
-        </Animated.View>
+        </View>
       );
     },
-    [getAppFocusState, colors, isDark, handleAppPress, scheduleRules]
+    [getAppFocusState, colors, isDark, handleAppPress, scheduleRules, allowedPackages]
   );
 
   return (
@@ -309,6 +309,7 @@ export default function DrawerScreen() {
           data={filteredApps}
           renderItem={renderItem}
           keyExtractor={(item) => item.packageName}
+          extraData={{ colors, isDark, scheduleRules, allowedPackages }}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />

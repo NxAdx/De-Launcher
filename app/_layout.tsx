@@ -25,6 +25,9 @@ import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
   getInstalledApps,
+  seedIconCaches,
+  getCachedSystemIcon,
+  getCachedMonochromeIcon,
   batchLoadSystemIcons,
   batchLoadMonochromeIcons,
   preloadIconPacks,
@@ -104,6 +107,7 @@ function RootLayoutContent() {
 
         // If we already have persisted apps from previous boot, show home screen instantly (0ms)
         if (hasCachedApps) {
+          seedIconCaches(currentState.installedApps);
           setIsReady(true);
         }
 
@@ -137,13 +141,19 @@ function RootLayoutContent() {
           setInstalledApps(apps);
         }
 
-        // Preload visible icons in background
+        // Preload only genuinely missing icons in background
         const activeDock = useAppStore.getState().dockPackages;
         const activeAllowed = useAppStore.getState().allowedPackages;
         const visiblePackages = [...new Set([...activeDock, ...activeAllowed.slice(0, 20)])];
-        batchLoadSystemIcons(visiblePackages).catch(() => {});
+        const missingSystem = visiblePackages.filter((pkg) => !getCachedSystemIcon(pkg));
+        if (missingSystem.length > 0) {
+          batchLoadSystemIcons(missingSystem).catch(() => {});
+        }
         if (useSettingsStore.getState().iconTheme === "monochrome") {
-          batchLoadMonochromeIcons(visiblePackages).catch(() => {});
+          const missingMono = visiblePackages.filter((pkg) => !getCachedMonochromeIcon(pkg));
+          if (missingMono.length > 0) {
+            batchLoadMonochromeIcons(missingMono).catch(() => {});
+          }
         }
 
         // Preload icon packs in background without blocking launcher UI

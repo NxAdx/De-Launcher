@@ -90,9 +90,9 @@ export const useSettingsStore = create<SettingsState>()(
             const { useAppStore } = require("./appStore");
             const { batchLoadMonochromeIcons } = require("../services/appManager");
             const apps = useAppStore.getState().installedApps || [];
-            const pkgs = apps.map((a: any) => a.packageName);
-            if (pkgs.length > 0) {
-              batchLoadMonochromeIcons(pkgs).catch(() => {});
+            const missingPkgs = apps.filter((a: any) => !a.monoIcon).map((a: any) => a.packageName);
+            if (missingPkgs.length > 0) {
+              batchLoadMonochromeIcons(missingPkgs).catch(() => {});
             }
           } catch (e) {
             // safely handled

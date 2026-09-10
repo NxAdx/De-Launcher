@@ -8,7 +8,7 @@
  * - Smooth spring press physics
  * - Fallback deterministic colored typography avatar
  */
-import React, { useCallback, useEffect, useState, memo } from "react";
+import React, { useCallback, useEffect, useState, useMemo, memo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
@@ -100,7 +100,9 @@ export const AppIcon = memo(function AppIcon({
   // Synchronous cache checks on current app.packageName
   const syncCustomIcon = activeIconPack ? getCachedIcon(activeIconPack, app.packageName) : undefined;
   const syncSystemIcon = getCachedSystemIcon(app.packageName) ?? app.icon ?? undefined;
-  const syncMonoIcon = isMonochrome ? getCachedMonochromeIcon(app.packageName) : undefined;
+  const syncMonoIcon = isMonochrome
+    ? (getCachedMonochromeIcon(app.packageName) ?? app.monoIcon ?? undefined)
+    : undefined;
 
   // Package-keyed async state prevents recycled cells from displaying another app's icon
   const [asyncCustomIcon, setAsyncCustomIcon] = useState<{ pkg: string; pack: string; uri: string | null } | null>(null);
@@ -111,6 +113,7 @@ export const AppIcon = memo(function AppIcon({
   // Load custom icon from icon pack when pack or package changes
   useEffect(() => {
     if (!activeIconPack) return;
+    if (getCachedIcon(activeIconPack, app.packageName) !== undefined) return;
 
     let isMounted = true;
     getIconFromPack(activeIconPack, app.packageName).then((icon) => {
@@ -124,24 +127,24 @@ export const AppIcon = memo(function AppIcon({
     };
   }, [activeIconPack, app.packageName]);
 
-  // Load monochrome or system icon on-demand
+  // Load monochrome or system icon on-demand only if not already present
   useEffect(() => {
     let isMounted = true;
 
     if (isMonochrome) {
-      const cachedMono = getCachedMonochromeIcon(app.packageName);
-      if (cachedMono === undefined) {
+      const existingMono = getCachedMonochromeIcon(app.packageName) ?? app.monoIcon;
+      if (!existingMono && !monoLoadFailed) {
         getMonochromeAppIcon(app.packageName).then((icon) => {
-          if (isMounted) {
+          if (isMounted && icon) {
             setAsyncMonoIcon({ pkg: app.packageName, uri: icon });
           }
         });
       }
     } else {
-      const cached = getCachedSystemIcon(app.packageName);
-      if (cached === undefined && !app.icon) {
+      const existingSys = getCachedSystemIcon(app.packageName) ?? app.icon;
+      if (!existingSys) {
         getSystemAppIcon(app.packageName).then((icon) => {
-          if (isMounted) {
+          if (isMounted && icon) {
             setAsyncSystemIcon({ pkg: app.packageName, uri: icon });
           }
         });
@@ -151,7 +154,7 @@ export const AppIcon = memo(function AppIcon({
     return () => {
       isMounted = false;
     };
-  }, [app.packageName, app.icon, isMonochrome]);
+  }, [app.packageName, app.icon, app.monoIcon, isMonochrome, monoLoadFailed]);
 
   const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.92, springs.snappy);
@@ -206,6 +209,7 @@ export const AppIcon = memo(function AppIcon({
       : null;
 
   const iconSource = isMonochrome ? monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
+  const imageSource = useMemo(() => (iconSource ? { uri: iconSource } : null), [iconSource]);
   const avatarBg = isMonochrome
     ? isDark
       ? "#262626"
@@ -214,6 +218,26 @@ export const AppIcon = memo(function AppIcon({
   const initials = getInitials(app.label);
 
   const borderRadius = Math.round(size * 0.28);
+  const iconBoxStyle = useMemo(
+    () => ({
+      width: size,
+      height: size,
+      borderRadius,
+    }),
+    [size, borderRadius]
+  );
+
+  const handleImageError = useCallback(() => {
+    if (isMonochrome && !monoLoadFailed) {
+      setMonoLoadFailed(true);
+      getMonochromeAppIcon(app.packageName).then((uri) => {
+        if (uri) {
+          setAsyncMonoIcon({ pkg: app.packageName, uri });
+          setMonoLoadFailed(false);
+        }
+      });
+    }
+  }, [isMonochrome, monoLoadFailed, app.packageName]);
 
   return (
     <AnimatedPressable
@@ -225,43 +249,17 @@ export const AppIcon = memo(function AppIcon({
       accessibilityRole="button"
       accessibilityLabel={`Launch ${app.label}`}
     >
-      <View
-        style={[
-          styles.iconWrapper,
-          {
-            width: size,
-            height: size,
-            borderRadius,
-          },
-        ]}
-      >
-        {iconSource ? (
+      <View style={[styles.iconWrapper, iconBoxStyle]}>
+        {imageSource ? (
           <Image
-            source={{ uri: iconSource }}
-            style={[
-              styles.iconImage,
-              {
-                width: size,
-                height: size,
-                borderRadius,
-              },
-            ]}
+            source={imageSource}
+            style={[styles.iconImage, iconBoxStyle]}
             contentFit="contain"
             cachePolicy="memory-disk"
             priority="high"
             recyclingKey={app.packageName}
             transition={0}
-            onError={() => {
-              if (isMonochrome && !monoLoadFailed) {
-                setMonoLoadFailed(true);
-                getMonochromeAppIcon(app.packageName).then((uri) => {
-                  if (uri) {
-                    setAsyncMonoIcon({ pkg: app.packageName, uri });
-                    setMonoLoadFailed(false);
-                  }
-                });
-              }
-            }}
+            onError={handleImageError}
           />
         ) : (
           <View

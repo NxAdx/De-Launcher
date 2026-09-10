@@ -286,6 +286,21 @@ const systemIconCache = new Map<string, string | null>();
 const systemIconRequests = new Map<string, Promise<string | null>>();
 
 /**
+ * Warm the in-memory icon caches from an existing list of apps (e.g. on startup from MMKV).
+ */
+export function seedIconCaches(apps: AppInfo[]): void {
+  if (!apps || apps.length === 0) return;
+  for (const app of apps) {
+    if (app.icon && !systemIconCache.has(app.packageName)) {
+      systemIconCache.set(app.packageName, app.icon);
+    }
+    if (app.monoIcon && !monochromeIconCache.has(app.packageName)) {
+      monochromeIconCache.set(app.packageName, app.monoIcon);
+    }
+  }
+}
+
+/**
  * Get system app icon (uses memory cache first, falls back to native getSystemAppIcon on-demand).
  */
 export async function getSystemAppIcon(packageName: string): Promise<string | null> {

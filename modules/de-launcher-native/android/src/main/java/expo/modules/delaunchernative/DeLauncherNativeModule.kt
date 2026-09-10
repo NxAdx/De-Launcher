@@ -28,6 +28,16 @@ class DeLauncherNativeModule : Module() {
         val cacheDir = context.cacheDir
         val maxSize = 192
 
+        data class PendingApp(
+          val packageName: String,
+          val label: String,
+          val isSystem: Boolean,
+          val lastUpdateTime: Long,
+          val loadDrawable: () -> Drawable?
+        )
+
+        val pendingApps = mutableListOf<PendingApp>()
+
         if (launcherApps != null && userManager != null) {
           try {
             val profiles = userManager.userProfiles
@@ -35,48 +45,24 @@ class DeLauncherNativeModule : Module() {
               val activities = launcherApps.getActivityList(null, profile)
               for (info in activities) {
                 val packageName = info.applicationInfo.packageName
-                // Exclude our own launcher app
                 if (packageName == context.packageName) continue
-                // Deduplicate packages so apps with multiple launcher activities only appear once
                 if (seenPackages.contains(packageName)) continue
                 seenPackages.add(packageName)
 
                 val label = info.label.toString()
-                var iconUri: String? = null
-                var monoUri: String? = null
-                try {
-                  val packageInfo = pm.getPackageInfo(packageName, 0)
-                  val lastUpdateTime = packageInfo.lastUpdateTime
-                  val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
-                  val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
-
-                  if (iconFile.exists() && iconFile.length() > 0) {
-                    iconUri = "file://" + iconFile.absolutePath
-                    if (monoFile.exists() && monoFile.length() > 0) {
-                      monoUri = "file://" + monoFile.absolutePath
-                    } else {
-                      val drawable = info.getIcon(0) ?: info.applicationInfo.loadIcon(pm)
-                      iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
-                      if (monoFile.exists()) monoUri = "file://" + monoFile.absolutePath
-                    }
-                  } else {
-                    val drawable = info.getIcon(0) ?: info.applicationInfo.loadIcon(pm)
-                    iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
-                    if (monoFile.exists()) monoUri = "file://" + monoFile.absolutePath
-                  }
-                } catch (e: Exception) {
-                  // Fallback: icon will load on demand
-                }
-
                 val isSystem = (info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                var lastUpdateTime = 0L
+                try {
+                  lastUpdateTime = pm.getPackageInfo(packageName, 0).lastUpdateTime
+                } catch (_: Exception) {}
 
-                appList.add(
-                  mapOf(
-                    "packageName" to packageName,
-                    "label" to label,
-                    "icon" to iconUri,
-                    "monoIcon" to monoUri,
-                    "isSystem" to isSystem
+                pendingApps.add(
+                  PendingApp(
+                    packageName = packageName,
+                    label = label,
+                    isSystem = isSystem,
+                    lastUpdateTime = lastUpdateTime,
+                    loadDrawable = { info.getIcon(0) ?: info.applicationInfo.loadIcon(pm) }
                   )
                 )
               }
@@ -86,59 +72,97 @@ class DeLauncherNativeModule : Module() {
           }
         }
 
-        if (appList.isEmpty()) {
+        if (pendingApps.isEmpty()) {
           val intent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
           }
-          
           val apps = pm.queryIntentActivities(intent, 0)
           for (resolveInfo in apps) {
             val packageName = resolveInfo.activityInfo.packageName
-            // Exclude our own launcher app
             if (packageName == context.packageName) continue
-            // Deduplicate packages
             if (seenPackages.contains(packageName)) continue
             seenPackages.add(packageName)
 
             val label = resolveInfo.loadLabel(pm).toString()
-            var iconUri: String? = null
-            var monoUri: String? = null
-            try {
-              val packageInfo = pm.getPackageInfo(packageName, 0)
-              val lastUpdateTime = packageInfo.lastUpdateTime
-              val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
-              val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
-              if (iconFile.exists() && iconFile.length() > 0) {
-                iconUri = "file://" + iconFile.absolutePath
-                if (monoFile.exists() && monoFile.length() > 0) {
-                  monoUri = "file://" + monoFile.absolutePath
-                } else {
-                  val drawable = resolveInfo.loadIcon(pm)
-                  iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
-                  if (monoFile.exists()) monoUri = "file://" + monoFile.absolutePath
-                }
-              } else {
-                val drawable = resolveInfo.loadIcon(pm)
-                iconUri = drawableToUri(context, drawable, packageName, lastUpdateTime)
-                if (monoFile.exists()) monoUri = "file://" + monoFile.absolutePath
-              }
-            } catch (e: Exception) {
-              // Fallback
-            }
-
             val isSystem = (resolveInfo.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            var lastUpdateTime = 0L
+            try {
+              lastUpdateTime = pm.getPackageInfo(packageName, 0).lastUpdateTime
+            } catch (_: Exception) {}
 
-            appList.add(
-              mapOf(
-                "packageName" to packageName,
-                "label" to label,
-                "icon" to iconUri,
-                "monoIcon" to monoUri,
-                "isSystem" to isSystem
+            pendingApps.add(
+              PendingApp(
+                packageName = packageName,
+                label = label,
+                isSystem = isSystem,
+                lastUpdateTime = lastUpdateTime,
+                loadDrawable = { resolveInfo.loadIcon(pm) }
               )
             )
           }
         }
+
+        // Fast parallel icon resolution using multi-core thread pool
+        val iconMap = java.util.concurrent.ConcurrentHashMap<String, String?>()
+        val monoMap = java.util.concurrent.ConcurrentHashMap<String, String?>()
+        val appsNeedingGeneration = mutableListOf<PendingApp>()
+
+        for (app in pendingApps) {
+          val iconFile = java.io.File(cacheDir, "app_icon_${app.packageName}_${app.lastUpdateTime}_${maxSize}.png")
+          val monoFile = java.io.File(cacheDir, "app_icon_mono_${app.packageName}_${app.lastUpdateTime}_${maxSize}.png")
+
+          val hasIcon = iconFile.exists() && iconFile.length() > 0
+          val hasMono = monoFile.exists() && monoFile.length() > 0
+
+          if (hasIcon && hasMono) {
+            iconMap[app.packageName] = "file://" + iconFile.absolutePath
+            monoMap[app.packageName] = "file://" + monoFile.absolutePath
+          } else {
+            if (hasIcon) iconMap[app.packageName] = "file://" + iconFile.absolutePath
+            if (hasMono) monoMap[app.packageName] = "file://" + monoFile.absolutePath
+            appsNeedingGeneration.add(app)
+          }
+        }
+
+        if (appsNeedingGeneration.isNotEmpty()) {
+          val numThreads = Runtime.getRuntime().availableProcessors().coerceIn(4, 8)
+          val executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads)
+          try {
+            val tasks = appsNeedingGeneration.map { app ->
+              java.util.concurrent.Callable {
+                try {
+                  val drawable = app.loadDrawable()
+                  if (drawable != null) {
+                    val iconUri = drawableToUri(context, drawable, app.packageName, app.lastUpdateTime)
+                    if (iconUri != null) iconMap[app.packageName] = iconUri
+                    val monoFile = java.io.File(cacheDir, "app_icon_mono_${app.packageName}_${app.lastUpdateTime}_${maxSize}.png")
+                    if (monoFile.exists() && monoFile.length() > 0) {
+                      monoMap[app.packageName] = "file://" + monoFile.absolutePath
+                    }
+                  }
+                } catch (e: Exception) {
+                  android.util.Log.w("DeLauncherNative", "Failed icon gen for ${app.packageName}", e)
+                }
+              }
+            }
+            executor.invokeAll(tasks, 5, java.util.concurrent.TimeUnit.SECONDS)
+          } finally {
+            executor.shutdown()
+          }
+        }
+
+        for (app in pendingApps) {
+          appList.add(
+            mapOf(
+              "packageName" to app.packageName,
+              "label" to app.label,
+              "icon" to iconMap[app.packageName],
+              "monoIcon" to monoMap[app.packageName],
+              "isSystem" to app.isSystem
+            )
+          )
+        }
+
         appList
       } ?: emptyList<Map<String, Any?>>()
     }
@@ -492,7 +516,7 @@ class DeLauncherNativeModule : Module() {
               monoCanvas.drawBitmap(existingBmp, 0f, 0f, paint)
 
               val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
-              monoBitmap.compress(Bitmap.CompressFormat.PNG, 90, monoOut)
+              monoBitmap.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
               monoOut.flush()
               monoOut.close()
             }
@@ -522,7 +546,7 @@ class DeLauncherNativeModule : Module() {
       }
 
       val out = java.io.BufferedOutputStream(java.io.FileOutputStream(iconFile))
-      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
+      scaledBitmap.compress(Bitmap.CompressFormat.PNG, 85, out)
       out.flush()
       out.close()
 
@@ -538,7 +562,7 @@ class DeLauncherNativeModule : Module() {
         monoCanvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
 
         val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
-        monoBitmap.compress(Bitmap.CompressFormat.PNG, 90, monoOut)
+        monoBitmap.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
         monoOut.flush()
         monoOut.close()
       } catch (monoErr: Throwable) {
