@@ -117,9 +117,14 @@ class DeLauncherNativeModule : Module() {
           if (hasIcon && hasMono) {
             iconMap[app.packageName] = "file://" + iconFile.absolutePath
             monoMap[app.packageName] = "file://" + monoFile.absolutePath
+          } else if (hasIcon && !hasMono) {
+            iconMap[app.packageName] = "file://" + iconFile.absolutePath
+            if (generateMonoFromIconFile(iconFile, monoFile)) {
+              monoMap[app.packageName] = "file://" + monoFile.absolutePath
+            } else {
+              appsNeedingGeneration.add(app)
+            }
           } else {
-            if (hasIcon) iconMap[app.packageName] = "file://" + iconFile.absolutePath
-            if (hasMono) monoMap[app.packageName] = "file://" + monoFile.absolutePath
             appsNeedingGeneration.add(app)
           }
         }
@@ -145,7 +150,7 @@ class DeLauncherNativeModule : Module() {
                 }
               }
             }
-            executor.invokeAll(tasks, 5, java.util.concurrent.TimeUnit.SECONDS)
+            executor.invokeAll(tasks, 20, java.util.concurrent.TimeUnit.SECONDS)
           } finally {
             executor.shutdown()
           }
@@ -325,7 +330,6 @@ class DeLauncherNativeModule : Module() {
         try {
           val pm = context.packageManager
           val cacheDir = context.cacheDir
-          val appInfo = pm.getApplicationInfo(packageName, 0)
           val packageInfo = pm.getPackageInfo(packageName, 0)
           val lastUpdateTime = packageInfo.lastUpdateTime
           val maxSize = 192
@@ -333,12 +337,18 @@ class DeLauncherNativeModule : Module() {
           if (monoFile.exists() && monoFile.length() > 0) {
             "file://" + monoFile.absolutePath
           } else {
-            val drawable = appInfo.loadIcon(pm)
-            drawableToUri(context, drawable, packageName, lastUpdateTime)
-            if (monoFile.exists() && monoFile.length() > 0) {
+            val iconFile = java.io.File(cacheDir, "app_icon_${packageName}_${lastUpdateTime}_${maxSize}.png")
+            if (iconFile.exists() && iconFile.length() > 0 && generateMonoFromIconFile(iconFile, monoFile)) {
               "file://" + monoFile.absolutePath
             } else {
-              null
+              val appInfo = pm.getApplicationInfo(packageName, 0)
+              val drawable = appInfo.loadIcon(pm)
+              drawableToUri(context, drawable, packageName, lastUpdateTime)
+              if (monoFile.exists() && monoFile.length() > 0) {
+                "file://" + monoFile.absolutePath
+              } else {
+                null
+              }
             }
           }
         } catch (e: Exception) {
@@ -404,13 +414,18 @@ class DeLauncherNativeModule : Module() {
                 if (monoFile.exists() && monoFile.length() > 0) {
                   result[pkg] = "file://" + monoFile.absolutePath
                 } else {
-                  val appInfo = pm.getApplicationInfo(pkg, 0)
-                  val drawable = appInfo.loadIcon(pm)
-                  drawableToUri(context, drawable, pkg, lastUpdateTime)
-                  if (monoFile.exists() && monoFile.length() > 0) {
+                  val iconFile = java.io.File(cacheDir, "app_icon_${pkg}_${lastUpdateTime}_${maxSize}.png")
+                  if (iconFile.exists() && iconFile.length() > 0 && generateMonoFromIconFile(iconFile, monoFile)) {
                     result[pkg] = "file://" + monoFile.absolutePath
                   } else {
-                    result[pkg] = null
+                    val appInfo = pm.getApplicationInfo(pkg, 0)
+                    val drawable = appInfo.loadIcon(pm)
+                    drawableToUri(context, drawable, pkg, lastUpdateTime)
+                    if (monoFile.exists() && monoFile.length() > 0) {
+                      result[pkg] = "file://" + monoFile.absolutePath
+                    } else {
+                      result[pkg] = null
+                    }
                   }
                 }
               } catch (e: Exception) {
@@ -419,7 +434,7 @@ class DeLauncherNativeModule : Module() {
               }
             }
           }
-          executor.invokeAll(tasks, 5, java.util.concurrent.TimeUnit.SECONDS)
+          executor.invokeAll(tasks, 20, java.util.concurrent.TimeUnit.SECONDS)
         } finally {
           executor.shutdown()
         }
@@ -495,6 +510,28 @@ class DeLauncherNativeModule : Module() {
   private var homePressedReceiver: android.content.BroadcastReceiver? = null
   private val APPWIDGET_HOST_ID = 1024
 
+  private fun generateMonoFromIconFile(iconFile: java.io.File, monoFile: java.io.File): Boolean {
+    return try {
+      val existingBmp = android.graphics.BitmapFactory.decodeFile(iconFile.absolutePath) ?: return false
+      val monoBitmap = Bitmap.createBitmap(existingBmp.width, existingBmp.height, Bitmap.Config.ARGB_8888)
+      val monoCanvas = Canvas(monoBitmap)
+      val paint = android.graphics.Paint()
+      val colorMatrix = android.graphics.ColorMatrix()
+      colorMatrix.setSaturation(0f)
+      paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
+      monoCanvas.drawBitmap(existingBmp, 0f, 0f, paint)
+
+      val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
+      monoBitmap.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
+      monoOut.flush()
+      monoOut.close()
+      true
+    } catch (e: Throwable) {
+      android.util.Log.w("DeLauncherNative", "Failed to generate mono from existing icon", e)
+      false
+    }
+  }
+
   private fun drawableToUri(context: android.content.Context, drawable: Drawable, packageName: String, lastUpdateTime: Long = 0L): String? {
     return try {
       val cacheDir = context.cacheDir
@@ -504,25 +541,7 @@ class DeLauncherNativeModule : Module() {
       if (iconFile.exists() && iconFile.length() > 0) {
         val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
         if (!monoFile.exists() || monoFile.length() == 0L) {
-          try {
-            val existingBmp = android.graphics.BitmapFactory.decodeFile(iconFile.absolutePath)
-            if (existingBmp != null) {
-              val monoBitmap = Bitmap.createBitmap(existingBmp.width, existingBmp.height, Bitmap.Config.ARGB_8888)
-              val monoCanvas = Canvas(monoBitmap)
-              val paint = android.graphics.Paint()
-              val colorMatrix = android.graphics.ColorMatrix()
-              colorMatrix.setSaturation(0f)
-              paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
-              monoCanvas.drawBitmap(existingBmp, 0f, 0f, paint)
-
-              val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
-              monoBitmap.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
-              monoOut.flush()
-              monoOut.close()
-            }
-          } catch (e: Throwable) {
-            android.util.Log.w("DeLauncherNative", "Failed to generate mono from existing icon", e)
-          }
+          generateMonoFromIconFile(iconFile, monoFile)
         }
         return "file://" + iconFile.absolutePath
       }
@@ -553,18 +572,37 @@ class DeLauncherNativeModule : Module() {
       // Generate monochrome / grayscale version
       try {
         val monoFile = java.io.File(cacheDir, "app_icon_mono_${packageName}_${lastUpdateTime}_${maxSize}.png")
-        val monoBitmap = Bitmap.createBitmap(scaledBitmap.width, scaledBitmap.height, Bitmap.Config.ARGB_8888)
-        val monoCanvas = Canvas(monoBitmap)
-        val paint = android.graphics.Paint()
-        val colorMatrix = android.graphics.ColorMatrix()
-        colorMatrix.setSaturation(0f)
-        paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
-        monoCanvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
+        var monoGenerated = false
 
-        val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
-        monoBitmap.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
-        monoOut.flush()
-        monoOut.close()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && drawable is android.graphics.drawable.AdaptiveIconDrawable) {
+          try {
+            val monoDrawable = drawable.monochrome
+            if (monoDrawable != null) {
+              val width = if (monoDrawable.intrinsicWidth > 0) monoDrawable.intrinsicWidth else 108
+              val height = if (monoDrawable.intrinsicHeight > 0) monoDrawable.intrinsicHeight else 108
+              val monoBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+              val monoCanvas = Canvas(monoBmp)
+              monoDrawable.setBounds(0, 0, monoCanvas.width, monoCanvas.height)
+              monoDrawable.draw(monoCanvas)
+
+              val r = Math.min(maxSize.toFloat() / monoBmp.width, maxSize.toFloat() / monoBmp.height)
+              val scaledMono = if (r < 1f) {
+                Bitmap.createScaledBitmap(monoBmp, (monoBmp.width * r).toInt(), (monoBmp.height * r).toInt(), true)
+              } else {
+                monoBmp
+              }
+              val monoOut = java.io.BufferedOutputStream(java.io.FileOutputStream(monoFile))
+              scaledMono.compress(Bitmap.CompressFormat.PNG, 85, monoOut)
+              monoOut.flush()
+              monoOut.close()
+              monoGenerated = true
+            }
+          } catch (_: Throwable) {}
+        }
+
+        if (!monoGenerated) {
+          generateMonoFromIconFile(iconFile, monoFile)
+        }
       } catch (monoErr: Throwable) {
         android.util.Log.w("DeLauncherNative", "Failed to cache mono icon for $packageName", monoErr)
       }

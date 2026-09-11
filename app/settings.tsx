@@ -183,7 +183,6 @@ export default function SettingsScreen() {
   const setPageIndicatorStyle = useSettingsStore((s) => s.setPageIndicatorStyle);
 
   // App store
-  const installedApps = useAppStore((s) => s.installedApps);
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
   const allowedPackages = useAppStore((s) => s.allowedPackages) || [];
 
@@ -231,7 +230,8 @@ export default function SettingsScreen() {
 
   const handleAutoArrange = () => {
     if (hapticFeedback) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const nonDistractions = getNonDistractionApps(installedApps);
+    const allApps = useAppStore.getState().installedApps;
+    const nonDistractions = getNonDistractionApps(allApps);
     const pkgList = nonDistractions.map((a) => a.packageName);
     autoArrangeHome(pkgList);
     setAutoArrangeMessage(`Added ${pkgList.length} non-distracting apps to Home.`);

@@ -179,7 +179,7 @@ export default function HomeScreen() {
   const panGesture = useMemo(() => {
     return Gesture.Pan()
       .activeOffsetY([-35, 35])
-      .failOffsetX([-25, 25])
+      .failOffsetX([-15, 15])
       .onEnd((e) => {
         "worklet";
         if (e.velocityY > 600 || e.translationY > 70) {

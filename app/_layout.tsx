@@ -144,7 +144,7 @@ function RootLayoutContent() {
         // Preload only genuinely missing icons in background
         const activeDock = useAppStore.getState().dockPackages;
         const activeAllowed = useAppStore.getState().allowedPackages;
-        const visiblePackages = [...new Set([...activeDock, ...activeAllowed.slice(0, 20)])];
+        const visiblePackages = [...new Set([...activeDock, ...activeAllowed])];
         const missingSystem = visiblePackages.filter((pkg) => !getCachedSystemIcon(pkg));
         if (missingSystem.length > 0) {
           batchLoadSystemIcons(missingSystem).catch(() => {});
@@ -204,7 +204,7 @@ function RootLayoutContent() {
           name="drawer"
           options={{
             animation: "slide_from_bottom",
-            presentation: "transparentModal",
+            presentation: "modal",
           }}
         />
         <Stack.Screen

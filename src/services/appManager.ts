@@ -457,12 +457,13 @@ export async function batchLoadMonochromeIcons(packageNames: string[]): Promise<
       const request = batchRequest
         .then((icons) => {
           const iconUri = icons[pkg] ?? null;
-          monochromeIconCache.set(pkg, iconUri);
+          if (iconUri) {
+            monochromeIconCache.set(pkg, iconUri);
+          }
           return iconUri;
         })
         .catch((error) => {
           console.error("[AppManager] Batch mono icon loading failed:", error);
-          monochromeIconCache.set(pkg, null);
           return null;
         })
         .finally(() => {

@@ -24,6 +24,135 @@ import { signalNavigation } from "./_layout";
 
 type FilterMode = "all" | "allowed" | "blocked";
 
+interface DrawerAppRowProps {
+  item: AppInfo;
+  isDark: boolean;
+  colors: ReturnType<typeof useTheme>["colors"];
+  state: string;
+  distraction: boolean;
+  schedule?: string;
+  isHome: boolean;
+  onPress: (app: AppInfo) => void;
+  onSelect: (app: AppInfo) => void;
+}
+
+const DrawerAppRow = React.memo(function DrawerAppRow({
+  item,
+  isDark,
+  colors,
+  state,
+  distraction,
+  schedule,
+  isHome,
+  onPress,
+  onSelect,
+}: DrawerAppRowProps) {
+  return (
+    <View
+      style={[
+        styles.appRow,
+        {
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.02)"
+            : "rgba(0,0,0,0.02)",
+        },
+      ]}
+    >
+      <Pressable
+        style={styles.appInfo}
+        onPress={() => onPress(item)}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onSelect(item);
+        }}
+      >
+        <AppIcon
+          app={item}
+          onPress={onPress}
+          size={44}
+          showLabel={false}
+        />
+        <View style={styles.appTextContainer}>
+          <Text
+            style={[styles.appLabel, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+            {isHome && (
+              <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)" }]}>
+                <Text style={[styles.distractionText, { color: colors.accent }]}>
+                  📌 Home
+                </Text>
+              </View>
+            )}
+            {(distraction || state === "intent_pause" || (schedule && schedule !== "always_allowed")) && (
+              <View style={styles.distractionBadge}>
+                {schedule === "work_hours" ? (
+                  <>
+                    <Clock size={10} color={colors.accent} />
+                    <Text style={[styles.distractionText, { color: colors.accent }]}>
+                      Work Hours
+                    </Text>
+                  </>
+                ) : schedule === "evening_only" ? (
+                  <>
+                    <Clock size={10} color={colors.accent} />
+                    <Text style={[styles.distractionText, { color: colors.accent }]}>
+                      Evening Only
+                    </Text>
+                  </>
+                ) : state === "intent_pause" ? (
+                  <>
+                    <ShieldOff size={10} color={colors.warning} />
+                    <Text style={[styles.distractionText, { color: colors.warning }]}>
+                      Intent Pause
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <ShieldOff size={10} color={colors.error} />
+                    <Text style={[styles.distractionText, { color: colors.error }]}>
+                      Distraction
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </Pressable>
+
+      <Pressable
+        hitSlop={12}
+        onPress={() => onSelect(item)}
+        style={styles.stateButton}
+      >
+        <Text
+          style={[
+            styles.stateButtonText,
+            {
+              color:
+                state === "allowed"
+                  ? colors.accent
+                  : state === "intent_pause"
+                  ? colors.warning
+                  : colors.textTertiary,
+            },
+          ]}
+        >
+          {state === "allowed"
+            ? "Allowed"
+            : state === "intent_pause"
+            ? "Paused"
+            : "Hidden"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+});
+
 export default function DrawerScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -95,6 +224,10 @@ export default function DrawerScreen() {
     [isAppWithinSchedule, getAppFocusState, hasActiveExemption]
   );
 
+  const handleSelectApp = useCallback((app: AppInfo) => {
+    setSelectedApp(app);
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: AppInfo }) => {
       const state = getAppFocusState(item.packageName);
@@ -103,111 +236,20 @@ export default function DrawerScreen() {
       const isHome = allowedPackages.includes(item.packageName);
 
       return (
-        <View
-          style={[
-            styles.appRow,
-            {
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.02)"
-                : "rgba(0,0,0,0.02)",
-            },
-          ]}
-        >
-          <Pressable
-            style={styles.appInfo}
-            onPress={() => handleAppPress(item)}
-            onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setSelectedApp(item);
-            }}
-          >
-            <AppIcon
-              app={item}
-              onPress={handleAppPress}
-              size={44}
-              showLabel={false}
-            />
-            <View style={styles.appTextContainer}>
-              <Text
-                style={[styles.appLabel, { color: colors.textPrimary }]}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
-                {isHome && (
-                  <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)" }]}>
-                    <Text style={[styles.distractionText, { color: colors.accent }]}>
-                      📌 Home
-                    </Text>
-                  </View>
-                )}
-                {(distraction || state === "intent_pause" || (schedule && schedule !== "always_allowed")) && (
-                <View style={styles.distractionBadge}>
-                  {schedule === "work_hours" ? (
-                    <>
-                      <Clock size={10} color={colors.accent} />
-                      <Text style={[styles.distractionText, { color: colors.accent }]}>
-                        Work Hours
-                      </Text>
-                    </>
-                  ) : schedule === "evening_only" ? (
-                    <>
-                      <Clock size={10} color={colors.accent} />
-                      <Text style={[styles.distractionText, { color: colors.accent }]}>
-                        Evening Only
-                      </Text>
-                    </>
-                  ) : state === "intent_pause" ? (
-                    <>
-                      <ShieldOff size={10} color={colors.warning} />
-                      <Text style={[styles.distractionText, { color: colors.warning }]}>
-                        Intent Pause
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldOff size={10} color={colors.error} />
-                      <Text style={[styles.distractionText, { color: colors.error }]}>
-                        Distraction
-                      </Text>
-                    </>
-                  )}
-                </View>
-              )}
-              </View>
-            </View>
-          </Pressable>
-
-          <Pressable
-            hitSlop={12}
-            onPress={() => setSelectedApp(item)}
-            style={styles.stateButton}
-          >
-            <Text
-              style={[
-                styles.stateButtonText,
-                {
-                  color:
-                    state === "allowed"
-                      ? colors.accent
-                      : state === "intent_pause"
-                      ? colors.warning
-                      : colors.textTertiary,
-                },
-              ]}
-            >
-              {state === "allowed"
-                ? "Allowed"
-                : state === "intent_pause"
-                ? "Paused"
-                : "Hidden"}
-            </Text>
-          </Pressable>
-        </View>
+        <DrawerAppRow
+          item={item}
+          isDark={isDark}
+          colors={colors}
+          state={state}
+          distraction={distraction}
+          schedule={schedule}
+          isHome={isHome}
+          onPress={handleAppPress}
+          onSelect={handleSelectApp}
+        />
       );
     },
-    [getAppFocusState, colors, isDark, handleAppPress, scheduleRules, allowedPackages]
+    [getAppFocusState, colors, isDark, handleAppPress, handleSelectApp, scheduleRules, allowedPackages]
   );
 
   return (

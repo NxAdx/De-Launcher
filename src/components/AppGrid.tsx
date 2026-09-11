@@ -410,6 +410,23 @@ export function AppGrid({
               (availableGridHeight - pageRows * rowHeight) / 2
             );
 
+            // PAGE WINDOWING (Lawnchair / KISS / Android ViewPager architecture):
+            // Only mount full item hierarchy for active page and immediate neighbors (+/- 1).
+            // Offscreen pages render an empty container of the exact same dimensions to maintain scroll geometry.
+            const isNearActive = Math.abs(pageIndex - activePage) <= 1;
+
+            if (!isNearActive) {
+              return (
+                <View
+                  key={pageIndex}
+                  style={[
+                    styles.pageContainer,
+                    { width: SCREEN_WIDTH, height: availableGridHeight },
+                  ]}
+                />
+              );
+            }
+
             return (
               <View
                 key={pageIndex}

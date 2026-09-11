@@ -208,7 +208,7 @@ export const AppIcon = memo(function AppIcon({
         null
       : null;
 
-  const iconSource = isMonochrome ? monoIcon || systemIcon || app.icon : customIcon || systemIcon || app.icon;
+  const iconSource = isMonochrome ? monoIcon : (customIcon || systemIcon || app.icon);
   const imageSource = useMemo(() => (iconSource ? { uri: iconSource } : null), [iconSource]);
   const avatarBg = isMonochrome
     ? isDark
