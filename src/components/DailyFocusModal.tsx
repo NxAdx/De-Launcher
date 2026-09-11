@@ -73,29 +73,14 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
   const [isAdding, setIsAdding] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Auto scroll to input when adding a task
+  // Auto scroll to input once when adding a task
   useEffect(() => {
     if (isAdding) {
       const timer = setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 120);
       return () => clearTimeout(timer);
     }
-  }, [isAdding]);
-
-  // Keep input in view when software keyboard pops up
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => {
-        if (isAdding) {
-          setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-          }, 80);
-        }
-      }
-    );
-    return () => showSub.remove();
   }, [isAdding]);
 
   // Generate 28 days structured into 4 weeks of 7 days
@@ -135,6 +120,12 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
     setNewTodoText("");
     setIsAdding(false);
     Keyboard.dismiss();
+  };
+
+  const handleCancelAdd = () => {
+    Keyboard.dismiss();
+    setIsAdding(false);
+    setNewTodoText("");
   };
 
   const handleToggle = (id: string) => {
@@ -178,7 +169,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
         style={styles.modalOverlay}
       >
@@ -319,11 +310,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                   />
                   <View style={styles.addInputActions}>
                     <Pressable
-                      onPress={() => {
-                        Keyboard.dismiss();
-                        setIsAdding(false);
-                        setNewTodoText("");
-                      }}
+                      onPress={handleCancelAdd}
                       hitSlop={8}
                       style={styles.cancelAddBtn}
                     >

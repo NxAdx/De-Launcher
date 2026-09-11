@@ -30,9 +30,10 @@ De-Launcher is a functional prototype on Expo SDK 55. The React Native interface
 - Complete issue resolution and state tracking documented in `docs/ISSUES_TRACKER.md`.
 - Production Polish & Design System Refinement:
   - Minimalist OriginOS page fraction indicator (`OriginOSPageIndicator.tsx`) without grab-bar clutter (`=`), eliminating unnecessary customisation settings.
-  - Software keyboard responsive layout & auto-scroll UX for Daily Focus task creation (`DailyFocusModal.tsx`).
+  - Resolved software keyboard flicker loop on Daily Focus task creation/cancellation (`DailyFocusModal.tsx`).
   - Total eradication of ad-hoc emojis across Drawer, Context Menu, and Settings in favor of cohesive Lucide vector badges.
-  - Official production app icon integration (`Android & ios-tinted.png`) with `#F5F4F2` warm canvas strictly for launcher icon, and transparent mark (`ios & android adaptive.png`) for Welcome screen, Settings brand footer, and adaptive foreground.
+  - Official production app icon integration (`Android & ios-tinted.png`) with `#F5F4F2` warm canvas synchronized across `assets/icon.png` and native mipmaps.
+  - Unified monochrome icon pipeline in `DeLauncherNativeModule.kt` preserving authentic squircle background plates and eliminating color leakage with `app_icon_mono_v3_` cache invalidation.
 - `npm test` validation script covering TypeScript and lint.
 
 ## Needs More Development

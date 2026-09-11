@@ -272,6 +272,29 @@ This document tracks all reported issues, technical root causes, implementation 
   3. Updated `app/settings.tsx` (brand footer) to require `@/assets/adaptive-icon.png`, eliminating the background box.
   4. Regenerated Android native `ic_launcher_foreground.png` across all mipmaps directly from the transparent adaptive icon asset.
   5. Formalized the asset separation rule in `docs/DESIGN-SYSTEM.md`.
+### ISSUE-33: Resized Launcher Icon Sync Across assets/ and Native Android Mipmaps
+* **Symptoms**: Changes made to `docs/Icons/Android & ios-tinted.png` (resizing inner glyph) were not reflected in the Android launcher.
+* **Root Cause**: The icon generation script had not been run after the user modified `Android & ios-tinted.png`, leaving `assets/icon.png` and `android/app/src/main/res/mipmap-*` on the previous build's assets.
+* **Resolution**:
+  1. Synchronized `assets/icon.png` byte-for-byte from the newly resized `docs/Icons/Android & ios-tinted.png`.
+  2. Regenerated all Android mipmaps (`mdpi` through `xxxhdpi`) across `ic_launcher.png` and `ic_launcher_round.png`.
 
+### ISSUE-34: Daily Focus Modal Keyboard & Layout Infinite Flickering Loop
+* **Symptoms**: Tapping "Add Task" or "Cancel" in the Daily Focus modal caused the screen and keyboard to flicker nonstop.
+* **Root Cause**:
+  1. `KeyboardAvoidingView` on Android with `behavior="height"` conflicted with Android's native `windowSoftInputMode="adjustResize"`, double-shrinking the layout height.
+  2. `Keyboard.addListener("keyboardDidShow")` triggered `scrollViewRef.current?.scrollToEnd({ animated: true })`, which displaced the focused `TextInput`, causing IME focus loss (`keyboardDidHide`), triggering re-focus from `autoFocus={true}`, causing an endless oscillation loop.
+* **Resolution**:
+  1. Set `behavior={Platform.OS === "ios" ? "padding" : undefined}` on `KeyboardAvoidingView` to let Android handle window resizing natively without layout thrashing.
+  2. Removed `Keyboard.addListener("keyboardDidShow")` and consolidated task input viewability into a single smooth scroll on `isAdding`.
+  3. Added `handleCancelAdd` to cleanly dismiss the keyboard and reset state without layout oscillation.
 
-
+### ISSUE-35: Monochrome Icons Background Stripping & Color Leakage Fix
+* **Symptoms**: In monochrome icon mode, many icons (e.g. Reddit, WhatsApp, VLC, Sheets, Simple Notes, Twitch) lost their background completely and looked like naked floating wireframes, while others retained squircle backgrounds. Additionally, some apps (Toxly, Truecaller) leaked full color.
+* **Root Cause**:
+  1. `DeLauncherNativeModule.kt` checked Android 13's `AdaptiveIconDrawable.monochrome`. In Android, `monochrome` only provides the transparent foreground silhouette without any background plate (as system Launcher3 normally draws its own themed background behind it). Drawing it to a transparent canvas completely stripped the background plate.
+  2. Apps without `monochrome` fell back to desaturating the full icon (preserving their background), causing half the apps to have backgrounds and half to have none.
+  3. Stale/corrupted cache files from earlier runs prevented some apps from desaturating, leaking color.
+* **Resolution**:
+  1. Updated `drawableToUri` in `DeLauncherNativeModule.kt` to generate monochrome icons directly from the complete icon bitmap via `ColorMatrix.setSaturation(0f)`, preserving authentic squircle background plates, shadows, and shapes across ALL apps uniformly.
+  2. Bumped cache key prefix to `app_icon_mono_v3_` across `getInstalledApps`, `getMonochromeAppIcon`, and `getMonochromeAppIcons` so stale/corrupted/colored files are immediately invalidated and regenerated fresh on device.
