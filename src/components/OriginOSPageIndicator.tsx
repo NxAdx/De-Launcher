@@ -46,7 +46,6 @@ export function OriginOSPageIndicator({
   if (numPages <= 1) return null;
 
   const textColor = isDark ? "#FFFFFF" : colors.textPrimary;
-  const barColor = isDark ? "#FFFFFF" : colors.textPrimary;
 
   return (
     <View style={vivoStyles.outerContainer}>
@@ -60,13 +59,7 @@ export function OriginOSPageIndicator({
         accessibilityRole="button"
         accessibilityLabel={`Page ${activePage + 1} of ${numPages}. Tap for next page.`}
       >
-        {/* Vivo grab handle: Two stacked horizontal rounded bars (=) */}
-        <View style={vivoStyles.handleWrapper}>
-          <View style={[vivoStyles.handleBar, { backgroundColor: barColor }]} />
-          <View style={[vivoStyles.handleBar, { backgroundColor: barColor }]} />
-        </View>
-
-        {/* Vivo page fraction: e.g. 3/11 */}
+        {/* Minimal page fraction: e.g. 1/13 */}
         <Text style={[vivoStyles.pageText, { color: textColor }]}>
           {activePage + 1}/{numPages}
         </Text>
@@ -156,22 +149,6 @@ const vivoStyles = StyleSheet.create({
   pressed: {
     opacity: 0.6,
     transform: [{ scale: 0.96 }],
-  },
-  handleWrapper: {
-    width: 10,
-    height: 7,
-    justifyContent: "center",
-    gap: 2,
-  },
-  handleBar: {
-    width: 10,
-    height: 1.4,
-    borderRadius: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 1.5,
-    elevation: 1,
   },
   pageText: {
     fontFamily: typography.family.regular,

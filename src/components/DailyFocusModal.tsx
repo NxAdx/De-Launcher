@@ -8,7 +8,7 @@
  * - Solid OLED dark / clean light card surfaces
  * - Zero-flicker task entry and keyboard handling
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -70,6 +71,32 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
 
   const [newTodoText, setNewTodoText] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Auto scroll to input when adding a task
+  useEffect(() => {
+    if (isAdding) {
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAdding]);
+
+  // Keep input in view when software keyboard pops up
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => {
+        if (isAdding) {
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 80);
+        }
+      }
+    );
+    return () => showSub.remove();
+  }, [isAdding]);
 
   // Generate 28 days structured into 4 weeks of 7 days
   const weeks = useMemo<HeatmapDay[][]>(() => {
@@ -107,6 +134,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
     addTodo(newTodoText.trim());
     setNewTodoText("");
     setIsAdding(false);
+    Keyboard.dismiss();
   };
 
   const handleToggle = (id: string) => {
@@ -150,7 +178,8 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
         style={styles.modalOverlay}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
@@ -191,9 +220,13 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
           </View>
 
           <ScrollView
+            ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isAdding && { paddingBottom: 140 },
+            ]}
           >
             {/* Consistency Heatmap Card */}
             <View style={[styles.heatmapCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
@@ -282,13 +315,23 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                     onChangeText={setNewTodoText}
                     onSubmitEditing={handleAdd}
                     returnKeyType="done"
+                    autoFocus={true}
                   />
                   <View style={styles.addInputActions}>
-                    <Pressable onPress={() => { setIsAdding(false); setNewTodoText(""); }} style={styles.cancelAddBtn}>
+                    <Pressable
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setIsAdding(false);
+                        setNewTodoText("");
+                      }}
+                      hitSlop={8}
+                      style={styles.cancelAddBtn}
+                    >
                       <Text style={[styles.cancelAddText, { color: colors.textTertiary }]}>Cancel</Text>
                     </Pressable>
                     <Pressable
                       onPress={handleAdd}
+                      hitSlop={8}
                       style={[styles.confirmAddBtn, { backgroundColor: colors.accent }]}
                     >
                       <Text style={styles.confirmAddText}>Add</Text>

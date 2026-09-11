@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { AppIcon } from "./AppIcon";
 import { FolderIcon } from "./FolderIcon";
-import { OriginOSPageIndicator, DotsPageIndicator } from "./OriginOSPageIndicator";
+import { OriginOSPageIndicator } from "./OriginOSPageIndicator";
 import { AppInfo, FolderInfo } from "@/src/types/app";
 import { spacing, springs, typography } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
@@ -256,7 +256,6 @@ export function AppGrid({
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const iconSizeSetting = useSettingsStore((s) => s.iconSize);
-  const pageIndicatorStyle = useSettingsStore((s) => s.pageIndicatorStyle) || "vivo";
   const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
   const [measuredHeight, setMeasuredHeight] = useState(380);
@@ -490,20 +489,13 @@ export function AppGrid({
           </Pressable>
         )}
 
-        {numPages > 1 &&
-          (pageIndicatorStyle === "dots" ? (
-            <DotsPageIndicator
-              activePage={activePage}
-              numPages={numPages}
-              onPageSelect={handlePageSelect}
-            />
-          ) : (
-            <OriginOSPageIndicator
-              activePage={activePage}
-              numPages={numPages}
-              onPageSelect={handlePageSelect}
-            />
-          ))}
+        {numPages > 1 && (
+          <OriginOSPageIndicator
+            activePage={activePage}
+            numPages={numPages}
+            onPageSelect={handlePageSelect}
+          />
+        )}
       </View>
     </View>
   );

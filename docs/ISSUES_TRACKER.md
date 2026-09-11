@@ -219,3 +219,37 @@ This document tracks all reported issues, technical root causes, implementation 
   2. **Registered `onboarding` Stack Screen**: Declared `<Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade" }} />` in root `_layout.tsx`, and declared `index`, `apps`, and `finish` in `app/onboarding/_layout.tsx`.
   3. **Reinforced Onboarding Action Buttons**: Added `signalNavigation(2000)` guards, haptic feedback (`Haptics.impactAsync`), 16px `hitSlop`, and try-catch fallback navigation (`router.push` -> `router.navigate`) across `index.tsx`, `apps.tsx`, and `finish.tsx`.
   4. **Native Default Launcher Intent Integration**: Upgraded `finish.tsx` to invoke `promptSetDefaultLauncher()` from the native module with safe fallbacks.
+
+### ISSUE-28: OriginOS Page Indicator Minimalist Refinement & Removal of Customization Clutter
+* **Symptoms**: 
+  1. The page indicator displayed two horizontal grab handle bars (`=`) beside the fraction, which cluttered the clean distraction-free aesthetic.
+  2. The settings screen exposed a toggle for page indicator style, violating De-Launcher's core philosophy of avoiding unnecessary customization settings.
+* **Root Cause**:
+  1. Initial design included grab bars imitating physical pagination handles.
+  2. Redundant user preference option was added to `settingsStore` and `app/settings.tsx`.
+* **Resolution**:
+  1. Removed handle wrapper and bars (`=`) from `OriginOSPageIndicator.tsx`, rendering only the clean, centered page fraction (`1/13`) with unbolded normal weight typography.
+  2. Removed `pageIndicatorStyle` and `setPageIndicatorStyle` from `settingsStore.ts`.
+  3. Removed the "Page Indicator" setting row and `Sliders` icon from `app/settings.tsx`.
+  4. Hardened `AppGrid.tsx` to directly render `OriginOSPageIndicator` without branching logic.
+
+### ISSUE-29: Daily Focus Modal Task Creation Keyboard Overlap & Interactive Auto-Scroll UX
+* **Symptoms**: When opening "Add Task" or "Create First Task" inside the Daily Focus modal, the software keyboard covers the text input and action buttons, preventing the user from seeing what they are typing.
+* **Root Cause**:
+  1. In `DailyFocusModal.tsx`, `KeyboardAvoidingView` used `behavior={Platform.OS === 'ios' ? 'padding' : undefined}`, doing nothing on Android.
+  2. The Consistency Heatmap Card occupies ~250px above the tasks section. When the Android software keyboard pops up, the ScrollView remained at scroll position 0, keeping the task entry form below the fold beneath the keyboard.
+* **Resolution**:
+  1. Configured `KeyboardAvoidingView` with `behavior={Platform.OS === "ios" ? "padding" : "height"}` and `keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}`, ensuring the container contracts above the software keyboard on both platforms.
+  2. Attached `scrollViewRef` to `ScrollView` and implemented reactive `useEffect` hooks for `isAdding` state and `Keyboard.addListener("keyboardDidShow")` to automatically scroll the task input smoothly into view.
+  3. Added `autoFocus={true}` to `TextInput` with explicit `returnKeyType="done"` and `onSubmitEditing={handleAdd}`.
+  4. Added dynamic bottom padding (`isAdding && { paddingBottom: 140 }`) ensuring generous finger clearance and zero obstruction above the keyboard.
+
+### ISSUE-30: Eradication of "AI-Slop" Emojis & Elevation to Crisp Vector Badge Design System
+* **Symptoms**: Unprofessional unicode emojis (e.g. `📌 Home`, `Run ⚡`, and `📌` in context menus and toasts) gave the app an unpolished, AI-generated "slop" feel.
+* **Root Cause**: Ad-hoc strings combined emoji symbols with labels instead of using the standardized Lucide vector icon badge pattern used elsewhere in the launcher.
+* **Resolution**:
+  1. Replaced `📌 Home` in `app/drawer.tsx` with a refined badge containing `<Pin size={10} color={colors.accent} strokeWidth={2.4} />` and clean `Home` typography, matching the app's established design system.
+  2. Replaced `📌 Pinned for:` in `src/components/ContextMenu.tsx` with a structured pill containing `<Pin size={11} color={colors.accent} strokeWidth={2.2} />` and pure label text.
+  3. Removed the pin emoji from `ToastAndroid.show(...)` and context menu subtitle strings.
+  4. Replaced `Run ⚡` in `app/settings.tsx` with clean `Run →` typography.
+

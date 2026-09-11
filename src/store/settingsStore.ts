@@ -12,7 +12,6 @@ export type SearchWidgetStyle = "pill" | "rounded" | "minimal";
 export type DockBackgroundStyle = "transparent" | "frosted";
 export type IconSizeOption = "small" | "medium" | "large";
 export type IconThemeOption = "standard" | "monochrome";
-export type PageIndicatorStyle = "vivo" | "dots";
 
 interface SettingsState {
   theme: ThemeMode;
@@ -23,9 +22,6 @@ interface SettingsState {
   activeIconPack: string | null; // packageName of selected icon pack
   iconTheme: IconThemeOption;
   hasCompletedOnboarding: boolean;
-
-  // Page indicator style
-  pageIndicatorStyle: PageIndicatorStyle;
 
   // Search Widget Options
   showHomeSearchWidget: boolean;
@@ -49,7 +45,6 @@ interface SettingsState {
   setHapticFeedback: (enabled: boolean) => void;
   setActiveIconPack: (packageName: string | null) => void;
   setIconTheme: (iconTheme: IconThemeOption) => void;
-  setPageIndicatorStyle: (style: PageIndicatorStyle) => void;
   setHasCompletedOnboarding: (completed: boolean) => void;
   setShowHomeSearchWidget: (show: boolean) => void;
   setSearchWidgetStyle: (style: SearchWidgetStyle) => void;
@@ -70,7 +65,6 @@ export const useSettingsStore = create<SettingsState>()(
       hapticFeedback: true,
       activeIconPack: null,
       iconTheme: "standard",
-      pageIndicatorStyle: "vivo",
       hasCompletedOnboarding: false,
 
       showHomeSearchWidget: true,
@@ -89,7 +83,6 @@ export const useSettingsStore = create<SettingsState>()(
       setShowClock: (showClock) => set({ showClock }),
       setHapticFeedback: (hapticFeedback) => set({ hapticFeedback }),
       setActiveIconPack: (activeIconPack) => set({ activeIconPack }),
-      setPageIndicatorStyle: (pageIndicatorStyle) => set({ pageIndicatorStyle }),
       setIconTheme: (iconTheme) => {
         set({ iconTheme });
         if (iconTheme === "monochrome") {

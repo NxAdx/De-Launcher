@@ -9,7 +9,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
-import { ChevronDown, ShieldOff, Settings, Clock } from "lucide-react-native";
+import { ChevronDown, ShieldOff, Settings, Clock, Pin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -81,9 +81,10 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
             {isHome && (
-              <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)" }]}>
+              <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
+                <Pin size={10} color={colors.accent} strokeWidth={2.4} />
                 <Text style={[styles.distractionText, { color: colors.accent }]}>
-                  📌 Home
+                  Home
                 </Text>
               </View>
             )}

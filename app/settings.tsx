@@ -44,7 +44,6 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
-  Sliders,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -56,7 +55,6 @@ import {
   SearchWidgetStyle,
   DockBackgroundStyle,
   IconSizeOption,
-  PageIndicatorStyle,
 } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 import {
@@ -179,8 +177,6 @@ export default function SettingsScreen() {
   const setIconSize = useSettingsStore((s) => s.setIconSize);
   const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
   const setIconTheme = useSettingsStore((s) => s.setIconTheme);
-  const pageIndicatorStyle = useSettingsStore((s) => s.pageIndicatorStyle) || "vivo";
-  const setPageIndicatorStyle = useSettingsStore((s) => s.setPageIndicatorStyle);
 
   // App store
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
@@ -333,40 +329,6 @@ export default function SettingsScreen() {
                       ]}
                     >
                       {themeOpt === "standard" ? "Standard" : "Monochrome"}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            }
-          />
-
-          <SettingRow
-            icon={<Sliders size={20} color={colors.textSecondary} />}
-            label="Page Indicator"
-            description={pageIndicatorStyle === "vivo" ? "OriginOS indicator (= 1/3)" : "Classic minimalist dots"}
-            colors={colors}
-            isDark={isDark}
-            right={
-              <View style={styles.segmentContainer}>
-                {(["vivo", "dots"] as PageIndicatorStyle[]).map((styleOpt) => (
-                  <Pressable
-                    key={styleOpt}
-                    onPress={() => {
-                      if (hapticFeedback) Haptics.selectionAsync();
-                      setPageIndicatorStyle(styleOpt);
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      pageIndicatorStyle === styleOpt && { backgroundColor: colors.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        { color: pageIndicatorStyle === styleOpt ? "#FFFFFF" : colors.textSecondary },
-                      ]}
-                    >
-                      {styleOpt === "vivo" ? "Vivo" : "Dots"}
                     </Text>
                   </Pressable>
                 ))}
@@ -620,7 +582,7 @@ export default function SettingsScreen() {
             colors={colors}
             isDark={isDark}
             onPress={handleAutoArrange}
-            right={<Text style={[styles.linkText, { color: colors.accent }]}>Run ⚡</Text>}
+            right={<Text style={[styles.linkText, { color: colors.accent }]}>Run →</Text>}
           />
           <SettingRow
             icon={<Sparkles size={20} color={colors.accent} />}

@@ -37,6 +37,7 @@ import {
   Moon,
   Sparkles,
   ShieldCheck,
+  Pin,
 } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
@@ -149,7 +150,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
     if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     pinAppWithReason(selectedApp.packageName, pinReason.trim(), pinTarget);
     if (Platform.OS === "android") {
-      ToastAndroid.show(`📌 Pinned ${selectedApp.label} to ${targetLabel}`, ToastAndroid.SHORT);
+      ToastAndroid.show(`Pinned ${selectedApp.label} to ${targetLabel}`, ToastAndroid.SHORT);
     }
     setShowPinCheckpoint(false);
     onClose();
@@ -204,8 +205,9 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
             </Text>
             {appReasons[selectedApp.packageName] && !showPinCheckpoint && (
               <View style={[styles.reasonBadge, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
+                <Pin size={11} color={colors.accent} strokeWidth={2.2} />
                 <Text style={[styles.reasonBadgeText, { color: colors.accent }]} numberOfLines={2}>
-                  📌 Pinned for: {appReasons[selectedApp.packageName]}
+                  Pinned for: {appReasons[selectedApp.packageName]}
                 </Text>
               </View>
             )}
@@ -490,7 +492,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                       </Text>
                       <Text style={[styles.subLabel, { color: colors.textTertiary }]}>
                         {appReasons[selectedApp.packageName]
-                          ? `📌 "${appReasons[selectedApp.packageName]}"`
+                          ? `"${appReasons[selectedApp.packageName]}"`
                           : "Define why this app belongs on your Home screen"}
                       </Text>
                     </View>
@@ -634,6 +636,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   reasonBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginTop: spacing.xs,
     paddingHorizontal: 8,
     paddingVertical: 3,
