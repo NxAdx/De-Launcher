@@ -6,15 +6,27 @@
 
 ---
 
-## 01 · Brand Foundations
+## 01 · Brand Foundations & Philosophy
 
-| Principle | Expression |
-|---|---|
-| **Focus** | Eye-like horizontal form represents attention and awareness |
-| **De-clutter** | D structure and open negative space represent removing the unnecessary |
-| **Forward** | Open right tip suggests direction without adding visual noise |
+> **De-Launcher**
+> **FOCUS • SIMPLIFIED**
 
-**Logo direction:** Abstract D + eye/leaf form, no internal "e".
+The visual identity and product decisions are anchored by four core brand pillars:
+
+| Pillar | Icon & Meaning | Product & Design Mandate |
+|---|---|---|
+| **FOCUS** | 🎯 *Brings attention to what matters.* | Prioritize high-leverage workflows: Intentional Pinning, Daily Focus targets, and deliberate friction for mindless scrolling. |
+| **MINIMAL** | 🍃 *Clean design, zero distractions.* | Zero visual clutter, distraction-free typography, no emoji slop (`📌`, `⚡`), and no redundant settings switches. |
+| **FORWARD** | 🧭 *Designed to keep you moving ahead.* | 120 FPS snappy performance, swift search, fluid physics to help users get what they need and put their phone down. |
+| **ESSENTIAL** | ⭕ *Only what you need, nothing more.* | Strict anti-bloat rule: rejecting gratuitous customization in favor of a cohesive, opinionated experience that just works. |
+
+### Logo Anatomy & Symbolism
+* **The Monoline Glyph**: An abstract, minimalist mark fusing an upright **"D" & "L"** structure with organic **leaf/wing curves**.
+* **Open Right Tip**: An open break at the tip of the horizontal petal, symbolizing forward motion, release, and openness.
+* **App Icon Containers**:
+  1. **Light Squircle**: Pure white canvas with sage green monoline glyph.
+  2. **Accent Squircle**: Solid sage green canvas with crisp white monoline glyph.
+  3. **Adaptive Circle**: Off-white minimal circle with sage green monoline glyph.
 
 ---
 
