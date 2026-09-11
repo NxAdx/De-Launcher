@@ -24,9 +24,9 @@ The visual identity and product decisions are anchored by four core brand pillar
 * **The Monoline Glyph**: An abstract, minimalist mark fusing an upright **"D" & "L"** structure with organic **leaf/wing curves**.
 * **Open Right Tip**: An open break at the tip of the horizontal petal, symbolizing forward motion, release, and openness.
 * **App Icon Containers**:
-  1. **Light Squircle**: Pure white canvas with sage green monoline glyph.
+  1. **Primary Production Icon (`Android & ios-tinted.png`)**: Warm off-white `#F5F4F2` background with centered Sage Green (`#607856`) monoline glyph.
   2. **Accent Squircle**: Solid sage green canvas with crisp white monoline glyph.
-  3. **Adaptive Circle**: Off-white minimal circle with sage green monoline glyph.
+  3. **Adaptive Circle**: Off-white `#F5F4F2` minimal circle with sage green monoline glyph.
 
 ---
 

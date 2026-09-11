@@ -253,3 +253,14 @@ This document tracks all reported issues, technical root causes, implementation 
   3. Removed the pin emoji from `ToastAndroid.show(...)` and context menu subtitle strings.
   4. Replaced `Run ⚡` in `app/settings.tsx` with clean `Run →` typography.
 
+### ISSUE-31: Official Production App Icon Integration with #F5F4F2 Canvas & Android Adaptive Mipmap Regeneration
+* **Symptoms**: The app icon lacked the finalized brand styling, and the background was harsh black rather than the official warm off-white canvas `#F5F4F2`.
+* **Root Cause**: Earlier prototype used temporary black background mipmaps and unscaled glyph assets.
+* **Resolution**:
+  1. Integrated the official production icon (`docs/Icons/Android & ios-tinted.png`) with scaled-down Sage Green (`#607856`) monoline glyph and `#F5F4F2` warm canvas.
+  2. Generated `assets/icon.png` (1024×1024 px full icon) and `assets/adaptive-icon.png` (1024×1024 px transparent anti-aliased foreground glyph).
+  3. Regenerated all native Android mipmap densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) across `ic_launcher.png`, circular `ic_launcher_round.png`, and transparent `ic_launcher_foreground.png`.
+  4. Updated `android/app/src/main/res/values/colors.xml` (`<color name="iconBackground">#F5F4F2</color>`) and `app.json` (`adaptiveIcon.backgroundColor: "#F5F4F2"`).
+  5. Strictly isolated the change to the app launcher icon as instructed, preserving internal splash screens and component icons.
+
+

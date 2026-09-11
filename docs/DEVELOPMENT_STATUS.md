@@ -32,6 +32,7 @@ De-Launcher is a functional prototype on Expo SDK 55. The React Native interface
   - Minimalist OriginOS page fraction indicator (`OriginOSPageIndicator.tsx`) without grab-bar clutter (`=`), eliminating unnecessary customisation settings.
   - Software keyboard responsive layout & auto-scroll UX for Daily Focus task creation (`DailyFocusModal.tsx`).
   - Total eradication of ad-hoc emojis across Drawer, Context Menu, and Settings in favor of cohesive Lucide vector badges.
+  - Official production app icon integration (`Android & ios-tinted.png`) with scaled-down Sage Green monoline glyph, `#F5F4F2` warm canvas, and regenerated Android adaptive mipmaps (`ic_launcher`, `ic_launcher_round`, `ic_launcher_foreground`).
 - `npm test` validation script covering TypeScript and lint.
 
 ## Needs More Development
