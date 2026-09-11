@@ -73,12 +73,12 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
   const [isAdding, setIsAdding] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Auto scroll to input once when adding a task
+  // Ensure we are positioned at the top input when adding a task
   useEffect(() => {
     if (isAdding) {
       const timer = setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 120);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 60);
       return () => clearTimeout(timer);
     }
   }, [isAdding]);
@@ -219,64 +219,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
               isAdding && { paddingBottom: 140 },
             ]}
           >
-            {/* Consistency Heatmap Card */}
-            <View style={[styles.heatmapCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
-              <View style={styles.heatmapHeader}>
-                <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>
-                  Consistency (Last 4 Weeks)
-                </Text>
-                {currentStreak > 0 && (
-                  <View style={styles.streakBadge}>
-                    <Flame size={13} color="#EF4444" />
-                    <Text style={[styles.streakBadgeText, { color: isDark ? "#FCA5A5" : "#DC2626" }]}>
-                      {currentStreak}d streak
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Weekday Labels Header */}
-              <View style={styles.weekdayHeaderRow}>
-                {WEEKDAYS.map((dayLabel, idx) => (
-                  <Text key={idx} style={[styles.weekdayLabel, { color: colors.textTertiary }]}>
-                    {dayLabel}
-                  </Text>
-                ))}
-              </View>
-
-              {/* 4 Rows of 7 Days Matrix */}
-              <View style={styles.weeksContainer}>
-                {weeks.map((week, wIdx) => (
-                  <View key={wIdx} style={styles.weekRow}>
-                    {week.map((day, dIdx) => (
-                      <View
-                        key={dIdx}
-                        style={[
-                          styles.heatmapCell,
-                          {
-                            backgroundColor: getHeatmapColor(day.level),
-                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                ))}
-              </View>
-
-              {/* Heatmap Legend */}
-              <View style={styles.legendRow}>
-                <Text style={[styles.legendText, { color: colors.textTertiary }]}>Less</Text>
-                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(0) }]} />
-                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(1) }]} />
-                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(2) }]} />
-                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(3) }]} />
-                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(4) }]} />
-                <Text style={[styles.legendText, { color: colors.textTertiary }]}>More</Text>
-              </View>
-            </View>
-
-            {/* Today's Tasks Section */}
+            {/* Today's Tasks Section (Action-First: Placed at top so input is never obscured by keyboard) */}
             <View style={styles.tasksSection}>
               <View style={styles.tasksHeader}>
                 <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>
@@ -398,6 +341,63 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                   </View>
                 ))
               )}
+            </View>
+
+            {/* Consistency Heatmap Card */}
+            <View style={[styles.heatmapCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>
+              <View style={styles.heatmapHeader}>
+                <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>
+                  Consistency (Last 4 Weeks)
+                </Text>
+                {currentStreak > 0 && (
+                  <View style={styles.streakBadge}>
+                    <Flame size={13} color="#EF4444" />
+                    <Text style={[styles.streakBadgeText, { color: isDark ? "#FCA5A5" : "#DC2626" }]}>
+                      {currentStreak}d streak
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Weekday Labels Header */}
+              <View style={styles.weekdayHeaderRow}>
+                {WEEKDAYS.map((dayLabel, idx) => (
+                  <Text key={idx} style={[styles.weekdayLabel, { color: colors.textTertiary }]}>
+                    {dayLabel}
+                  </Text>
+                ))}
+              </View>
+
+              {/* 4 Rows of 7 Days Matrix */}
+              <View style={styles.weeksContainer}>
+                {weeks.map((week, wIdx) => (
+                  <View key={wIdx} style={styles.weekRow}>
+                    {week.map((day, dIdx) => (
+                      <View
+                        key={dIdx}
+                        style={[
+                          styles.heatmapCell,
+                          {
+                            backgroundColor: getHeatmapColor(day.level),
+                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ))}
+              </View>
+
+              {/* Heatmap Legend */}
+              <View style={styles.legendRow}>
+                <Text style={[styles.legendText, { color: colors.textTertiary }]}>Less</Text>
+                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(0) }]} />
+                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(1) }]} />
+                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(2) }]} />
+                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(3) }]} />
+                <View style={[styles.legendDot, { backgroundColor: getHeatmapColor(4) }]} />
+                <Text style={[styles.legendText, { color: colors.textTertiary }]}>More</Text>
+              </View>
             </View>
           </ScrollView>
         </Animated.View>

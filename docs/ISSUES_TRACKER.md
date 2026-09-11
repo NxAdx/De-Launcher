@@ -279,15 +279,17 @@ This document tracks all reported issues, technical root causes, implementation 
   1. Synchronized `assets/icon.png` byte-for-byte from the newly resized `docs/Icons/Android & ios-tinted.png`.
   2. Regenerated all Android mipmaps (`mdpi` through `xxxhdpi`) across `ic_launcher.png` and `ic_launcher_round.png`.
 
-### ISSUE-34: Daily Focus Modal Keyboard & Layout Infinite Flickering Loop
-* **Symptoms**: Tapping "Add Task" or "Cancel" in the Daily Focus modal caused the screen and keyboard to flicker nonstop.
+### ISSUE-34: Daily Focus Modal Keyboard & Layout Infinite Flickering Loop & Keyboard Overlap
+* **Symptoms**: Tapping "Add Task" or "Cancel" in the Daily Focus modal caused the screen and keyboard to flicker nonstop, or the task input card hid behind the software keyboard due to the 250px heatmap above it.
 * **Root Cause**:
   1. `KeyboardAvoidingView` on Android with `behavior="height"` conflicted with Android's native `windowSoftInputMode="adjustResize"`, double-shrinking the layout height.
   2. `Keyboard.addListener("keyboardDidShow")` triggered `scrollViewRef.current?.scrollToEnd({ animated: true })`, which displaced the focused `TextInput`, causing IME focus loss (`keyboardDidHide`), triggering re-focus from `autoFocus={true}`, causing an endless oscillation loop.
+  3. Having the 250px Consistency Heatmap Card physically positioned above Today's Tasks pushed the input card down past the 50% keyboard line on Android Dialog windows.
 * **Resolution**:
   1. Set `behavior={Platform.OS === "ios" ? "padding" : undefined}` on `KeyboardAvoidingView` to let Android handle window resizing natively without layout thrashing.
-  2. Removed `Keyboard.addListener("keyboardDidShow")` and consolidated task input viewability into a single smooth scroll on `isAdding`.
-  3. Added `handleCancelAdd` to cleanly dismiss the keyboard and reset state without layout oscillation.
+  2. Implemented the **Action-First Hierarchy**: Reordered content inside `DailyFocusModal.tsx` so "Today's Intentional Tasks" and the Add Task input card sit at the very top (Y=0px inside the sheet), with the Consistency Heatmap below them.
+  3. When "Add Task" is tapped, the input is immediately visible at the top of the screen with ~200px of safe headroom above the keyboard, completely eliminating the need for reactive scroll jumping or keyboard collision hacks.
+  4. Added `handleCancelAdd` to cleanly dismiss the keyboard and reset state without layout oscillation.
 
 ### ISSUE-35: Monochrome Icons Background Stripping & Color Leakage Fix
 * **Symptoms**: In monochrome icon mode, many icons (e.g. Reddit, WhatsApp, VLC, Sheets, Simple Notes, Twitch) lost their background completely and looked like naked floating wireframes, while others retained squircle backgrounds. Additionally, some apps (Toxly, Truecaller) leaked full color.
