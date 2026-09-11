@@ -23,10 +23,18 @@ The visual identity and product decisions are anchored by four core brand pillar
 ### Logo Anatomy & Symbolism
 * **The Monoline Glyph**: An abstract, minimalist mark fusing an upright **"D" & "L"** structure with organic **leaf/wing curves**.
 * **Open Right Tip**: An open break at the tip of the horizontal petal, symbolizing forward motion, release, and openness.
-* **App Icon Containers**:
-  1. **Primary Production Icon (`Android & ios-tinted.png`)**: Warm off-white `#F5F4F2` background with centered Sage Green (`#607856`) monoline glyph.
-  2. **Accent Squircle**: Solid sage green canvas with crisp white monoline glyph.
-  3. **Adaptive Circle**: Off-white `#F5F4F2` minimal circle with sage green monoline glyph.
+
+### Asset Usage Rules
+* **App Launcher Icon (`Android & ios-tinted.png`)**:
+  * Warm off-white `#F5F4F2` background with centered Sage Green (`#607856`) monoline glyph.
+  * **Strict Scope**: Used *only* as the system app launcher icon (`assets/icon.png`, Android `ic_launcher.png`, and `ic_launcher_round.png`).
+* **Transparent Brand Mark (`ios & android adaptive.png`)**:
+  * Pure transparent background with Sage Green monoline glyph.
+  * **Strict Scope**: Used everywhere an in-app logo is needed without a bounding box:
+    1. **Welcome / Onboarding Screen** (`app/onboarding/index.tsx`)
+    2. **Settings Brand Footer** (`app/settings.tsx`)
+    3. **Android Adaptive Icon Foreground** (`ic_launcher_foreground.png`)
+    4. **Splash Screen** (`assets/splash-icon.png`)
 
 ---
 

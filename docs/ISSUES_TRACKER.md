@@ -263,4 +263,15 @@ This document tracks all reported issues, technical root causes, implementation 
   4. Updated `android/app/src/main/res/values/colors.xml` (`<color name="iconBackground">#F5F4F2</color>`) and `app.json` (`adaptiveIcon.backgroundColor: "#F5F4F2"`).
   5. Strictly isolated the change to the app launcher icon as instructed, preserving internal splash screens and component icons.
 
+### ISSUE-32: Separation of Tinted App Icon (#F5F4F2) vs Transparent Mark for In-App Surfaces (Welcome Screen & Settings)
+* **Symptoms**: The Welcome/Onboarding screen and Settings brand footer displayed the app icon with a solid `#F5F4F2` square background box, creating an unsightly block over the dark OLED UI.
+* **Root Cause**: `app/onboarding/index.tsx` and `app/settings.tsx` both imported `require("@/assets/icon.png")`, which is reserved exclusively for the system app launcher icon containing the solid `#F5F4F2` background.
+* **Resolution**:
+  1. Updated `assets/adaptive-icon.png` and `assets/splash-icon.png` directly from `docs/Icons/ios & android adaptive.png` (pure transparent background with crisp Sage Green vector line work).
+  2. Updated `app/onboarding/index.tsx` (Welcome screen) to require `@/assets/adaptive-icon.png`, ensuring a seamless transparent logo presentation over the dark OLED background.
+  3. Updated `app/settings.tsx` (brand footer) to require `@/assets/adaptive-icon.png`, eliminating the background box.
+  4. Regenerated Android native `ic_launcher_foreground.png` across all mipmaps directly from the transparent adaptive icon asset.
+  5. Formalized the asset separation rule in `docs/DESIGN-SYSTEM.md`.
+
+
 

@@ -668,7 +668,7 @@ export default function SettingsScreen() {
         {/* ─── Brand Footer ──────────────────────────── */}
         <View style={styles.brandFooter}>
           <Image
-            source={require("@/assets/icon.png")}
+            source={require("@/assets/adaptive-icon.png")}
             style={styles.brandFooterLogo}
             resizeMode="contain"
           />

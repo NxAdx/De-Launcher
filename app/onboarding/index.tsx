@@ -42,7 +42,7 @@ export default function WelcomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top + spacing["2xl"], paddingBottom: insets.bottom + spacing.xl }]}>
       <View style={styles.content}>
         <Image
-          source={require("@/assets/icon.png")}
+          source={require("@/assets/adaptive-icon.png")}
           style={styles.logo}
           resizeMode="contain"
         />
