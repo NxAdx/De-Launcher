@@ -177,6 +177,7 @@ export default function HomeScreen() {
 
   const panGesture = useMemo(() => {
     return Gesture.Pan()
+      .cancelsTouchesInView(false)
       .activeOffsetY([-35, 35])
       .failOffsetX([-15, 15])
       .onEnd((e) => {

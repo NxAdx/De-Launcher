@@ -29,8 +29,17 @@ export function HomeSearchWidget({ styleOverride }: HomeSearchWidgetProps) {
     if (hapticEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    signalNavigation();
-    router.push("/search" as any);
+    signalNavigation(1500);
+    try {
+      router.push("/search" as any);
+    } catch (e) {
+      console.warn("[HomeSearchWidget] router.push search failed, trying router.navigate:", e);
+      try {
+        router.navigate("/search" as any);
+      } catch (e2) {
+        console.error("[HomeSearchWidget] Failed to navigate to search:", e2);
+      }
+    }
   };
 
   const getContainerStyle = () => {

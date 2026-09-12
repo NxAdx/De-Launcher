@@ -16,6 +16,7 @@ This document tracks all reported issues, technical root causes, implementation 
 | **ISSUE-06** | Custom icons section needs a clean dropdown with Default (System) option | Settings listed raw detected icon packs without a unified dropdown and without a visible "System Default" selectable state. | ✅ Fixed (Awaiting User Test) | `app/settings.tsx` |
 | **ISSUE-07** | Settings toggles and rows feel stuck / lack smooth feedback | `SettingRow` wrapped all rows in an active `Pressable` even when `onPress` was undefined, creating touch responder conflicts with nested switches. | ✅ Fixed (Awaiting User Test) | `app/settings.tsx` |
 | **ISSUE-08** | Daily Focus tasks don't show ticked until collapsed and re-expanded | `TodoStreakWidget.tsx` selected `(s) => s.getTodayTodos` (a function reference) instead of subscribing to `state.todos`, so Zustand skipped re-rendering on task mutations. | ✅ Fixed (Awaiting User Test) | `src/components/TodoStreakWidget.tsx` |
+| **ISSUE-37** | Home buttons (All Apps, Search, Settings, Search Box) unresponsive when default launcher | Native `HOME_PRESSED` event handler unconditionally invoked `router.replace("/")` on the root route, invalidating React Navigation's root stack key and locking transitions; RNGH Pan cancelled child touches. | ✅ Fixed (Validated Clean) | `app/_layout.tsx`, `app/index.tsx`, `src/components/HomeSearchWidget.tsx`, `src/components/AppGrid.tsx`, `app/settings.tsx` |
 
 ---
 
@@ -310,4 +311,20 @@ This document tracks all reported issues, technical root causes, implementation 
   3. Locked signature defaults in code: dark mode OLED canvas, labels visible, digital clock visible, command search bar visible in `"pill"` style.
   4. Streamlined `src/components/HomeSearchWidget.tsx` and `app/index.tsx` to render clock and pill search bar cleanly without conditional switches.
   5. Cleared all 23 TypeScript and ESLint warnings across the project (wrapped `appReasons` in `useMemo`, eliminated unused imports/variables in `app/settings.tsx`, `AppGrid.tsx`, `IntentionalPinModal.tsx`, fixed array types in `appStore.ts`, and converted `require()` imports to standard top-level imports in `settingsStore.ts` and `appManager.ts`).
+
+### ISSUE-37: Home Screen Navigation Lock & Touch Unresponsiveness When Default Launcher
+* **Symptoms**: After setting De-Launcher as the default launcher, none of the primary navigation buttons work on the home screen: All Apps (`/drawer`), Search button (`/search`), Settings button (`/settings`), and the Search Box widget (`/search`). External app launches (`launchApp`) continued working.
+* **Root Cause (Deep Analysis)**:
+  1. **Navigation Key Invalidation via Unconditional `replace("/")` in `_layout.tsx`**: When set as default launcher, Android broadcasts `com.nxadx.delauncher.HOME_PRESSED` whenever returning home. The native event listener unconditionally executed `router.dismissAll()` and `router.replace("/")`. Calling `router.replace("/")` when already resting on the root screen invalidates React Navigation's root stack navigation key and permanently locks `isTransitioning = true`, silently discarding all subsequent `router.push()` and `router.navigate()` calls. External app icons continued working because they invoke native `DeLauncherNative.launchApp()` directly without going through React Navigation.
+  2. **Unchecked `router.dismissAll()`**: Calling `router.dismissAll()` when no modal was mounted threw internal exceptions that corrupted the transition stack.
+  3. **RNGH Touch Interception on Android**: `Gesture.Pan()` wrapping `contentArea` in `app/index.tsx` defaulted to `cancelsTouchesInView(true)`, intermittently cancelling touch responder events for child `Pressable`s on Android.
+  4. **Unprotected System Intent Transitions in `settings.tsx`**: Setting default launcher launched external settings without a navigation guard, triggering a race condition between Android's `HOME_PRESSED` intent and in-app routing.
+* **Resolution**:
+  1. **Safe `onHomePressed` Guard in `app/_layout.tsx`**: Verified both `router.canDismiss()` and `router.canGoBack()`. If both are false (already on root `/`), the handler immediately returns and does NOT call `router.replace("/")` or `router.dismissAll()`. If modals or screens are open, it safely pops back via `router.dismissAll()`, `router.dismissTo("/")`, or a `router.back()` loop.
+  2. **RNGH Child Touch Protection**: Added `.cancelsTouchesInView(false)` to `panGesture` in `app/index.tsx`, ensuring taps pass cleanly to child buttons.
+  3. **Harded In-App Navigation & Hit Targets**:
+     - `src/components/HomeSearchWidget.tsx`: Added `signalNavigation(1500)` and fallback `router.navigate("/search" as any)`.
+     - `src/components/AppGrid.tsx`: Added `hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}` to `allAppsButton`.
+     - `app/settings.tsx`: Added `signalNavigation(3000)` to `handleSetDefault`, `handleOpenAndroidSettings`, and `handleOpenAccessibility`.
+
 

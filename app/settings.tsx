@@ -170,11 +170,17 @@ export default function SettingsScreen() {
 
   const handleSetDefault = async () => {
     if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await promptSetDefaultLauncher();
+    signalNavigation(3000);
+    try {
+      await promptSetDefaultLauncher();
+    } catch (e) {
+      console.warn("Could not prompt default launcher", e);
+    }
   };
 
   const handleOpenAndroidSettings = () => {
     if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    signalNavigation(3000);
     try {
       IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.SETTINGS);
     } catch (e) {
@@ -184,6 +190,7 @@ export default function SettingsScreen() {
 
   const handleOpenAccessibility = () => {
     if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    signalNavigation(3000);
     try {
       IntentLauncher.startActivityAsync(
         IntentLauncher.ActivityAction.ACCESSIBILITY_SETTINGS

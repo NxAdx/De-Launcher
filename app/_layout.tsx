@@ -73,21 +73,56 @@ function RootLayoutContent() {
       const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
         if (navigationGuardActive) return;
 
-        // CRITICAL: If the user hasn't completed onboarding, never reset navigation to "/".
+        // CRITICAL: If the user hasn't completed onboarding, never reset navigation.
         // When De-Launcher is default launcher, returning from system settings fires CATEGORY_HOME.
         // Dismissing routes during onboarding would cancel transitions and trap the user on Welcome.
         const hasCompletedOnboarding = useSettingsStore.getState().hasCompletedOnboarding;
         if (!hasCompletedOnboarding) return;
 
+        // Check if there is actually a route or modal to dismiss / go back from.
+        // If the user is ALREADY on the root home screen ("/"), do ABSOLUTELY NOTHING.
+        // Calling router.replace("/") or router.dismissAll() when already on the root screen
+        // invalidates React Navigation's root stack navigation key and permanently locks navigation.
+        let canDismissRoute = false;
+        let canGoBackRoute = false;
         try {
-          router.dismissAll();
+          canDismissRoute = router.canDismiss();
         } catch {
-          // There may be no modal route to dismiss.
+          canDismissRoute = false;
         }
         try {
-          router.replace("/");
-        } catch (eventError) {
-          console.warn("Failed to reset route to home index:", eventError);
+          canGoBackRoute = router.canGoBack();
+        } catch {
+          canGoBackRoute = false;
+        }
+
+        if (!canDismissRoute && !canGoBackRoute) {
+          // Already sitting on the root home screen. Leave navigation untouched.
+          return;
+        }
+
+        if (canDismissRoute) {
+          try {
+            router.dismissAll();
+            return;
+          } catch {
+            // Fall through to dismissal / back navigation
+          }
+        }
+
+        if (canGoBackRoute) {
+          try {
+            router.dismissTo("/");
+            return;
+          } catch {
+            try {
+              while (router.canGoBack()) {
+                router.back();
+              }
+            } catch (eventError) {
+              console.warn("Failed to reset route to home index:", eventError);
+            }
+          }
         }
       });
       return () => subscription.remove();

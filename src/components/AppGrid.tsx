@@ -470,6 +470,7 @@ export function AppGrid({
         {onAllAppsPress && (
           <Pressable
             onPress={onAllAppsPress}
+            hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
             style={({ pressed }) => [
               styles.allAppsButton,
               {
