@@ -35,7 +35,7 @@ interface AppState {
   appReasons: Record<string, string>; // packageName -> reason why pinned to home/dock
   activeSessions: Record<string, { goal: string; expiresAt: number; durationMin: number }>; // active intentionality sessions
   recentCompletedSession: SessionReflectionItem | null;
-  reflectionHistory: Array<{ packageName: string; goal: string; outcome: "completed" | "distracted"; timestamp: number }>;
+  reflectionHistory: { packageName: string; goal: string; outcome: "completed" | "distracted"; timestamp: number }[];
 
   // Actions
   setInstalledApps: (apps: AppInfo[]) => void;

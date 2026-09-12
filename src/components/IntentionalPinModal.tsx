@@ -5,7 +5,7 @@
  * Compels the user to articulate why the app deserves prime real estate on their device.
  * Enforces mindful typing by disabling copy-paste shortcuts.
  */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,11 +17,11 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Sparkles, ShieldCheck, X } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, radii } from "@/src/theme/tokens";
+import { typography, spacing } from "@/src/theme/tokens";
 import { AppIcon } from "./AppIcon";
 import { AppInfo } from "@/src/types/app";
 import { useAppStore } from "@/src/store/appStore";
@@ -53,7 +53,8 @@ export function IntentionalPinModal({
   const { colors, isDark } = useTheme();
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
   const pinAppWithReason = useAppStore((s) => s.pinAppWithReason);
-  const appReasons = useAppStore((s) => s.appReasons) || {};
+  const rawAppReasons = useAppStore((s) => s.appReasons);
+  const appReasons = useMemo(() => rawAppReasons || {}, [rawAppReasons]);
 
   const [reason, setReason] = useState("");
   const inputRef = useRef<TextInput>(null);

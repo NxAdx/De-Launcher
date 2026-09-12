@@ -19,14 +19,11 @@ interface HomeSearchWidgetProps {
 }
 
 export function HomeSearchWidget({ styleOverride }: HomeSearchWidgetProps) {
-  const { colors, isDark } = useTheme();
-  const showSearchWidget = useSettingsStore((s) => s.showHomeSearchWidget);
+  const { colors } = useTheme();
   const defaultWidgetStyle = useSettingsStore((s) => s.searchWidgetStyle);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
-  const widgetStyle = styleOverride ?? defaultWidgetStyle;
-
-  if (!showSearchWidget) return null;
+  const widgetStyle = styleOverride ?? defaultWidgetStyle ?? "pill";
 
   const handlePress = () => {
     if (hapticEnabled) {
@@ -37,39 +34,30 @@ export function HomeSearchWidget({ styleOverride }: HomeSearchWidgetProps) {
   };
 
   const getContainerStyle = () => {
-    switch (widgetStyle) {
-      case "pill":
-        return [
-          styles.pillContainer,
-          {
-            backgroundColor: colors.cardBg,
-            borderColor: colors.cardBorder,
-          },
-        ];
-      case "rounded":
-        return [
-          styles.roundedContainer,
-          {
-            backgroundColor: colors.cardBg,
-            borderColor: colors.cardBorder,
-          },
-        ];
-      case "minimal":
-        return [
-          styles.minimalContainer,
-          {
-            borderBottomColor: colors.cardBorder,
-          },
-        ];
-      default:
-        return [
-          styles.pillContainer,
-          {
-            backgroundColor: colors.cardBg,
-            borderColor: colors.cardBorder,
-          },
-        ];
+    if (widgetStyle === "minimal") {
+      return [
+        styles.minimalContainer,
+        {
+          borderBottomColor: colors.cardBorder,
+        },
+      ];
     }
+    if (widgetStyle === "rounded") {
+      return [
+        styles.roundedContainer,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.cardBorder,
+        },
+      ];
+    }
+    return [
+      styles.pillContainer,
+      {
+        backgroundColor: colors.cardBg,
+        borderColor: colors.cardBorder,
+      },
+    ];
   };
 
   return (

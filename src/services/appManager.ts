@@ -6,6 +6,7 @@
  * Expo Go, where local native modules cannot be loaded.
  */
 import { AppInfo } from "@/src/types/app";
+import { useAppStore } from "../store/appStore";
 import {
   getInstalledApps as nativeGetInstalledApps,
   launchApp as nativeLaunchApp,
@@ -435,7 +436,6 @@ export async function batchLoadMonochromeIcons(packageNames: string[]): Promise<
     batchRequest
       .then((icons) => {
         try {
-          const { useAppStore } = require("../store/appStore");
           const currentApps = useAppStore.getState().installedApps;
           let changed = false;
           const updated = currentApps.map((app: any) => {

@@ -8,7 +8,7 @@
  * - Focus scheduling & folder categorization
  * - Require intent pause & remove from home
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -73,7 +73,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const addAppToFolder = useAppStore((s) => s.addAppToFolder);
   const setAppScheduleRule = useAppStore((s) => s.setAppScheduleRule);
   const scheduleRules = useAppStore((s) => s.scheduleRules) || {};
-  const appReasons = useAppStore((s) => s.appReasons) || {};
+  const rawAppReasons = useAppStore((s) => s.appReasons);
+  const appReasons = useMemo(() => rawAppReasons || {}, [rawAppReasons]);
   const pinAppWithReason = useAppStore((s) => s.pinAppWithReason);
 
   const dockPackages = useAppStore((s) => s.dockPackages) || [];

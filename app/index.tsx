@@ -45,7 +45,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const statusBarHeight = RNStatusBar.currentHeight ?? insets.top ?? 24;
 
-  const showClock = useSettingsStore((s) => s.showClock);
   const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
@@ -298,11 +297,9 @@ export default function HomeScreen() {
           </View>
 
           {/* Clock Widget */}
-          {showClock && (
-            <View style={styles.clockWrapper}>
-              <Clock />
-            </View>
-          )}
+          <View style={styles.clockWrapper}>
+            <Clock />
+          </View>
 
           {/* Customizable Search Bar Widget */}
           <HomeSearchWidget />

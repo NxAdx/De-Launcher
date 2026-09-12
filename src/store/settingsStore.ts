@@ -7,6 +7,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { mmkvStorage } from "./storage";
 import { ThemeMode } from "@/src/theme/tokens";
+import { useAppStore } from "./appStore";
+import { batchLoadMonochromeIcons } from "../services/appManager";
 
 export type SearchWidgetStyle = "pill" | "rounded" | "minimal";
 export type DockBackgroundStyle = "transparent" | "frosted";
@@ -87,14 +89,12 @@ export const useSettingsStore = create<SettingsState>()(
         set({ iconTheme });
         if (iconTheme === "monochrome") {
           try {
-            const { useAppStore } = require("./appStore");
-            const { batchLoadMonochromeIcons } = require("../services/appManager");
             const apps = useAppStore.getState().installedApps || [];
-            const missingPkgs = apps.filter((a: any) => !a.monoIcon).map((a: any) => a.packageName);
+            const missingPkgs = apps.filter((a) => !a.monoIcon).map((a) => a.packageName);
             if (missingPkgs.length > 0) {
               batchLoadMonochromeIcons(missingPkgs).catch(() => {});
             }
-          } catch (e) {
+          } catch {
             // safely handled
           }
         }

@@ -300,3 +300,14 @@ This document tracks all reported issues, technical root causes, implementation 
 * **Resolution**:
   1. Updated `drawableToUri` in `DeLauncherNativeModule.kt` to generate monochrome icons directly from the complete icon bitmap via `ColorMatrix.setSaturation(0f)`, preserving authentic squircle background plates, shadows, and shapes across ALL apps uniformly.
   2. Bumped cache key prefix to `app_icon_mono_v3_` across `getInstalledApps`, `getMonochromeAppIcon`, and `getMonochromeAppIcons` so stale/corrupted/colored files are immediately invalidated and regenerated fresh on device.
+
+### ISSUE-36: Pure Black OLED Canvas Default, Anti-Distraction Settings Pruning & Performance Clean-up
+* **Symptoms**: Custom wallpaper passthrough and excessive toggles (Theme, App Labels, Clock Widget, Show Search Bar, Widget Style, Wallpaper Picker) created unnecessary decision fatigue and distraction contrary to the launcher's core philosophy (Focus, Minimal, Forward, Essential). Unused variables and circular requires also introduced 23 lint warnings.
+* **Root Cause**: Earlier iterations offered granular customization options that diluted the focused aesthetic and caused minor bundle and cognitive bloat.
+* **Resolution**:
+  1. Defaulted `palette.dark.bg` and `GestureHandlerRootView` background color to `#000000` (OLED Pure Black) for maximal battery efficiency and distraction-free visual clarity.
+  2. Pruned Theme switch, System Wallpaper row, App Labels toggle, Clock Widget toggle, and Home Search Widget section from `app/settings.tsx`.
+  3. Locked signature defaults in code: dark mode OLED canvas, labels visible, digital clock visible, command search bar visible in `"pill"` style.
+  4. Streamlined `src/components/HomeSearchWidget.tsx` and `app/index.tsx` to render clock and pill search bar cleanly without conditional switches.
+  5. Cleared all 23 TypeScript and ESLint warnings across the project (wrapped `appReasons` in `useMemo`, eliminated unused imports/variables in `app/settings.tsx`, `AppGrid.tsx`, `IntentionalPinModal.tsx`, fixed array types in `appStore.ts`, and converted `require()` imports to standard top-level imports in `settingsStore.ts` and `appManager.ts`).
+

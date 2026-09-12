@@ -13,7 +13,7 @@ export const palette = {
 
   // Dark Mode Surfaces
   dark: {
-    bg: "transparent",
+    bg: "#000000",
     surface: "#121212",
     surfaceElevated: "#181818",
     surfaceOverlay: "rgba(0,0,0,0.7)",

@@ -290,7 +290,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "transparent" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000000" }}>
       <ThemeProvider>
         <RootLayoutContent />
       </ThemeProvider>

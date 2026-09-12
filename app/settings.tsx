@@ -11,7 +11,7 @@
  * - Icon Packs & Wallpaper
  * - System Permissions & Default Home
  */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import {
   ScrollView,
   Switch,
   Pressable,
-  ActivityIndicator,
   Image,
 } from "react-native";
 import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
@@ -27,23 +26,15 @@ import { router } from "expo-router";
 import {
   ArrowLeft,
   Grid3x3,
-  Type,
-  Clock as ClockIcon,
   Vibrate,
   Palette,
   Home,
-  Image as ImageIcon,
   LayoutGrid,
   Smartphone,
   Shield,
-  Search,
   Sparkles,
-  Layers,
   CheckSquare,
   Maximize2,
-  ChevronDown,
-  ChevronUp,
-  Check,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -52,20 +43,14 @@ import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
 import {
   useSettingsStore,
-  SearchWidgetStyle,
-  DockBackgroundStyle,
   IconSizeOption,
 } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
 import {
-  getAvailableIconPacks,
-  getCachedIconPacks,
   promptSetDefaultLauncher,
-  changeWallpaper,
   getNonDistractionApps,
 } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
-import { IconPackInfo } from "@/modules/de-launcher-native";
 
 // ─── Setting Row Components ─────────────────────────────
 
@@ -147,25 +132,14 @@ function SectionHeader({
 // ─── Main Settings Screen ───────────────────────────────
 
 export default function SettingsScreen() {
-  const { colors, isDark, mode, setTheme } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   // Settings store
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const setGridColumns = useSettingsStore((s) => s.setGridColumns);
-  const showLabels = useSettingsStore((s) => s.showLabels);
-  const setShowLabels = useSettingsStore((s) => s.setShowLabels);
-  const showClock = useSettingsStore((s) => s.showClock);
-  const setShowClock = useSettingsStore((s) => s.setShowClock);
   const hapticFeedback = useSettingsStore((s) => s.hapticFeedback);
   const setHapticFeedback = useSettingsStore((s) => s.setHapticFeedback);
-  const activeIconPack = useSettingsStore((s) => s.activeIconPack);
-  const setActiveIconPack = useSettingsStore((s) => s.setActiveIconPack);
-
-  const showHomeSearchWidget = useSettingsStore((s) => s.showHomeSearchWidget);
-  const setShowHomeSearchWidget = useSettingsStore((s) => s.setShowHomeSearchWidget);
-  const searchWidgetStyle = useSettingsStore((s) => s.searchWidgetStyle);
-  const setSearchWidgetStyle = useSettingsStore((s) => s.setSearchWidgetStyle);
 
   const maxDockIcons = useSettingsStore((s) => s.maxDockIcons);
   const setMaxDockIcons = useSettingsStore((s) => s.setMaxDockIcons);
@@ -197,11 +171,6 @@ export default function SettingsScreen() {
   const handleSetDefault = async () => {
     if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await promptSetDefaultLauncher();
-  };
-
-  const handleChangeWallpaper = async () => {
-    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await changeWallpaper();
   };
 
   const handleOpenAndroidSettings = () => {
@@ -266,42 +235,8 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Appearance ───────────────────────────── */}
-        <SectionHeader title="Appearance & Themes" colors={colors} />
+        <SectionHeader title="Appearance & Icons" colors={colors} />
         <View style={styles.sectionGroup}>
-          <SettingRow
-            icon={<Palette size={20} color={colors.textSecondary} />}
-            label="Theme"
-            description={mode === "dark" ? "Dark Mode (OLED black)" : "Light Mode (Clean & bright)"}
-            colors={colors}
-            isDark={isDark}
-            right={
-              <View style={styles.segmentContainer}>
-                {(["dark", "light"] as const).map((tOpt) => (
-                  <Pressable
-                    key={tOpt}
-                    onPress={() => {
-                      if (hapticFeedback) Haptics.selectionAsync();
-                      setTheme(tOpt);
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      mode === tOpt && { backgroundColor: colors.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        { color: mode === tOpt ? "#FFFFFF" : colors.textSecondary },
-                      ]}
-                    >
-                      {tOpt === "dark" ? "Dark" : "Light"}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            }
-          />
-
           <SettingRow
             icon={<Palette size={20} color={colors.textSecondary} />}
             label="Icon Style"
@@ -403,103 +338,6 @@ export default function SettingsScreen() {
               </View>
             }
           />
-
-          <SettingRow
-            icon={<Type size={20} color={colors.textSecondary} />}
-            label="App Labels"
-            description="Show app names below icons"
-            colors={colors}
-            isDark={isDark}
-            right={
-              <Switch
-                value={showLabels}
-                onValueChange={(val) => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setShowLabels(val);
-                }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
-
-          <SettingRow
-            icon={<ClockIcon size={20} color={colors.textSecondary} />}
-            label="Clock Widget"
-            description="Show digital time on home"
-            colors={colors}
-            isDark={isDark}
-            right={
-              <Switch
-                value={showClock}
-                onValueChange={(val) => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setShowClock(val);
-                }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
-        </View>
-
-        {/* ─── Search Widget ───────────────────────────── */}
-        <SectionHeader title="Home Search Widget" colors={colors} />
-        <View style={styles.sectionGroup}>
-          <SettingRow
-            icon={<Search size={20} color={colors.textSecondary} />}
-            label="Show Search Bar"
-            description="Minimalist search bar on home screen"
-            colors={colors}
-            isDark={isDark}
-            right={
-              <Switch
-                value={showHomeSearchWidget}
-                onValueChange={(val) => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setShowHomeSearchWidget(val);
-                }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
-
-          {showHomeSearchWidget && (
-            <SettingRow
-              icon={<Layers size={20} color={colors.textSecondary} />}
-              label="Widget Style"
-              description={`Current: ${searchWidgetStyle.charAt(0).toUpperCase() + searchWidgetStyle.slice(1)}`}
-              colors={colors}
-              isDark={isDark}
-              right={
-                <View style={styles.segmentContainer}>
-                  {(["pill", "rounded", "minimal"] as SearchWidgetStyle[]).map((styleOpt) => (
-                    <Pressable
-                      key={styleOpt}
-                      onPress={() => {
-                        if (hapticFeedback) Haptics.selectionAsync();
-                        setSearchWidgetStyle(styleOpt);
-                      }}
-                      style={[
-                        styles.segmentBtn,
-                        searchWidgetStyle === styleOpt && { backgroundColor: colors.accent },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          { color: searchWidgetStyle === styleOpt ? "#FFFFFF" : colors.textSecondary },
-                        ]}
-                      >
-                        {styleOpt.charAt(0).toUpperCase()}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              }
-            />
-          )}
         </View>
 
         {/* ─── Dock Customization ──────────────────────── */}
@@ -628,15 +466,6 @@ export default function SettingsScreen() {
             right={<Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>}
           />
 
-          <SettingRow
-            icon={<ImageIcon size={20} color={colors.textSecondary} />}
-            label="System Wallpaper"
-            description="Select phone background"
-            colors={colors}
-            isDark={isDark}
-            onPress={handleChangeWallpaper}
-            right={<Text style={[styles.linkText, { color: colors.accent }]}>Change →</Text>}
-          />
 
           <SettingRow
             icon={<Smartphone size={20} color={colors.textSecondary} />}

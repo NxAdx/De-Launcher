@@ -30,7 +30,6 @@ export type GridItemData =
   | { id: string; type: "app"; app: AppInfo }
   | { id: string; type: "folder"; folder: FolderInfo };
 
-const BASE_ROW_HEIGHT = 88;
 
 interface DraggableGridItemProps {
   item: GridItemData;
@@ -252,7 +251,7 @@ export function AppGrid({
   onFolderLongPress,
   onAllAppsPress,
 }: AppGridProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const iconSizeSetting = useSettingsStore((s) => s.iconSize);
