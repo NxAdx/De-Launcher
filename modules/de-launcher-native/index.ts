@@ -69,5 +69,38 @@ export async function startWidgetBindFlow(allocatedId: number): Promise<number> 
   return await DeLauncherNativeModule.startWidgetBindFlow(allocatedId);
 }
 
+export type ScreenTimeInfo = {
+  screenTimeMs: number;
+  unlockCount: number;
+};
+
+export type AppUsageItem = {
+  packageName: string;
+  label: string;
+  timeMs: number;
+};
+
+export async function hasUsageStatsPermission(): Promise<boolean> {
+  return await DeLauncherNativeModule.hasUsageStatsPermission();
+}
+
+export async function openUsageStatsSettings(): Promise<void> {
+  return await DeLauncherNativeModule.openUsageStatsSettings();
+}
+
+export async function openDigitalWellbeing(): Promise<boolean> {
+  return await DeLauncherNativeModule.openDigitalWellbeing();
+}
+
+export async function getScreenTimeToday(): Promise<ScreenTimeInfo> {
+  return await DeLauncherNativeModule.getScreenTimeToday();
+}
+
+export async function getTopAppUsage(limit: number): Promise<AppUsageItem[]> {
+  return await DeLauncherNativeModule.getTopAppUsage(limit);
+}
+
 export { default as DeLauncherNativeView } from './src/DeLauncherNativeView';
 export * from './src/DeLauncherNative.types';
+export default DeLauncherNativeModule;
+

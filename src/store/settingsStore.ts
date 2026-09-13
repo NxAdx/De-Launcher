@@ -36,6 +36,12 @@ interface SettingsState {
   // Todo / Streak Options
   showTodoWidget: boolean;
 
+  // Digital Wellbeing & Morning Focus
+  showScreenTimeWidget: boolean;
+  screenTimeGoalMs: number; // default: 2 hours (7,200,000 ms)
+  morningPromptEnabled: boolean;
+  morningPromptTime: string; // "07:00"
+
   // Icon Sizing
   iconSize: IconSizeOption;
 
@@ -53,6 +59,10 @@ interface SettingsState {
   setDockBackground: (bg: DockBackgroundStyle) => void;
   setMaxDockIcons: (max: number) => void;
   setShowTodoWidget: (show: boolean) => void;
+  setShowScreenTimeWidget: (show: boolean) => void;
+  setScreenTimeGoalMs: (goalMs: number) => void;
+  setMorningPromptEnabled: (enabled: boolean) => void;
+  setMorningPromptTime: (time: string) => void;
   setIconSize: (size: IconSizeOption) => void;
 }
 
@@ -76,6 +86,11 @@ export const useSettingsStore = create<SettingsState>()(
       maxDockIcons: 6,
 
       showTodoWidget: true,
+      showScreenTimeWidget: false,
+      screenTimeGoalMs: 2 * 60 * 60 * 1000, // 2 hours
+      morningPromptEnabled: true,
+      morningPromptTime: "07:00",
+
       iconSize: "medium",
 
       // Actions
@@ -105,6 +120,10 @@ export const useSettingsStore = create<SettingsState>()(
       setDockBackground: (dockBackground) => set({ dockBackground }),
       setMaxDockIcons: (maxDockIcons) => set({ maxDockIcons: Math.max(4, Math.min(6, maxDockIcons)) }),
       setShowTodoWidget: (showTodoWidget) => set({ showTodoWidget }),
+      setShowScreenTimeWidget: (showScreenTimeWidget) => set({ showScreenTimeWidget }),
+      setScreenTimeGoalMs: (screenTimeGoalMs) => set({ screenTimeGoalMs }),
+      setMorningPromptEnabled: (morningPromptEnabled) => set({ morningPromptEnabled }),
+      setMorningPromptTime: (morningPromptTime) => set({ morningPromptTime }),
       setIconSize: (iconSize) => set({ iconSize }),
     }),
     {

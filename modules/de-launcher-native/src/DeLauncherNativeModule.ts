@@ -16,6 +16,17 @@ export interface IconPackInfo {
   mappingCount: number | null;
 }
 
+export interface ScreenTimeInfo {
+  screenTimeMs: number;
+  unlockCount: number;
+}
+
+export interface AppUsageItem {
+  packageName: string;
+  label: string;
+  timeMs: number;
+}
+
 declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModuleEvents> {
   // App Management
   getInstalledApps(): Promise<AppInfo[]>;
@@ -32,6 +43,13 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   getSystemAppIcons(packageNames: string[]): Promise<Record<string, string | null>>;
   getMonochromeAppIcons(packageNames: string[]): Promise<Record<string, string | null>>;
   
+  // Digital Wellbeing & Usage Stats (from Olauncher)
+  hasUsageStatsPermission(): Promise<boolean>;
+  openUsageStatsSettings(): Promise<void>;
+  openDigitalWellbeing(): Promise<boolean>;
+  getScreenTimeToday(): Promise<ScreenTimeInfo>;
+  getTopAppUsage(limit: number): Promise<AppUsageItem[]>;
+
   // Widget Support
   allocateAppWidgetId(): Promise<number>;
   startWidgetBindFlow(allocatedId: number): Promise<number>;
@@ -63,7 +81,12 @@ const expoGoFallback = {
   getSystemAppIcon: async () => null,
   getMonochromeAppIcon: async () => null,
   getSystemAppIcons: async () => ({}),
-  getMonochromeAppIcons: async () => ({}),  
+  getMonochromeAppIcons: async () => ({}),
+  hasUsageStatsPermission: async () => false,
+  openUsageStatsSettings: async () => {},
+  openDigitalWellbeing: async () => false,
+  getScreenTimeToday: async () => ({ screenTimeMs: 0, unlockCount: 0 }),
+  getTopAppUsage: async () => [],
   allocateAppWidgetId: async () => -1,
   startWidgetBindFlow: async () => -1,
 } as unknown as DeLauncherNativeModule;
@@ -71,3 +94,4 @@ const expoGoFallback = {
 // Expo Go does not include this local native module. Use a safe JS fallback so
 // the interface can still be previewed while native launcher features stay inert.
 export default NativeDeLauncherModule ?? expoGoFallback;
+

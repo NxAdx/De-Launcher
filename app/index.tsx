@@ -32,6 +32,8 @@ import { Dock } from "@/src/components/Dock";
 import { ContextMenu } from "@/src/components/ContextMenu";
 import { HomeSearchWidget } from "@/src/components/HomeSearchWidget";
 import { TodoStreakWidget } from "@/src/components/TodoStreakWidget";
+import { ScreenTimeWidget } from "@/src/components/ScreenTimeWidget";
+import { MorningFocusPrompt } from "@/src/components/MorningFocusPrompt";
 import { PostSessionReflectionCard } from "@/src/components/PostSessionReflectionCard";
 import { FolderModal } from "@/src/components/FolderModal";
 import { useAppStore } from "@/src/store/appStore";
@@ -302,6 +304,9 @@ export default function HomeScreen() {
             <Clock />
           </View>
 
+          {/* Screen Time Digital Wellbeing Widget */}
+          <ScreenTimeWidget />
+
           {/* Customizable Search Bar Widget */}
           <HomeSearchWidget />
 
@@ -367,6 +372,9 @@ export default function HomeScreen() {
         folder={selectedFolder}
         onClose={() => setSelectedFolder(null)}
       />
+
+      {/* Morning Focus Commitment Prompt */}
+      <MorningFocusPrompt />
     </View>
   );
 }

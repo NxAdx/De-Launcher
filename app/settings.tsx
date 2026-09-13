@@ -50,6 +50,11 @@ import {
   promptSetDefaultLauncher,
   getNonDistractionApps,
 } from "@/src/services/appManager";
+import {
+  hasUsageStatsPermission,
+  openUsageStatsSettings,
+} from "@/modules/de-launcher-native";
+import { formatDuration } from "@/src/components/ScreenTimeWidget";
 import { signalNavigation } from "./_layout";
 
 // ─── Setting Row Components ─────────────────────────────
@@ -147,6 +152,16 @@ export default function SettingsScreen() {
   const showTodoWidget = useSettingsStore((s) => s.showTodoWidget);
   const setShowTodoWidget = useSettingsStore((s) => s.setShowTodoWidget);
 
+  const showScreenTimeWidget = useSettingsStore((s) => s.showScreenTimeWidget);
+  const setShowScreenTimeWidget = useSettingsStore((s) => s.setShowScreenTimeWidget);
+  const screenTimeGoalMs = useSettingsStore((s) => s.screenTimeGoalMs);
+  const setScreenTimeGoalMs = useSettingsStore((s) => s.setScreenTimeGoalMs);
+
+  const morningPromptEnabled = useSettingsStore((s) => s.morningPromptEnabled);
+  const setMorningPromptEnabled = useSettingsStore((s) => s.setMorningPromptEnabled);
+  const morningPromptTime = useSettingsStore((s) => s.morningPromptTime);
+  const setMorningPromptTime = useSettingsStore((s) => s.setMorningPromptTime);
+
   const iconSize = useSettingsStore((s) => s.iconSize);
   const setIconSize = useSettingsStore((s) => s.setIconSize);
   const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
@@ -166,6 +181,24 @@ export default function SettingsScreen() {
       }
     },
     [setHapticFeedback]
+  );
+
+  const handleToggleScreenTime = useCallback(
+    async (val: boolean) => {
+      if (hapticFeedback) Haptics.selectionAsync();
+      if (val) {
+        try {
+          const permitted = await hasUsageStatsPermission();
+          if (!permitted) {
+            await openUsageStatsSettings();
+          }
+        } catch {
+          // fallback
+        }
+      }
+      setShowScreenTimeWidget(val);
+    },
+    [hapticFeedback, setShowScreenTimeWidget]
   );
 
   const handleSetDefault = async () => {
@@ -419,6 +452,131 @@ export default function SettingsScreen() {
               />
             }
           />
+
+          <SettingRow
+            icon={<Smartphone size={20} color={colors.textSecondary} />}
+            label="Screen Time Tracker"
+            description="Track mindful screen time, unlocks & streaks"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={showScreenTimeWidget}
+                onValueChange={handleToggleScreenTime}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          {showScreenTimeWidget && (
+            <SettingRow
+              icon={<Smartphone size={20} color={colors.accent} />}
+              label="Daily Screen Goal"
+              description={`Limit: ${formatDuration(screenTimeGoalMs)}`}
+              colors={colors}
+              isDark={isDark}
+              right={
+                <View style={styles.segmentContainer}>
+                  {[
+                    { label: "1h", ms: 1 * 60 * 60 * 1000 },
+                    { label: "2h", ms: 2 * 60 * 60 * 1000 },
+                    { label: "3h", ms: 3 * 60 * 60 * 1000 },
+                    { label: "4h", ms: 4 * 60 * 60 * 1000 },
+                  ].map((goal) => (
+                    <Pressable
+                      key={goal.label}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setScreenTimeGoalMs(goal.ms);
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        screenTimeGoalMs === goal.ms && { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          {
+                            color:
+                              screenTimeGoalMs === goal.ms ? "#FFFFFF" : colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        {goal.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              }
+            />
+          )}
+
+          <SettingRow
+            icon={<Sparkles size={20} color={colors.textSecondary} />}
+            label="Morning Focus Prompt"
+            description="Pre-commitment intention sheet upon waking"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={morningPromptEnabled}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setMorningPromptEnabled(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          {morningPromptEnabled && (
+            <SettingRow
+              icon={<Sparkles size={20} color={colors.accent} />}
+              label="Prompt Time"
+              description={`Triggers on first unlock at or after ${morningPromptTime}`}
+              colors={colors}
+              isDark={isDark}
+              right={
+                <View style={styles.segmentContainer}>
+                  {[
+                    { label: "6 AM", time: "06:00" },
+                    { label: "7 AM", time: "07:00" },
+                    { label: "8 AM", time: "08:00" },
+                    { label: "9 AM", time: "09:00" },
+                  ].map((preset) => (
+                    <Pressable
+                      key={preset.label}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setMorningPromptTime(preset.time);
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        morningPromptTime === preset.time && { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          {
+                            color:
+                              morningPromptTime === preset.time
+                                ? "#FFFFFF"
+                                : colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        {preset.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              }
+            />
+          )}
 
           <SettingRow
             icon={<Sparkles size={20} color={colors.accent} />}

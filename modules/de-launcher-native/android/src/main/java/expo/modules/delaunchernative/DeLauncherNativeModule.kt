@@ -279,6 +279,116 @@ class DeLauncherNativeModule : Module() {
       }
     }
 
+    AsyncFunction("hasUsageStatsPermission") { ->
+      appContext.reactContext?.let { context ->
+        val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as? android.app.AppOpsManager
+        if (appOps != null) {
+          val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+              android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+              android.os.Process.myUid(),
+              context.packageName
+            )
+          } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+              android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+              android.os.Process.myUid(),
+              context.packageName
+            )
+          }
+          mode == android.app.AppOpsManager.MODE_ALLOWED
+        } else {
+          false
+        }
+      } ?: false
+    }
+
+    AsyncFunction("openUsageStatsSettings") { ->
+      appContext.reactContext?.let { context ->
+        try {
+          val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to open usage access settings", e)
+        }
+      }
+    }
+
+    AsyncFunction("openDigitalWellbeing") { ->
+      appContext.reactContext?.let { context ->
+        var launched = false
+        val intents = listOf(
+          Intent().setClassName("com.google.android.apps.wellbeing", "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity"),
+          Intent().setClassName("com.google.android.apps.wellbeing", "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity"),
+          Intent().setClassName("com.samsung.android.forest", "com.samsung.android.forest.home.ui.MainActivity"),
+          Intent().setClassName("com.samsung.android.forest", "com.samsung.android.forest.main.MainActivity"),
+          Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        )
+        for (intent in intents) {
+          try {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            launched = true
+            break
+          } catch (_: Exception) {}
+        }
+        launched
+      } ?: false
+    }
+
+    AsyncFunction("getScreenTimeToday") { ->
+      appContext.reactContext?.let { context ->
+        try {
+          val wrapper = expo.modules.delaunchernative.usagestats.EventLogWrapper(context)
+          val (totalMs, _) = wrapper.getTodaysUsage()
+          val unlockCount = wrapper.getUnlockCountToday()
+          mapOf(
+            "screenTimeMs" to totalMs,
+            "unlockCount" to unlockCount
+          )
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get screen time", e)
+          mapOf(
+            "screenTimeMs" to 0L,
+            "unlockCount" to 0
+          )
+        }
+      } ?: mapOf("screenTimeMs" to 0L, "unlockCount" to 0)
+    }
+
+    AsyncFunction("getTopAppUsage") { limit: Int ->
+      appContext.reactContext?.let { context ->
+        try {
+          val wrapper = expo.modules.delaunchernative.usagestats.EventLogWrapper(context)
+          val (_, sortedApps) = wrapper.getTodaysUsage()
+          val pm = context.packageManager
+          val result = mutableListOf<Map<String, Any>>()
+          val topList = sortedApps.take(limit)
+          for (stat in topList) {
+            var label = stat.applicationId
+            try {
+              val appInfo = pm.getApplicationInfo(stat.applicationId, 0)
+              label = pm.getApplicationLabel(appInfo).toString()
+            } catch (_: Exception) {}
+            result.add(
+              mapOf(
+                "packageName" to stat.applicationId,
+                "label" to label,
+                "timeMs" to stat.timeUsed
+              )
+            )
+          }
+          result
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get top app usage", e)
+          emptyList<Map<String, Any>>()
+        }
+      } ?: emptyList<Map<String, Any>>()
+    }
+
     AsyncFunction("getAvailableIconPacks") { ->
       appContext.reactContext?.let { context ->
         val parser = IconPackParser(context)
