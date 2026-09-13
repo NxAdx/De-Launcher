@@ -11,6 +11,23 @@ import android.view.accessibility.AccessibilityEvent
 class DistractionService : AccessibilityService() {
     companion object {
         private const val TAG = "DistractionService"
+        @Volatile private var instance: DistractionService? = null
+
+        fun isServiceActive(): Boolean = instance != null
+
+        fun lockScreen(): Boolean {
+            val svc = instance ?: return false
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                return svc.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+            }
+            return false
+        }
+
+        fun openNotificationShade(): Boolean {
+            val svc = instance ?: return false
+            return svc.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+        }
+
         private val ALWAYS_ALLOWED_SYSTEM_PACKAGES = setOf(
             "android",
             "com.android.systemui",
@@ -20,6 +37,20 @@ class DistractionService : AccessibilityService() {
             "com.android.packageinstaller",
             "com.google.android.packageinstaller"
         )
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        instance = this
+        Log.d(TAG, "DistractionService connected")
+    }
+
+    override fun onDestroy() {
+        if (instance === this) {
+            instance = null
+        }
+        super.onDestroy()
+        Log.d(TAG, "DistractionService destroyed")
     }
 
     private val configurationPackages: Set<String> by lazy {

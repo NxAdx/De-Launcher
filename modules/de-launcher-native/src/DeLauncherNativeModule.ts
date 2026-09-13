@@ -50,6 +50,13 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   getScreenTimeToday(): Promise<ScreenTimeInfo>;
   getTopAppUsage(limit: number): Promise<AppUsageItem[]>;
 
+  // System & Gestures
+  openClockApp(): Promise<boolean>;
+  openCalendarApp(): Promise<boolean>;
+  lockScreen(): Promise<boolean>;
+  openNotificationShade(): Promise<boolean>;
+  isAccessibilityActive(): Promise<boolean>;
+
   // Widget Support
   allocateAppWidgetId(): Promise<number>;
   startWidgetBindFlow(allocatedId: number): Promise<number>;
@@ -87,6 +94,11 @@ const expoGoFallback = {
   openDigitalWellbeing: async () => false,
   getScreenTimeToday: async () => ({ screenTimeMs: 0, unlockCount: 0 }),
   getTopAppUsage: async () => [],
+  openClockApp: async () => false,
+  openCalendarApp: async () => false,
+  lockScreen: async () => false,
+  openNotificationShade: async () => false,
+  isAccessibilityActive: async () => false,
   allocateAppWidgetId: async () => -1,
   startWidgetBindFlow: async () => -1,
 } as unknown as DeLauncherNativeModule;

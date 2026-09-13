@@ -100,6 +100,26 @@ export async function getTopAppUsage(limit: number): Promise<AppUsageItem[]> {
   return await DeLauncherNativeModule.getTopAppUsage(limit);
 }
 
+export async function openClockApp(): Promise<boolean> {
+  return await DeLauncherNativeModule.openClockApp();
+}
+
+export async function openCalendarApp(): Promise<boolean> {
+  return await DeLauncherNativeModule.openCalendarApp();
+}
+
+export async function lockScreen(): Promise<boolean> {
+  return await DeLauncherNativeModule.lockScreen();
+}
+
+export async function openNotificationShade(): Promise<boolean> {
+  return await DeLauncherNativeModule.openNotificationShade();
+}
+
+export async function isAccessibilityActive(): Promise<boolean> {
+  return await DeLauncherNativeModule.isAccessibilityActive();
+}
+
 export { default as DeLauncherNativeView } from './src/DeLauncherNativeView';
 export * from './src/DeLauncherNative.types';
 export default DeLauncherNativeModule;

@@ -5,10 +5,13 @@
  * Updates every minute. Typography-first design with contextual greeting.
  */
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, AppState, AppStateStatus } from "react-native";
+import { View, Text, StyleSheet, AppState, AppStateStatus, Pressable } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
+import { openClockApp, openCalendarApp } from "@/modules/de-launcher-native";
+import { useSettingsStore } from "@/src/store/settingsStore";
 
 function formatTime(date: Date): string {
   const hours = date.getHours();
@@ -40,8 +43,23 @@ function getGreeting(date: Date): string {
 export function Clock() {
   const { colors } = useTheme();
   const [now, setNow] = useState(new Date());
+  const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const tick = useCallback(() => setNow(new Date()), []);
+
+  const handleClockPress = useCallback(async () => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await openClockApp();
+  }, [hapticEnabled]);
+
+  const handleCalendarPress = useCallback(async () => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await openCalendarApp();
+  }, [hapticEnabled]);
 
   useEffect(() => {
     // Compute delay from a fresh Date so we don't re-fire on every render
@@ -86,23 +104,45 @@ export function Clock() {
       {/* Time row */}
       <Animated.View
         entering={FadeInUp.duration(400).delay(60)}
-        style={styles.timeRow}
       >
-        <Text style={[styles.time, { color: colors.textPrimary }]}>
-          {formatTime(now)}
-        </Text>
-        <Text style={[styles.period, { color: colors.textSecondary }]}>
-          {formatPeriod(now)}
-        </Text>
+        <Pressable
+          onPress={handleClockPress}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.timeRow,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Open clock and alarms"
+        >
+          <Text style={[styles.time, { color: colors.textPrimary }]}>
+            {formatTime(now)}
+          </Text>
+          <Text style={[styles.period, { color: colors.textSecondary }]}>
+            {formatPeriod(now)}
+          </Text>
+        </Pressable>
       </Animated.View>
 
       {/* Date */}
-      <Animated.Text
+      <Animated.View
         entering={FadeInUp.duration(400).delay(120)}
-        style={[styles.date, { color: colors.textPrimary }]}
       >
-        {formatDate(now)}
-      </Animated.Text>
+        <Pressable
+          onPress={handleCalendarPress}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.dateRow,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Open calendar"
+        >
+          <Text style={[styles.date, { color: colors.textPrimary }]}>
+            {formatDate(now)}
+          </Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -153,5 +193,8 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  dateRow: {
+    alignSelf: "flex-start",
   },
 });

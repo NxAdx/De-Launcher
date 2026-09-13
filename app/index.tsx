@@ -39,6 +39,7 @@ import { FolderModal } from "@/src/components/FolderModal";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { launchApp, isKnownDistraction } from "@/src/services/appManager";
+import { lockScreen, openNotificationShade } from "@/modules/de-launcher-native";
 import { signalNavigation } from "./_layout";
 import { AppInfo, FolderInfo } from "@/src/types/app";
 
@@ -49,6 +50,8 @@ export default function HomeScreen() {
 
   const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
+  const swipeDownAction = useSettingsStore((s) => s.swipeDownAction);
+  const doubleTapToLock = useSettingsStore((s) => s.doubleTapToLock);
 
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
@@ -177,6 +180,24 @@ export default function HomeScreen() {
     }
   }, [hapticEnabled]);
 
+  const handleSwipeDown = useCallback(() => {
+    if (swipeDownAction === "notifications") {
+      if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      openNotificationShade();
+    } else {
+      handleOpenSearch();
+    }
+  }, [swipeDownAction, hapticEnabled, handleOpenSearch]);
+
+  const handleDoubleTap = useCallback(async () => {
+    if (!doubleTapToLock) return;
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const locked = await lockScreen();
+    if (!locked) {
+      console.warn("[HomeScreen] lockScreen failed or accessibility service is not active");
+    }
+  }, [doubleTapToLock, hapticEnabled]);
+
   const panGesture = useMemo(() => {
     return Gesture.Pan()
       .cancelsTouchesInView(false)
@@ -185,12 +206,30 @@ export default function HomeScreen() {
       .onEnd((e) => {
         "worklet";
         if (e.velocityY > 600 || e.translationY > 70) {
-          runOnJS(handleOpenSearch)();
+          runOnJS(handleSwipeDown)();
         } else if (e.velocityY < -600 || e.translationY < -70) {
           runOnJS(handleOpenDrawer)();
         }
       });
-  }, [handleOpenSearch, handleOpenDrawer]);
+  }, [handleSwipeDown, handleOpenDrawer]);
+
+  const doubleTapGesture = useMemo(() => {
+    return Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDuration(280)
+      .cancelsTouchesInView(false)
+      .enabled(doubleTapToLock)
+      .onEnd((_e, success) => {
+        "worklet";
+        if (success) {
+          runOnJS(handleDoubleTap)();
+        }
+      });
+  }, [doubleTapToLock, handleDoubleTap]);
+
+  const homeGestures = useMemo(() => {
+    return Gesture.Simultaneous(panGesture, doubleTapGesture);
+  }, [panGesture, doubleTapGesture]);
 
   const allowedApps = useMemo(() => {
     const appsMap = new Map(installedApps.map((app) => [app.packageName, app]));
@@ -250,7 +289,7 @@ export default function HomeScreen() {
           so they share the same native touch hierarchy on Android.
           React Native's Pressable always wins over RNGH Pan on taps
           because Pan requires 35px vertical movement to activate. */}
-      <GestureDetector gesture={panGesture}>
+      <GestureDetector gesture={homeGestures}>
         <View style={[styles.contentArea, { paddingTop: statusBarHeight + 44 }]}>
           {/* Top Header Bar — absolute positioned inside gesture view,
               high zIndex ensures it draws on top and receives taps first */}

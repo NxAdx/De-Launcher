@@ -339,6 +339,44 @@ class DeLauncherNativeModule : Module() {
       } ?: false
     }
 
+    AsyncFunction("openClockApp") { ->
+      appContext.reactContext?.let { context ->
+        openClockApp(context)
+      } ?: false
+    }
+
+    AsyncFunction("openCalendarApp") { ->
+      appContext.reactContext?.let { context ->
+        openCalendarApp(context)
+      } ?: false
+    }
+
+    AsyncFunction("isAccessibilityActive") { ->
+      DistractionService.isServiceActive()
+    }
+
+    AsyncFunction("lockScreen") { ->
+      DistractionService.lockScreen()
+    }
+
+    AsyncFunction("openNotificationShade") { ->
+      if (DistractionService.openNotificationShade()) {
+        return@AsyncFunction true
+      }
+      appContext.reactContext?.let { context ->
+        try {
+          val statusBarService = context.getSystemService("statusbar")
+          val statusBarManager = Class.forName("android.app.StatusBarManager")
+          val method = statusBarManager.getMethod("expandNotificationsPanel")
+          method.invoke(statusBarService)
+          true
+        } catch (e: Exception) {
+          android.util.Log.w("DeLauncherNative", "Failed to expand notification shade via reflection", e)
+          false
+        }
+      } ?: false
+    }
+
     AsyncFunction("getScreenTimeToday") { ->
       appContext.reactContext?.let { context ->
         try {
@@ -619,6 +657,95 @@ class DeLauncherNativeModule : Module() {
   private var appWidgetHost: android.appwidget.AppWidgetHost? = null
   private var homePressedReceiver: android.content.BroadcastReceiver? = null
   private val APPWIDGET_HOST_ID = 1024
+
+  private fun openClockApp(context: android.content.Context): Boolean {
+    try {
+      val intent = Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+        return true
+      }
+    } catch (_: Exception) {}
+
+    try {
+      val intent = Intent(Intent.ACTION_MAIN).apply {
+        addCategory(Intent.CATEGORY_DESK_DOCK)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+        return true
+      }
+    } catch (_: Exception) {}
+
+    val knownClockPackages = listOf(
+      "com.google.android.deskclock",
+      "com.android.deskclock",
+      "com.sec.android.app.clockpackage",
+      "com.oneplus.deskclock",
+      "com.coloros.alarmclock",
+      "com.miui.deskclock"
+    )
+    for (pkg in knownClockPackages) {
+      val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+      if (launchIntent != null) {
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+          context.startActivity(launchIntent)
+          return true
+        } catch (_: Exception) {}
+      }
+    }
+    return false
+  }
+
+  private fun openCalendarApp(context: android.content.Context): Boolean {
+    try {
+      val calendarUri = android.provider.CalendarContract.CONTENT_URI
+        .buildUpon()
+        .appendPath("time")
+        .appendPath(System.currentTimeMillis().toString())
+        .build()
+      val intent = Intent(Intent.ACTION_VIEW, calendarUri).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+        return true
+      }
+    } catch (_: Exception) {}
+
+    try {
+      val intent = Intent(Intent.ACTION_MAIN).apply {
+        addCategory(Intent.CATEGORY_APP_CALENDAR)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+        return true
+      }
+    } catch (_: Exception) {}
+
+    val knownCalendarPackages = listOf(
+      "com.google.android.calendar",
+      "com.android.calendar",
+      "com.samsung.android.calendar",
+      "com.miui.calendar"
+    )
+    for (pkg in knownCalendarPackages) {
+      val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+      if (launchIntent != null) {
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+          context.startActivity(launchIntent)
+          return true
+        } catch (_: Exception) {}
+      }
+    }
+    return false
+  }
 
   private fun generateMonoFromIconFile(iconFile: java.io.File, monoFile: java.io.File): Boolean {
     return try {

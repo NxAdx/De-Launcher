@@ -14,6 +14,7 @@ export type SearchWidgetStyle = "pill" | "rounded" | "minimal";
 export type DockBackgroundStyle = "transparent" | "frosted";
 export type IconSizeOption = "small" | "medium" | "large";
 export type IconThemeOption = "standard" | "monochrome";
+export type SwipeDownAction = "search" | "notifications";
 
 interface SettingsState {
   theme: ThemeMode;
@@ -24,6 +25,10 @@ interface SettingsState {
   activeIconPack: string | null; // packageName of selected icon pack
   iconTheme: IconThemeOption;
   hasCompletedOnboarding: boolean;
+
+  // Gestures
+  doubleTapToLock: boolean;
+  swipeDownAction: SwipeDownAction;
 
   // Search Widget Options
   showHomeSearchWidget: boolean;
@@ -54,6 +59,8 @@ interface SettingsState {
   setActiveIconPack: (packageName: string | null) => void;
   setIconTheme: (iconTheme: IconThemeOption) => void;
   setHasCompletedOnboarding: (completed: boolean) => void;
+  setDoubleTapToLock: (enabled: boolean) => void;
+  setSwipeDownAction: (action: SwipeDownAction) => void;
   setShowHomeSearchWidget: (show: boolean) => void;
   setSearchWidgetStyle: (style: SearchWidgetStyle) => void;
   setDockBackground: (bg: DockBackgroundStyle) => void;
@@ -78,6 +85,9 @@ export const useSettingsStore = create<SettingsState>()(
       activeIconPack: null,
       iconTheme: "standard",
       hasCompletedOnboarding: false,
+
+      doubleTapToLock: true,
+      swipeDownAction: "search",
 
       showHomeSearchWidget: true,
       searchWidgetStyle: "pill",
@@ -115,6 +125,8 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
       setHasCompletedOnboarding: (hasCompletedOnboarding) => set({ hasCompletedOnboarding }),
+      setDoubleTapToLock: (doubleTapToLock) => set({ doubleTapToLock }),
+      setSwipeDownAction: (swipeDownAction) => set({ swipeDownAction }),
       setShowHomeSearchWidget: (showHomeSearchWidget) => set({ showHomeSearchWidget }),
       setSearchWidgetStyle: (searchWidgetStyle) => set({ searchWidgetStyle }),
       setDockBackground: (dockBackground) => set({ dockBackground }),

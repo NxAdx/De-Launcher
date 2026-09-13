@@ -35,6 +35,8 @@ import {
   Sparkles,
   CheckSquare,
   Maximize2,
+  Lock,
+  ArrowDown,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -53,6 +55,7 @@ import {
 import {
   hasUsageStatsPermission,
   openUsageStatsSettings,
+  isAccessibilityActive,
 } from "@/modules/de-launcher-native";
 import { formatDuration } from "@/src/components/ScreenTimeWidget";
 import { signalNavigation } from "./_layout";
@@ -166,6 +169,19 @@ export default function SettingsScreen() {
   const setIconSize = useSettingsStore((s) => s.setIconSize);
   const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
   const setIconTheme = useSettingsStore((s) => s.setIconTheme);
+
+  const doubleTapToLock = useSettingsStore((s) => s.doubleTapToLock);
+  const setDoubleTapToLock = useSettingsStore((s) => s.setDoubleTapToLock);
+  const swipeDownAction = useSettingsStore((s) => s.swipeDownAction);
+  const setSwipeDownAction = useSettingsStore((s) => s.setSwipeDownAction);
+
+  const [accessibilityActive, setAccessibilityActive] = useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    isAccessibilityActive()
+      .then(setAccessibilityActive)
+      .catch(() => setAccessibilityActive(false));
+  }, []);
 
   // App store
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
@@ -608,6 +624,73 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* ─── Gestures & Interaction ───────────────── */}
+        <SectionHeader title="Gestures & Interaction" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<Lock size={20} color={colors.textSecondary} />}
+            label="Double-Tap to Lock"
+            description="Double-tap empty space to immediately turn off screen"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={doubleTapToLock}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setDoubleTapToLock(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          <SettingRow
+            icon={<ArrowDown size={20} color={colors.textSecondary} />}
+            label="Swipe Down Action"
+            description="Choose action when swiping down on home"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {(
+                  [
+                    { label: "Search", action: "search" },
+                    { label: "Notifications", action: "notifications" },
+                  ] as const
+                ).map((opt) => (
+                  <Pressable
+                    key={opt.action}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setSwipeDownAction(opt.action);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      swipeDownAction === opt.action && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        {
+                          color:
+                            swipeDownAction === opt.action
+                              ? "#FFFFFF"
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
+          />
+        </View>
+
         {/* ─── System & Device Actions ────────────────── */}
         <SectionHeader title="System & Recovery" colors={colors} />
         <View style={styles.sectionGroup}>
@@ -624,11 +707,38 @@ export default function SettingsScreen() {
           <SettingRow
             icon={<Shield size={20} color={colors.textSecondary} />}
             label="Accessibility Service"
-            description="Manage background focus blocking permission"
+            description="Powers screen lock, notifications, and focus shielding"
             colors={colors}
             isDark={isDark}
             onPress={handleOpenAccessibility}
-            right={<Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>}
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {accessibilityActive !== null && (
+                  <View
+                    style={[
+                      styles.badge,
+                      {
+                        backgroundColor: accessibilityActive
+                          ? "rgba(34, 197, 94, 0.15)"
+                          : "rgba(239, 68, 68, 0.15)",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        {
+                          color: accessibilityActive ? "#22C55E" : "#EF4444",
+                        },
+                      ]}
+                    >
+                      {accessibilityActive ? "Active" : "Disabled"}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[styles.linkText, { color: colors.accent }]}>Open →</Text>
+              </View>
+            }
           />
 
 
