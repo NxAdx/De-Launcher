@@ -7,10 +7,12 @@
 .agent/
 master-docs/
 research/
+docs/
 skills-lock.json
 IMPLEMENTATION_SUMMARY.md
 DELIVERY_SUMMARY.md
 RELEASE_PACKAGE.md
+*.secret*
 
 # ----- Dependencies -----
 node_modules/
