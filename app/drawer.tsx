@@ -5,9 +5,8 @@
  * Presented as a modal (slide from bottom).
  */
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, Platform } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import { ChevronDown, ShieldOff, Settings, Clock, Pin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -189,7 +188,12 @@ export default function DrawerScreen() {
       apps = apps.filter((app) => !allowedPackages.includes(app.packageName));
     }
 
-    return apps;
+    // Guaranteed deterministic alphabetical order with case insensitivity and stable tie-breaking
+    return apps.slice().sort((a, b) => {
+      const cmp = a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+      if (cmp !== 0) return cmp;
+      return a.packageName.localeCompare(b.packageName);
+    });
   }, [installedApps, searchQuery, filterMode, allowedPackages]);
 
   const handleAppPress = useCallback(
@@ -348,13 +352,16 @@ export default function DrawerScreen() {
           </Text>
         </View>
       ) : (
-        <FlashList
+        <FlatList
           data={filteredApps}
           renderItem={renderItem}
           keyExtractor={(item) => item.packageName}
-          extraData={{ colors, isDark, scheduleRules, allowedPackages }}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={20}
+          maxToRenderPerBatch={20}
+          windowSize={9}
+          removeClippedSubviews={Platform.OS === "android"}
         />
       )}
 
@@ -430,6 +437,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 56,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radii.lg,

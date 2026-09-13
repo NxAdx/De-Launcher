@@ -17,7 +17,9 @@ import {
   Text,
   StatusBar as RNStatusBar,
   AppState,
+  Alert,
 } from "react-native";
+import * as IntentLauncher from "expo-intent-launcher";
 import Animated, { FadeInUp, runOnJS } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
 import { Settings, ShieldAlert, Search } from "lucide-react-native";
@@ -194,21 +196,40 @@ export default function HomeScreen() {
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const locked = await lockScreen();
     if (!locked) {
-      console.warn("[HomeScreen] lockScreen failed or accessibility service is not active");
+      Alert.alert(
+        "Accessibility Service Required",
+        "To turn off your screen with double-tap, De-Launcher needs Accessibility permission. Would you like to enable it now?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              try {
+                IntentLauncher.startActivityAsync(
+                  IntentLauncher.ActivityAction.ACCESSIBILITY_SETTINGS
+                );
+              } catch (e) {
+                console.error("[HomeScreen] Failed to open accessibility settings:", e);
+              }
+            },
+          },
+        ]
+      );
     }
   }, [doubleTapToLock, hapticEnabled]);
 
   const panGesture = useMemo(() => {
     return Gesture.Pan()
       .cancelsTouchesInView(false)
-      .activeOffsetY([-35, 35])
-      .failOffsetX([-15, 15])
+      .activeOffsetY([-20, 20])
       .onEnd((e) => {
         "worklet";
-        if (e.velocityY > 600 || e.translationY > 70) {
-          runOnJS(handleSwipeDown)();
-        } else if (e.velocityY < -600 || e.translationY < -70) {
-          runOnJS(handleOpenDrawer)();
+        if (Math.abs(e.translationY) >= Math.abs(e.translationX) * 0.7) {
+          if (e.velocityY > 300 || e.translationY > 45) {
+            runOnJS(handleSwipeDown)();
+          } else if (e.velocityY < -300 || e.translationY < -45) {
+            runOnJS(handleOpenDrawer)();
+          }
         }
       });
   }, [handleSwipeDown, handleOpenDrawer]);
@@ -216,7 +237,8 @@ export default function HomeScreen() {
   const doubleTapGesture = useMemo(() => {
     return Gesture.Tap()
       .numberOfTaps(2)
-      .maxDuration(280)
+      .maxDuration(500)
+      .maxDelay(350)
       .cancelsTouchesInView(false)
       .enabled(doubleTapToLock)
       .onEnd((_e, success) => {

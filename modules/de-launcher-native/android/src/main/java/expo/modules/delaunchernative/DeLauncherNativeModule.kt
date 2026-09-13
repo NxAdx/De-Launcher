@@ -658,38 +658,68 @@ class DeLauncherNativeModule : Module() {
   private var homePressedReceiver: android.content.BroadcastReceiver? = null
   private val APPWIDGET_HOST_ID = 1024
 
+  private fun isRealMatch(ri: android.content.pm.ResolveInfo?): Boolean {
+    val pkg = ri?.activityInfo?.packageName ?: return false
+    val name = ri.activityInfo?.name ?: ""
+    if (pkg == "android" || pkg == "com.android.internal.app" || name.contains("ResolverActivity", ignoreCase = true)) {
+      return false
+    }
+    return true
+  }
+
   private fun openClockApp(context: android.content.Context): Boolean {
+    val pm = context.packageManager
+
+    // 1. AlarmClock.ACTION_SHOW_ALARMS with real match verification
     try {
       val intent = Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      if (intent.resolveActivity(context.packageManager) != null) {
+      val matches = pm.queryIntentActivities(intent, 0).filter(::isRealMatch)
+      if (matches.isNotEmpty()) {
+        if (matches.size == 1) {
+          intent.setPackage(matches[0].activityInfo.packageName)
+        }
         context.startActivity(intent)
         return true
       }
     } catch (_: Exception) {}
 
+    // 2. Desk Dock Category intent with real match verification
     try {
       val intent = Intent(Intent.ACTION_MAIN).apply {
         addCategory(Intent.CATEGORY_DESK_DOCK)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      if (intent.resolveActivity(context.packageManager) != null) {
+      val matches = pm.queryIntentActivities(intent, 0).filter(::isRealMatch)
+      if (matches.isNotEmpty()) {
+        if (matches.size == 1) {
+          intent.setPackage(matches[0].activityInfo.packageName)
+        }
         context.startActivity(intent)
         return true
       }
     } catch (_: Exception) {}
 
+    // 3. Known OEM and popular clock packages (Oppo/OnePlus ColorOS/Oplus, Samsung, Google, Xiaomi, Vivo, etc.)
     val knownClockPackages = listOf(
+      "com.coloros.alarmclock",
+      "com.coloros.clock",
+      "com.oplus.clock",
+      "com.heytap.clock",
+      "com.oneplus.deskclock",
       "com.google.android.deskclock",
       "com.android.deskclock",
       "com.sec.android.app.clockpackage",
-      "com.oneplus.deskclock",
-      "com.coloros.alarmclock",
-      "com.miui.deskclock"
+      "com.miui.deskclock",
+      "com.vivo.clock",
+      "com.motorola.blur.alarmclock",
+      "com.asus.deskclock",
+      "com.sonyericsson.organizer",
+      "com.htc.android.worldclock"
     )
     for (pkg in knownClockPackages) {
-      val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+      val launchIntent = pm.getLaunchIntentForPackage(pkg)
       if (launchIntent != null) {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
@@ -698,10 +728,40 @@ class DeLauncherNativeModule : Module() {
         } catch (_: Exception) {}
       }
     }
+
+    // 4. Scan all installed launcher apps for any app with "clock" or "alarm" in label/package
+    try {
+      val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+        addCategory(Intent.CATEGORY_LAUNCHER)
+      }
+      val allApps = pm.queryIntentActivities(launcherIntent, 0)
+      for (ri in allApps) {
+        val pkg = ri.activityInfo?.packageName ?: continue
+        if (pkg == context.packageName) continue
+        val label = ri.loadLabel(pm).toString()
+        if (pkg.contains("clock", ignoreCase = true) ||
+            pkg.contains("alarm", ignoreCase = true) ||
+            label.contains("clock", ignoreCase = true) ||
+            label.contains("alarm", ignoreCase = true)) {
+          val launchIntent = pm.getLaunchIntentForPackage(pkg)
+          if (launchIntent != null) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+              context.startActivity(launchIntent)
+              return true
+            } catch (_: Exception) {}
+          }
+        }
+      }
+    } catch (_: Exception) {}
+
     return false
   }
 
   private fun openCalendarApp(context: android.content.Context): Boolean {
+    val pm = context.packageManager
+
+    // 1. CalendarContract.CONTENT_URI time view
     try {
       val calendarUri = android.provider.CalendarContract.CONTENT_URI
         .buildUpon()
@@ -711,31 +771,47 @@ class DeLauncherNativeModule : Module() {
       val intent = Intent(Intent.ACTION_VIEW, calendarUri).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      if (intent.resolveActivity(context.packageManager) != null) {
+      val matches = pm.queryIntentActivities(intent, 0).filter(::isRealMatch)
+      if (matches.isNotEmpty()) {
+        if (matches.size == 1) {
+          intent.setPackage(matches[0].activityInfo.packageName)
+        }
         context.startActivity(intent)
         return true
       }
     } catch (_: Exception) {}
 
+    // 2. CATEGORY_APP_CALENDAR intent
     try {
       val intent = Intent(Intent.ACTION_MAIN).apply {
         addCategory(Intent.CATEGORY_APP_CALENDAR)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      if (intent.resolveActivity(context.packageManager) != null) {
+      val matches = pm.queryIntentActivities(intent, 0).filter(::isRealMatch)
+      if (matches.isNotEmpty()) {
+        if (matches.size == 1) {
+          intent.setPackage(matches[0].activityInfo.packageName)
+        }
         context.startActivity(intent)
         return true
       }
     } catch (_: Exception) {}
 
+    // 3. Known OEM and popular calendar packages
     val knownCalendarPackages = listOf(
+      "com.coloros.calendar",
+      "com.oplus.calendar",
+      "com.heytap.calendar",
+      "com.oneplus.calendar",
       "com.google.android.calendar",
       "com.android.calendar",
+      "com.sec.android.app.calendar",
       "com.samsung.android.calendar",
-      "com.miui.calendar"
+      "com.miui.calendar",
+      "com.vivo.calendar"
     )
     for (pkg in knownCalendarPackages) {
-      val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+      val launchIntent = pm.getLaunchIntentForPackage(pkg)
       if (launchIntent != null) {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
@@ -744,6 +820,30 @@ class DeLauncherNativeModule : Module() {
         } catch (_: Exception) {}
       }
     }
+
+    // 4. Scan all installed launcher apps for any calendar app
+    try {
+      val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+        addCategory(Intent.CATEGORY_LAUNCHER)
+      }
+      val allApps = pm.queryIntentActivities(launcherIntent, 0)
+      for (ri in allApps) {
+        val pkg = ri.activityInfo?.packageName ?: continue
+        if (pkg == context.packageName) continue
+        val label = ri.loadLabel(pm).toString()
+        if (pkg.contains("calendar", ignoreCase = true) || label.contains("calendar", ignoreCase = true)) {
+          val launchIntent = pm.getLaunchIntentForPackage(pkg)
+          if (launchIntent != null) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+              context.startActivity(launchIntent)
+              return true
+            } catch (_: Exception) {}
+          }
+        }
+      }
+    } catch (_: Exception) {}
+
     return false
   }
 
