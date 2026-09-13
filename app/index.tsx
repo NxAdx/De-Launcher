@@ -14,7 +14,6 @@ import {
   View,
   StyleSheet,
   Pressable,
-  Text,
   StatusBar as RNStatusBar,
   AppState,
   Alert,
@@ -22,12 +21,12 @@ import {
 import * as IntentLauncher from "expo-intent-launcher";
 import Animated, { FadeInUp, runOnJS } from "react-native-reanimated";
 import { router, useLocalSearchParams, Redirect } from "expo-router";
-import { Settings, ShieldAlert, Search } from "lucide-react-native";
+import { Settings, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, layout } from "@/src/theme/tokens";
+import { spacing, layout } from "@/src/theme/tokens";
 import { Clock } from "@/src/components/Clock";
 import { AppGrid } from "@/src/components/AppGrid";
 import { Dock } from "@/src/components/Dock";
@@ -66,21 +65,13 @@ export default function HomeScreen() {
   const [selectedFolder, setSelectedFolder] = useState<FolderInfo | null>(null);
 
   const { blocked_pkg } = useLocalSearchParams<{ blocked_pkg?: string }>();
-  const [showBlockedBanner, setShowBlockedBanner] = useState(false);
-  const [blockedAppLabel, setBlockedAppLabel] = useState("");
 
-  // Listen for blocked app deep links
+  // Listen for focus interception deep links
   useEffect(() => {
     if (blocked_pkg && typeof blocked_pkg === "string" && installedApps.length > 0) {
       const focusState = useAppStore.getState().getAppFocusState(blocked_pkg);
-      if (focusState === "intent_pause") {
+      if (focusState === "intent_pause" || focusState === "blocked") {
         router.push(`/intent-pause?pkg=${blocked_pkg}` as any);
-      } else {
-        const app = installedApps.find((a) => a.packageName === blocked_pkg);
-        setBlockedAppLabel(app?.label || blocked_pkg);
-        setShowBlockedBanner(true);
-        const timer = setTimeout(() => setShowBlockedBanner(false), 3500);
-        return () => clearTimeout(timer);
       }
     }
   }, [blocked_pkg, installedApps]);
@@ -399,26 +390,6 @@ export default function HomeScreen() {
         </View>
       </GestureDetector>
 
-      {/* Blocked App Banner */}
-      {showBlockedBanner && (
-        <Animated.View
-          entering={FadeInUp.duration(300).springify()}
-          style={[
-            styles.blockedBanner,
-            {
-              top: statusBarHeight + 52,
-              backgroundColor: "rgba(239, 68, 68, 0.12)",
-              borderColor: colors.error,
-            },
-          ]}
-        >
-          <ShieldAlert size={18} color={colors.error} />
-          <Text style={[styles.blockedBannerText, { color: colors.textPrimary }]}>
-            <Text style={{ fontFamily: typography.family.bold }}>{blockedAppLabel}</Text> is not in Focus apps
-          </Text>
-        </Animated.View>
-      )}
-
       {/* Dock */}
       <Dock onLongPress={handleAppLongPress} />
 
@@ -480,22 +451,5 @@ const styles = StyleSheet.create({
   gridContainer: {
     flex: 1,
     overflow: "visible",
-  },
-  blockedBanner: {
-    position: "absolute",
-    left: spacing.xl,
-    right: spacing.xl,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.sm,
-    zIndex: 90,
-    elevation: 8,
-  },
-  blockedBannerText: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
   },
 });

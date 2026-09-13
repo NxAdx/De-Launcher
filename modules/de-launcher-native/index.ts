@@ -26,6 +26,20 @@ export async function updateWhitelist(whitelist: string[]): Promise<void> {
   return await DeLauncherNativeModule.updateWhitelist(whitelist);
 }
 
+export async function updateFocusLists(
+  blockedPackages: string[],
+  intentPausePackages: string[]
+): Promise<void> {
+  return await DeLauncherNativeModule.updateFocusLists(blockedPackages, intentPausePackages);
+}
+
+export async function setReturnHomeConfig(
+  enabled: boolean,
+  timeoutMinutes: number
+): Promise<void> {
+  return await DeLauncherNativeModule.setReturnHomeConfig(enabled, timeoutMinutes);
+}
+
 export async function getAvailableIconPacks(): Promise<IconPackInfo[]> {
   return await DeLauncherNativeModule.getAvailableIconPacks();
 }

@@ -279,6 +279,26 @@ class DeLauncherNativeModule : Module() {
       }
     }
 
+    AsyncFunction("updateFocusLists") { blockedPackages: List<String>, intentPausePackages: List<String> ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("delauncher_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit()
+          .putStringSet("blocked_packages", blockedPackages.toSet())
+          .putStringSet("intent_pause_packages", intentPausePackages.toSet())
+          .apply()
+      }
+    }
+
+    AsyncFunction("setReturnHomeConfig") { enabled: Boolean, timeoutMinutes: Int ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("delauncher_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit()
+          .putBoolean("return_home_after_lock", enabled)
+          .putInt("return_home_timeout_minutes", timeoutMinutes)
+          .apply()
+      }
+    }
+
     AsyncFunction("hasUsageStatsPermission") { ->
       appContext.reactContext?.let { context ->
         val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as? android.app.AppOpsManager

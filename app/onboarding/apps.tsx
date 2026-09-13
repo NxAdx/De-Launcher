@@ -19,7 +19,7 @@ export default function AppsScreen() {
   
   const installedApps = useAppStore((s) => s.installedApps);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
-  const setAppFocusState = useAppStore((s) => s.setAppFocusState);
+  const setAllowedPackages = useAppStore((s) => s.setAllowedPackages);
 
   const [search, setSearch] = useState("");
 
@@ -65,7 +65,11 @@ export default function AppsScreen() {
             value={isAllowed}
             onValueChange={(val) => {
               if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setAppFocusState(item.packageName, val ? "allowed" : "blocked");
+              if (val) {
+                setAllowedPackages([...new Set([...allowedPackages, item.packageName])]);
+              } else {
+                setAllowedPackages(allowedPackages.filter((p) => p !== item.packageName));
+              }
             }}
             trackColor={{ false: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", true: colors.accent }}
             thumbColor="#FFFFFF"
@@ -73,7 +77,7 @@ export default function AppsScreen() {
         </View>
       );
     },
-    [allowedPackages, colors, setAppFocusState, isDark, hapticEnabled]
+    [allowedPackages, colors, setAllowedPackages, isDark, hapticEnabled]
   );
 
   return (

@@ -17,6 +17,7 @@ import { SearchBar } from "@/src/components/SearchBar";
 import { AppIcon } from "@/src/components/AppIcon";
 import { ContextMenu } from "@/src/components/ContextMenu";
 import { useAppStore } from "@/src/store/appStore";
+import { useSettingsStore } from "@/src/store/settingsStore";
 import { AppInfo } from "@/src/types/app";
 import { launchApp, isKnownDistraction } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
@@ -159,6 +160,7 @@ export default function DrawerScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
+  const deepHideDistractionsInDrawer = useSettingsStore((s) => s.deepHideDistractionsInDrawer);
   const installedApps = useAppStore((s) => s.installedApps);
   const getAppFocusState = useAppStore((s) => s.getAppFocusState);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
@@ -171,7 +173,7 @@ export default function DrawerScreen() {
   const filteredApps = useMemo(() => {
     let apps = installedApps;
 
-    // Search filter
+    // Search filter: searching immediately reveals all matching apps even if deep hide is active
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       apps = apps.filter(
@@ -179,6 +181,13 @@ export default function DrawerScreen() {
           app.label.toLowerCase().includes(q) ||
           app.packageName.toLowerCase().includes(q)
       );
+    } else if (deepHideDistractionsInDrawer) {
+      // Deep hide active: filter out distractions from default view
+      apps = apps.filter((app) => {
+        const state = getAppFocusState(app.packageName);
+        const distraction = isKnownDistraction(app.packageName);
+        return state !== "blocked" && state !== "intent_pause" && !distraction;
+      });
     }
 
     // Category filter
@@ -194,7 +203,7 @@ export default function DrawerScreen() {
       if (cmp !== 0) return cmp;
       return a.packageName.localeCompare(b.packageName);
     });
-  }, [installedApps, searchQuery, filterMode, allowedPackages]);
+  }, [installedApps, searchQuery, filterMode, allowedPackages, deepHideDistractionsInDrawer, getAppFocusState]);
 
   const handleAppPress = useCallback(
     (app: AppInfo) => {
@@ -339,10 +348,17 @@ export default function DrawerScreen() {
         ))}
       </View>
 
-      {/* Count */}
-      <Text style={[styles.countText, { color: colors.textTertiary }]}>
-        {filteredApps.length} app{filteredApps.length !== 1 ? "s" : ""}
-      </Text>
+      {/* Count & Deep Hide Status */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.lg, marginBottom: spacing.xs }}>
+        <Text style={[styles.countText, { color: colors.textTertiary, paddingHorizontal: 0, marginBottom: 0 }]}>
+          {filteredApps.length} app{filteredApps.length !== 1 ? "s" : ""}
+        </Text>
+        {deepHideDistractionsInDrawer && !searchQuery.trim() && (
+          <Text style={{ fontFamily: typography.family.medium, fontSize: typography.size.xs, color: colors.accent }}>
+            Deep Hide Active · Search to reveal all
+          </Text>
+        )}
+      </View>
 
       {/* App List */}
       {filteredApps.length === 0 ? (

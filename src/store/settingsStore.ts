@@ -9,12 +9,14 @@ import { mmkvStorage } from "./storage";
 import { ThemeMode } from "@/src/theme/tokens";
 import { useAppStore } from "./appStore";
 import { batchLoadMonochromeIcons } from "../services/appManager";
+import { setReturnHomeConfig } from "../../modules/de-launcher-native";
 
 export type SearchWidgetStyle = "pill" | "rounded" | "minimal";
 export type DockBackgroundStyle = "transparent" | "frosted";
 export type IconSizeOption = "small" | "medium" | "large";
 export type IconThemeOption = "standard" | "monochrome";
 export type SwipeDownAction = "search" | "notifications";
+export type HomeDisplayMode = "icons" | "text";
 
 interface SettingsState {
   theme: ThemeMode;
@@ -47,8 +49,15 @@ interface SettingsState {
   morningPromptEnabled: boolean;
   morningPromptTime: string; // "07:00"
 
-  // Icon Sizing
+  // Icon Sizing & Display Mode
   iconSize: IconSizeOption;
+  homeDisplayMode: HomeDisplayMode;
+
+  // Distraction Shield & Focus Features
+  returnHomeAfterLock: boolean;
+  returnHomeTimeoutMinutes: number;
+  mindfulBreathingGate: boolean;
+  deepHideDistractionsInDrawer: boolean;
 
   // Actions
   setTheme: (theme: ThemeMode) => void;
@@ -71,11 +80,16 @@ interface SettingsState {
   setMorningPromptEnabled: (enabled: boolean) => void;
   setMorningPromptTime: (time: string) => void;
   setIconSize: (size: IconSizeOption) => void;
+  setHomeDisplayMode: (mode: HomeDisplayMode) => void;
+  setReturnHomeAfterLock: (enabled: boolean) => void;
+  setReturnHomeTimeoutMinutes: (minutes: number) => void;
+  setMindfulBreathingGate: (enabled: boolean) => void;
+  setDeepHideDistractionsInDrawer: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Defaults
       theme: "dark",
       gridColumns: 4,
@@ -98,10 +112,16 @@ export const useSettingsStore = create<SettingsState>()(
       showTodoWidget: true,
       showScreenTimeWidget: false,
       screenTimeGoalMs: 2 * 60 * 60 * 1000, // 2 hours
-      morningPromptEnabled: true,
+      morningPromptEnabled: false, // Default false: no unexpected unlock popups
       morningPromptTime: "07:00",
 
       iconSize: "medium",
+      homeDisplayMode: "icons",
+
+      returnHomeAfterLock: true,
+      returnHomeTimeoutMinutes: 5,
+      mindfulBreathingGate: true,
+      deepHideDistractionsInDrawer: false,
 
       // Actions
       setTheme: (theme) => set({ theme }),
@@ -137,10 +157,26 @@ export const useSettingsStore = create<SettingsState>()(
       setMorningPromptEnabled: (morningPromptEnabled) => set({ morningPromptEnabled }),
       setMorningPromptTime: (morningPromptTime) => set({ morningPromptTime }),
       setIconSize: (iconSize) => set({ iconSize }),
+      setHomeDisplayMode: (homeDisplayMode) => set({ homeDisplayMode }),
+      setReturnHomeAfterLock: (returnHomeAfterLock) => {
+        set({ returnHomeAfterLock });
+        setReturnHomeConfig(returnHomeAfterLock, get().returnHomeTimeoutMinutes).catch(console.error);
+      },
+      setReturnHomeTimeoutMinutes: (returnHomeTimeoutMinutes) => {
+        set({ returnHomeTimeoutMinutes });
+        setReturnHomeConfig(get().returnHomeAfterLock, returnHomeTimeoutMinutes).catch(console.error);
+      },
+      setMindfulBreathingGate: (mindfulBreathingGate) => set({ mindfulBreathingGate }),
+      setDeepHideDistractionsInDrawer: (deepHideDistractionsInDrawer) => set({ deepHideDistractionsInDrawer }),
     }),
     {
       name: "settings-store",
       storage: createJSONStorage(() => mmkvStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          setReturnHomeConfig(state.returnHomeAfterLock ?? true, state.returnHomeTimeoutMinutes ?? 5).catch(console.error);
+        }
+      },
     }
   )
 );

@@ -37,6 +37,10 @@ import {
   Maximize2,
   Lock,
   ArrowDown,
+  RotateCcw,
+  Wind,
+  EyeOff,
+  Type,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -62,9 +66,36 @@ import { signalNavigation } from "./_layout";
 
 // ─── Setting Row Components ─────────────────────────────
 
+function FocusPlusBadge({ colors }: { colors: ReturnType<typeof useTheme>["colors"] }) {
+  return (
+    <View
+      style={{
+        backgroundColor: "rgba(99, 102, 241, 0.15)",
+        borderColor: colors.accent,
+        borderWidth: 1,
+        paddingHorizontal: 6,
+        paddingVertical: 1.5,
+        borderRadius: 6,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: typography.family.bold,
+          fontSize: 10,
+          color: colors.accent,
+          letterSpacing: 0.5,
+        }}
+      >
+        Focus+
+      </Text>
+    </View>
+  );
+}
+
 function SettingRow({
   icon,
   label,
+  badge,
   description,
   right,
   onPress,
@@ -73,6 +104,7 @@ function SettingRow({
 }: {
   icon: React.ReactNode;
   label: string;
+  badge?: React.ReactNode;
   description?: string;
   right?: React.ReactNode;
   onPress?: () => void;
@@ -84,9 +116,12 @@ function SettingRow({
       <View style={styles.settingLeft}>
         {icon}
         <View style={styles.settingTextContainer}>
-          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-            {label}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+              {label}
+            </Text>
+            {badge}
+          </View>
           {description && (
             <Text
               style={[
@@ -174,6 +209,18 @@ export default function SettingsScreen() {
   const setDoubleTapToLock = useSettingsStore((s) => s.setDoubleTapToLock);
   const swipeDownAction = useSettingsStore((s) => s.swipeDownAction);
   const setSwipeDownAction = useSettingsStore((s) => s.setSwipeDownAction);
+
+  // Focus & Distraction Shield
+  const returnHomeAfterLock = useSettingsStore((s) => s.returnHomeAfterLock);
+  const setReturnHomeAfterLock = useSettingsStore((s) => s.setReturnHomeAfterLock);
+  const returnHomeTimeoutMinutes = useSettingsStore((s) => s.returnHomeTimeoutMinutes);
+  const setReturnHomeTimeoutMinutes = useSettingsStore((s) => s.setReturnHomeTimeoutMinutes);
+  const mindfulBreathingGate = useSettingsStore((s) => s.mindfulBreathingGate);
+  const setMindfulBreathingGate = useSettingsStore((s) => s.setMindfulBreathingGate);
+  const deepHideDistractionsInDrawer = useSettingsStore((s) => s.deepHideDistractionsInDrawer);
+  const setDeepHideDistractionsInDrawer = useSettingsStore((s) => s.setDeepHideDistractionsInDrawer);
+  const homeDisplayMode = useSettingsStore((s) => s.homeDisplayMode);
+  const setHomeDisplayMode = useSettingsStore((s) => s.setHomeDisplayMode);
 
   const [accessibilityActive, setAccessibilityActive] = useState<boolean | null>(null);
 
@@ -677,6 +724,159 @@ export default function SettingsScreen() {
                         {
                           color:
                             swipeDownAction === opt.action
+                              ? "#FFFFFF"
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            }
+          />
+        </View>
+
+        {/* ─── Focus & Distraction Shield [Focus+] ─── */}
+        <SectionHeader title="Focus & Distraction Shield" colors={colors} />
+        <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<RotateCcw size={20} color={colors.accent} />}
+            label="Return to Home on Lock"
+            badge={<FocusPlusBadge colors={colors} />}
+            description="Automatically redirects back to Home after screen lock timeout"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={returnHomeAfterLock}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setReturnHomeAfterLock(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          {returnHomeAfterLock && (
+            <SettingRow
+              icon={<RotateCcw size={20} color={colors.accent} />}
+              label="Lock Return Timeout"
+              description="Minutes phone must stay locked before returning home"
+              colors={colors}
+              isDark={isDark}
+              right={
+                <View style={styles.segmentContainer}>
+                  {[
+                    { label: "0m", minutes: 0 },
+                    { label: "2m", minutes: 2 },
+                    { label: "5m", minutes: 5 },
+                    { label: "10m", minutes: 10 },
+                  ].map((preset) => (
+                    <Pressable
+                      key={preset.minutes}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setReturnHomeTimeoutMinutes(preset.minutes);
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        returnHomeTimeoutMinutes === preset.minutes && { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          {
+                            color:
+                              returnHomeTimeoutMinutes === preset.minutes
+                                ? "#FFFFFF"
+                                : colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        {preset.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              }
+            />
+          )}
+
+          <SettingRow
+            icon={<Wind size={20} color={colors.accent} />}
+            label="Mindful Breathing Gate"
+            badge={<FocusPlusBadge colors={colors} />}
+            description="4-second calming breath before opening distracting apps"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={mindfulBreathingGate}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setMindfulBreathingGate(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          <SettingRow
+            icon={<EyeOff size={20} color={colors.accent} />}
+            label="Deep Hide in All Apps"
+            badge={<FocusPlusBadge colors={colors} />}
+            description="Hide distracting apps from drawer list until explicitly searched"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <Switch
+                value={deepHideDistractionsInDrawer}
+                onValueChange={(val) => {
+                  if (hapticFeedback) Haptics.selectionAsync();
+                  setDeepHideDistractionsInDrawer(val);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+
+          <SettingRow
+            icon={<Type size={20} color={colors.accent} />}
+            label="Homescreen Style"
+            badge={<FocusPlusBadge colors={colors} />}
+            description="Clean minimalist typography vs app icon plates"
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {[
+                  { label: "Icons", mode: "icons" as const },
+                  { label: "Text Only", mode: "text" as const },
+                ].map((opt) => (
+                  <Pressable
+                    key={opt.mode}
+                    onPress={() => {
+                      if (hapticFeedback) Haptics.selectionAsync();
+                      setHomeDisplayMode(opt.mode);
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      homeDisplayMode === opt.mode && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        {
+                          color:
+                            homeDisplayMode === opt.mode
                               ? "#FFFFFF"
                               : colors.textSecondary,
                         },

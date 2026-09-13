@@ -97,8 +97,94 @@
 
 ---
 
+---
+
+### 8. System & OEM Immunity Protection (Zero Unwanted Popups)
+- **Functionality**: Immune protection for Android system components, navigation gestures, lockscreen plugins, and input methods (keyboards).
+- **Expected Behavior**:
+  - The accessibility shield service (`DistractionService`) explicitly grants immunity to all packages flagged with `ApplicationInfo.FLAG_SYSTEM`, packages without launcher intents, input method packages (keyboards), and OEM system plugins (`com.vivo.*`, `com.samsung.*`, `com.miui.*`, `com.coloros.*`, etc.).
+  - Gestures like Vivo's navigation upslide (`com.vivo.upslide`) or lockscreen plugin (`com.vivo.systemuiplugin`) are never intercepted or treated as unauthorized apps.
+  - The red disruptive error banner on homescreen (*"com.vivo.upslide is not in Focus apps"*) is permanently removed.
+  - Unpinned installed apps default to allowed; only apps explicitly configured as "Blocked" or "Intent Pause" trigger focus protection.
+- **Verification Steps**:
+  1. On devices with OEM navigation gestures (e.g. Vivo, Oppo, Xiaomi, Samsung), perform home/back/recent swipe gestures repeatedly.
+  2. Verify no error banners or redirection popups flash on the screen.
+  3. Turn screen off and unlock the phone. Verify the homescreen loads cleanly without any unwanted popups.
+
+---
+
+### 9. Return-to-Home After Lock [Focus+]
+- **Functionality**: Automatically navigates back to the De-Launcher homescreen if the phone remains locked past a configured timeout, breaking app multitasking rabbit holes.
+- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Return to Home on Lock (Toggle), Lock Return Timeout (0m Instant, 2m, 5m, 10m).
+- **Expected Behavior**:
+  - Native broadcast receiver monitors `ACTION_SCREEN_OFF` and `ACTION_USER_PRESENT`.
+  - When the screen turns off, the timestamp is recorded.
+  - If the user unlocks the phone after elapsed minutes >= timeout, `DeLauncherNativeModule` automatically starts the launcher main activity with `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TOP`, greeting the user with the calm homescreen instead of returning them to the rabbit-hole app they were last using.
+- **Verification Steps**:
+  1. Open Settings -> Focus & Distraction Shield -> Enable "Return to Home on Lock" and set timeout to "0m" (instant for testing).
+  2. Open any app (e.g. Browser or Calculator).
+  3. Press power button to lock the device.
+  4. Wait 3 seconds and unlock the device.
+  5. Verify the device immediately lands on De-Launcher's clean home canvas rather than the previous app.
+  6. In Settings, toggle the feature off. Open an app, lock, and unlock; verify the previous app remains in the foreground.
+
+---
+
+### 10. Mindful Breathing Gate [Focus+]
+- **Functionality**: A 4-second paced breathing friction barrier (2s inhale, 2s exhale) triggered whenever accessing distracting or intent-pause apps.
+- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Mindful Breathing Gate (Toggle).
+- **Expected Behavior**:
+  - Tapping an app marked as "Require Intent Pause" or "Blocked" presents an upfront calming breathing circle with smooth scale animation.
+  - Text prompts guide the user: *"Breathe in slowly..."* (0-2s) followed by *"Breathe out gently..."* (2-4s) with a 4-second countdown.
+  - Prominent "Stay Focused (Return Home)" button enables effortless mindful bailout.
+  - Once the breath finishes, smooth haptic feedback transitions to the intentionality duration form.
+- **Verification Steps**:
+  1. Long-press an app on home or drawer, select "Require Intent Pause".
+  2. Tap the app to launch it.
+  3. Verify the screen opens to "Mindful Pause" with a pulsating breathing circle and 4-second countdown.
+  4. Tap "Stay Focused": verify you return immediately to the homescreen without opening the app.
+  5. Tap the app again and allow the 4 seconds to complete: verify it smoothly transitions to the Session Options form.
+  6. In Settings -> Focus & Distraction Shield, toggle "Mindful Breathing Gate" off. Tap the app and verify it opens directly to the Intent form without the upfront breathing gate.
+
+---
+
+### 11. Deep Hide in All Apps Drawer [Focus+]
+- **Functionality**: Cleanly purges all distracting and focus-restricted apps from the default All Apps drawer list, keeping the catalog serene while preserving instant search retrieval.
+- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Deep Hide in All Apps (Toggle).
+- **Expected Behavior**:
+  - When enabled and the search bar is empty, apps marked as "Blocked", "Intent Pause", or known distractions do not appear in the drawer list.
+  - The drawer displays an indicator: *"Deep Hide Active · Search to reveal all"*.
+  - When typing a search query into the search bar, ALL matching apps are instantly revealed, ensuring apps remain accessible when deliberately searched for.
+- **Verification Steps**:
+  1. In Settings -> Focus & Distraction Shield -> Enable "Deep Hide in All Apps".
+  2. Open All Apps Drawer (`/drawer`) with empty search bar.
+  3. Verify distracting apps (e.g., YouTube, Instagram, or apps marked blocked) do not appear in the list, and the "Deep Hide Active" text is visible.
+  4. Type the name of a hidden app into the search bar.
+  5. Verify the app immediately appears in the filtered search results.
+  6. Clear the search bar: verify the app hides again.
+
+---
+
+### 12. Homescreen Minimal Text-Only Display Mode [Focus+]
+- **Functionality**: Minimalist, distraction-free typography display for apps and folders on the homescreen grid instead of graphical squircle icons.
+- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Homescreen Style (Icons vs Text Only).
+- **Expected Behavior**:
+  - When "Text Only" is selected, the home grid items render clean typographic labels in place of icons.
+  - Folder names appear in brackets (e.g., `[Work]`).
+  - Full touch, tap-to-launch, and drag-to-reorder gesture interactivity are preserved.
+- **Verification Steps**:
+  1. Open Settings -> Focus & Distraction Shield -> Homescreen Style -> Select "Text Only".
+  2. Return to the homescreen.
+  3. Verify home apps are rendered purely as elegant typography labels without icon squares.
+  4. Tap a text app: verify it launches properly.
+  5. Long-press a text app: verify the context menu opens.
+  6. Return to Settings -> Select "Icons": verify full graphical icon styling is restored.
+
+---
+
 ## Mandatory Maintenance Rule for Future Work
-Whenever a new feature is added, modified, or bug-fixed:
-1. Update this document (`FEATURES.md`) with the new or modified functionality, expected behaviors, and explicit test verification steps.
-2. Run `npm test` to guarantee 0 TypeScript errors and 0 ESLint warnings.
-3. Commit and push the updated `FEATURES.md` alongside code changes to Git.
+1. Whenever a new feature is added, modified, or bug-fixed:
+   - Update this document (`FEATURES.md`) with the new or modified functionality, expected behaviors, and explicit test verification steps.
+   - Run `npm test` to guarantee 0 TypeScript errors and 0 ESLint warnings.
+   - Commit and push the updated `FEATURES.md` alongside code changes to Git.
+

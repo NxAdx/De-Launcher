@@ -32,6 +32,8 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   getInstalledApps(): Promise<AppInfo[]>;
   launchApp(packageName: string): Promise<void>;
   updateWhitelist(whitelist: string[]): Promise<void>;
+  updateFocusLists(blockedPackages: string[], intentPausePackages: string[]): Promise<void>;
+  setReturnHomeConfig(enabled: boolean, timeoutMinutes: number): Promise<void>;
   promptSetDefaultLauncher(): Promise<void>;
   changeWallpaper(): Promise<void>;
   
@@ -73,6 +75,8 @@ const expoGoFallback = {
     );
   },
   updateWhitelist: async () => {},
+  updateFocusLists: async () => {},
+  setReturnHomeConfig: async () => {},
   promptSetDefaultLauncher: async () => {
     console.warn(
       `[DeLauncherNative] promptSetDefaultLauncher() requires an Android development build.`

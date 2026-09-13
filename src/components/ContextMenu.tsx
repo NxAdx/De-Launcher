@@ -67,6 +67,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const moveApp = useAppStore((s) => s.moveApp);
   const moveDockApp = useAppStore((s) => s.moveDockApp);
   const setAppFocusState = useAppStore((s) => s.setAppFocusState);
+  const getAppFocusState = useAppStore((s) => s.getAppFocusState);
+  const removeFromHome = useAppStore((s) => s.removeFromHome);
   const removeFromDock = useAppStore((s) => s.removeFromDock);
   const folders = useAppStore((s) => s.folders) || [];
   const createFolder = useAppStore((s) => s.createFolder);
@@ -544,25 +546,10 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   )}
 
                   <Pressable
-                    style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                    onPress={() => {
-                      if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      onClose();
-                      setTimeout(() => {
-                        setAppFocusState(selectedApp.packageName, "intent_pause");
-                      }, 150);
-                    }}
-                  >
-                    <ShieldAlert size={18} color={colors.warning} />
-                    <Text style={[styles.menuOptionText, { color: colors.warning }]}>
-                      Require Intent Pause
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
                     style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: "rgba(239, 68, 68, 0.06)" }]}
                     onPress={() => {
-                      setAppFocusState(selectedApp.packageName, "blocked");
+                      if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      removeFromHome(selectedApp.packageName);
                       onClose();
                     }}
                   >
@@ -573,6 +560,75 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   </Pressable>
                 </>
               )}
+
+              {/* Focus Shield Options */}
+              {(() => {
+                const focusState = getAppFocusState(selectedApp.packageName);
+                if (focusState === "intent_pause") {
+                  return (
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAppFocusState(selectedApp.packageName, "allowed");
+                        onClose();
+                      }}
+                    >
+                      <ShieldCheck size={18} color={colors.accent} />
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        Remove Intent Pause Gate
+                      </Text>
+                    </Pressable>
+                  );
+                }
+                if (focusState === "blocked") {
+                  return (
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAppFocusState(selectedApp.packageName, "allowed");
+                        onClose();
+                      }}
+                    >
+                      <ShieldCheck size={18} color={colors.accent} />
+                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                        Unblock App
+                      </Text>
+                    </Pressable>
+                  );
+                }
+                return (
+                  <>
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAppFocusState(selectedApp.packageName, "intent_pause");
+                        onClose();
+                      }}
+                    >
+                      <ShieldAlert size={18} color={colors.warning} />
+                      <Text style={[styles.menuOptionText, { color: colors.warning }]}>
+                        Require Intent Pause
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      onPress={() => {
+                        if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAppFocusState(selectedApp.packageName, "blocked");
+                        onClose();
+                      }}
+                    >
+                      <ShieldAlert size={18} color={colors.error} />
+                      <Text style={[styles.menuOptionText, { color: colors.error }]}>
+                        Block as Distraction
+                      </Text>
+                    </Pressable>
+                  </>
+                );
+              })()}
 
               {!isSelectedAppInHome && (
                 <Pressable

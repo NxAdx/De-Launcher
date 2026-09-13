@@ -86,10 +86,16 @@ export default function IntentPauseScreen() {
   const app = installedApps.find((a) => a.packageName === packageName);
   const appLabel = app?.label || "this app";
 
+  const mindfulBreathingGate = useSettingsStore((s) => s.mindfulBreathingGate);
+  const [phase, setPhase] = useState<"gate" | "form" | "cooldown">(
+    mindfulBreathingGate ? "gate" : "form"
+  );
+  const [gateCountdown, setGateCountdown] = useState(4);
+  const [breathInstruction, setBreathInstruction] = useState("Breathe in slowly...");
+
   const [goal, setGoal] = useState("");
   const [selectedDuration, setSelectedDuration] = useState(DURATION_OPTIONS[1]); // 5 min default
   const [taskAcknowledged, setTaskAcknowledged] = useState(false);
-  const [isCooldownActive, setIsCooldownActive] = useState(false);
   const [cooldownLeft, setCooldownLeft] = useState(COOLDOWN_SECONDS);
 
   const inputRef = useRef<TextInput>(null);
@@ -97,12 +103,54 @@ export default function IntentPauseScreen() {
   // Find top uncompleted Daily Focus task if available
   const topPendingTodo = todos.find((t) => !t.completed);
 
-  // Breathing animation for cooldown phase
+  // Breathing animation for initial Mindful Gate
+  const gateScale = useSharedValue(1);
+  const gateOpacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    if (phase !== "gate") return;
+
+    // 4-second breathing cycle: 2s inhale, 2s exhale
+    gateScale.value = withTiming(1.45, { duration: 2000, easing: Easing.inOut(Easing.ease) }, () => {
+      gateScale.value = withTiming(1.0, { duration: 2000, easing: Easing.inOut(Easing.ease) });
+    });
+    gateOpacity.value = withTiming(0.85, { duration: 2000, easing: Easing.inOut(Easing.ease) }, () => {
+      gateOpacity.value = withTiming(0.4, { duration: 2000, easing: Easing.inOut(Easing.ease) });
+    });
+
+    const timerOut = setTimeout(() => {
+      setBreathInstruction("Breathe out gently...");
+    }, 2000);
+
+    const interval = setInterval(() => {
+      setGateCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setPhase("form");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearTimeout(timerOut);
+      clearInterval(interval);
+    };
+  }, [phase, gateScale, gateOpacity, hapticEnabled]);
+
+  const gateBreatheStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: gateScale.value }],
+    opacity: gateOpacity.value,
+  }));
+
+  // Breathing animation for launch cooldown phase
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.6);
 
   useEffect(() => {
-    if (isCooldownActive) {
+    if (phase === "cooldown") {
       scale.value = withRepeat(
         withTiming(1.4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
         -1,
@@ -114,7 +162,7 @@ export default function IntentPauseScreen() {
         true
       );
     }
-  }, [isCooldownActive, scale, opacity]);
+  }, [phase, scale, opacity]);
 
   const breatheStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -123,7 +171,7 @@ export default function IntentPauseScreen() {
 
   // Cooldown countdown timer
   useEffect(() => {
-    if (!isCooldownActive) return;
+    if (phase !== "cooldown") return;
 
     if (cooldownLeft <= 0) {
       if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -140,7 +188,7 @@ export default function IntentPauseScreen() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isCooldownActive, cooldownLeft, packageName, selectedDuration, goal, grantExemption, hapticEnabled]);
+  }, [phase, cooldownLeft, packageName, selectedDuration, goal, grantExemption, hapticEnabled]);
 
   const isGoalValid = goal.trim().length >= MIN_GOAL_LENGTH;
   // If user has pending daily focus tasks, require checking it. If no tasks, require goal only.
@@ -158,7 +206,7 @@ export default function IntentPauseScreen() {
     }
 
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setIsCooldownActive(true);
+    setPhase("cooldown");
     setCooldownLeft(COOLDOWN_SECONDS);
   };
 
@@ -188,8 +236,73 @@ export default function IntentPauseScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {isCooldownActive ? (
-            /* Phase 2: Mindfulness Breathing Cooldown */
+          {phase === "gate" && (
+            /* Phase 1: Upfront Mindful Breathing Gate */
+            <Animated.View entering={FadeIn.duration(300)} style={styles.cooldownContainer}>
+              <View style={[styles.appIconWrapper, { width: 56, height: 56 }]}>
+                {app && <AppIcon app={app} size={54} showLabel={false} onPress={() => {}} />}
+              </View>
+
+              <Text style={[styles.cooldownTitle, { color: colors.textPrimary, marginTop: spacing.md }]}>
+                Mindful Pause
+              </Text>
+              <Text style={[styles.cooldownSubtitle, { color: colors.textSecondary }]}>
+                Take a moment before opening {appLabel}
+              </Text>
+
+              <View style={[styles.breathingWrapper, { marginVertical: spacing.xl }]}>
+                <Animated.View
+                  style={[
+                    styles.breathingCircle,
+                    { backgroundColor: colors.accent },
+                    gateBreatheStyle,
+                  ]}
+                />
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Text style={[styles.timerNumber, { color: colors.textPrimary, fontSize: 34 }]}>
+                    {gateCountdown}s
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: typography.family.medium,
+                      fontSize: typography.size.sm,
+                      color: colors.textSecondary,
+                      marginTop: 4,
+                    }}
+                  >
+                    {breathInstruction}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ width: "100%", maxWidth: 320, gap: spacing.md, marginTop: spacing.sm }}>
+                <Pressable
+                  onPress={handleCancel}
+                  style={[styles.primaryButton, { backgroundColor: colors.accent, borderColor: colors.accent }]}
+                >
+                  <Text style={styles.primaryButtonText}>Stay Focused (Return Home)</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setPhase("form")}
+                  style={{ padding: spacing.sm, alignItems: "center" }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: typography.family.medium,
+                      fontSize: typography.size.sm,
+                      color: colors.textTertiary,
+                    }}
+                  >
+                    Skip to Session Options
+                  </Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          )}
+
+          {phase === "cooldown" && (
+            /* Phase 3: Final Launch Cooldown */
             <Animated.View
               entering={FadeIn.duration(300)}
               style={styles.cooldownContainer}
@@ -220,8 +333,10 @@ export default function IntentPauseScreen() {
                 </Text>
               </View>
             </Animated.View>
-          ) : (
-            /* Phase 1: Mindful Opening Protocol Form */
+          )}
+
+          {phase === "form" && (
+            /* Phase 2: Mindful Opening Protocol Form */
             <Animated.View entering={FadeInUp.duration(250)} style={styles.formContainer}>
               {/* Header Card */}
               <View style={[styles.headerCard, { backgroundColor: cardSurface, borderColor: cardBorderColor }]}>

@@ -8,7 +8,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { mmkvStorage } from "./storage";
 import { AppInfo, FolderInfo, AppScheduleRule } from "@/src/types/app";
-import { updateWhitelist } from "../../modules/de-launcher-native";
+import { updateWhitelist, updateFocusLists } from "../../modules/de-launcher-native";
 
 export type AppFocusState = "allowed" | "intent_pause" | "blocked";
 
@@ -29,6 +29,7 @@ interface AppState {
   allowedPackages: string[];
   dockPackages: string[];
   intentPausePackages: string[];
+  blockedPackages: string[];
   folders: FolderInfo[];
   scheduleRules: Record<string, AppScheduleRule>;
   exemptions: Record<string, number>; // packageName -> expiry timestamp (ms)
@@ -41,6 +42,7 @@ interface AppState {
   setInstalledApps: (apps: AppInfo[]) => void;
   setAppFocusState: (packageName: string, state: AppFocusState) => void;
   setAllowedPackages: (packages: string[]) => void;
+  removeFromHome: (packageName: string) => void;
   pinAppWithReason: (packageName: string, reason: string, target: "home" | "dock") => void;
   setAppReason: (packageName: string, reason: string) => void;
   addToDock: (packageName: string) => void;
@@ -87,6 +89,7 @@ export const useAppStore = create<AppState>()(
       allowedPackages: [],
       dockPackages: [],
       intentPausePackages: [],
+      blockedPackages: [],
       folders: [],
       scheduleRules: {},
       exemptions: {},
@@ -107,6 +110,9 @@ export const useAppStore = create<AppState>()(
           installedPackageNames.has(pkg)
         ))];
         const sanitizedIntentPause = [...new Set(current.intentPausePackages.filter((pkg) =>
+          installedPackageNames.has(pkg)
+        ))];
+        const sanitizedBlocked = [...new Set((current.blockedPackages || []).filter((pkg) =>
           installedPackageNames.has(pkg)
         ))];
 
@@ -132,9 +138,17 @@ export const useAppStore = create<AppState>()(
           allowedPackages: sanitizedAllowed,
           dockPackages: sanitizedDock,
           intentPausePackages: sanitizedIntentPause,
+          blockedPackages: sanitizedBlocked,
           folders: sanitizedFolders,
           ...(exemptionsChanged && { exemptions: sanitizedExemptions }),
         });
+      },
+
+      removeFromHome: (packageName) => {
+        set({
+          allowedPackages: (get().allowedPackages || []).filter((p) => p !== packageName),
+        });
+        get().syncNativeWhitelist();
       },
 
       setAppReason: (packageName, reason) => {
@@ -200,19 +214,21 @@ export const useAppStore = create<AppState>()(
       },
 
       setAppFocusState: (packageName, state) => {
-        const { allowedPackages = [], intentPausePackages = [] } = get();
-        let newAllowed = allowedPackages.filter((p) => p !== packageName);
+        const { allowedPackages = [], intentPausePackages = [], blockedPackages = [] } = get();
+        let newAllowed = allowedPackages;
+        let newBlocked = blockedPackages.filter((p) => p !== packageName);
         let newIntentPause = intentPausePackages.filter((p) => p !== packageName);
 
-        if (state === "allowed") {
-          newAllowed.push(packageName);
+        if (state === "blocked") {
+          newBlocked.push(packageName);
+          newAllowed = newAllowed.filter((p) => p !== packageName);
         } else if (state === "intent_pause") {
           newIntentPause.push(packageName);
         }
 
-        // Deduplicate to prevent duplicate entries from persisting
         set({
           allowedPackages: [...new Set(newAllowed)],
+          blockedPackages: [...new Set(newBlocked)],
           intentPausePackages: [...new Set(newIntentPause)],
         });
         get().syncNativeWhitelist();
@@ -489,9 +505,9 @@ export const useAppStore = create<AppState>()(
       },
 
       getAppFocusState: (packageName) => {
-        if ((get().allowedPackages || []).includes(packageName)) return "allowed";
+        if ((get().blockedPackages || []).includes(packageName)) return "blocked";
         if ((get().intentPausePackages || []).includes(packageName)) return "intent_pause";
-        return "blocked";
+        return "allowed";
       },
 
       hasActiveExemption: (packageName) => {
@@ -521,12 +537,21 @@ export const useAppStore = create<AppState>()(
           }
         }
 
+        const effectiveBlocked = new Set<string>(state.blockedPackages || []);
+        for (const [pkg] of Object.entries(state.scheduleRules || {})) {
+          const check = state.isAppWithinSchedule(pkg);
+          if (!check.allowed && !state.hasActiveExemption(pkg)) {
+            effectiveBlocked.add(pkg);
+          }
+        }
+
         if (syncTimeout) {
           clearTimeout(syncTimeout);
         }
 
         syncTimeout = setTimeout(() => {
           updateWhitelist(Array.from(whitelist)).catch(console.error);
+          updateFocusLists(Array.from(effectiveBlocked), state.intentPausePackages || []).catch(console.error);
         }, 500);
       },
     }),
@@ -538,6 +563,7 @@ export const useAppStore = create<AppState>()(
         allowedPackages: state.allowedPackages,
         dockPackages: state.dockPackages,
         intentPausePackages: state.intentPausePackages,
+        blockedPackages: state.blockedPackages,
         folders: state.folders,
         scheduleRules: state.scheduleRules,
         exemptions: state.exemptions,
