@@ -264,7 +264,7 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                       hitSlop={8}
                       style={[styles.confirmAddBtn, { backgroundColor: colors.accent }]}
                     >
-                      <Text style={styles.confirmAddText}>Add</Text>
+                      <Text style={[styles.confirmAddText, { color: colors.accentText }]}>Add</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -284,8 +284,8 @@ export function DailyFocusModal({ visible, onClose }: DailyFocusModalProps) {
                     onPress={() => setIsAdding(true)}
                     style={[styles.emptyAddButton, { backgroundColor: colors.accent }]}
                   >
-                    <Plus size={14} color="#FFFFFF" />
-                    <Text style={styles.emptyAddText}>Create First Task</Text>
+                    <Plus size={14} color={colors.accentText} />
+                    <Text style={[styles.emptyAddText, { color: colors.accentText }]}>Create First Task</Text>
                   </Pressable>
                 </View>
               ) : (

@@ -386,7 +386,7 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   onPress={handleCreateNewFolder}
                   style={[styles.createFolderBtn, { backgroundColor: colors.accent }]}
                 >
-                  <Text style={[styles.createFolderText, { color: "#FFFFFF" }]}>Create</Text>
+                  <Text style={[styles.createFolderText, { color: colors.accentText }]}>Create</Text>
                 </Pressable>
               </View>
 

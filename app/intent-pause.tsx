@@ -277,7 +277,7 @@ export default function IntentPauseScreen() {
                   onPress={handleCancel}
                   style={[styles.primaryButton, { backgroundColor: colors.accent, borderColor: colors.accent }]}
                 >
-                  <Text style={styles.primaryButtonText}>Stay Focused (Return Home)</Text>
+                  <Text style={[styles.primaryButtonText, { color: colors.accentText }]}>Stay Focused (Return Home)</Text>
                 </Pressable>
 
                 <Pressable
@@ -564,12 +564,12 @@ export default function IntentPauseScreen() {
                   <Text
                     style={[
                       styles.primaryButtonText,
-                      { color: canProceed ? "#FFFFFF" : colors.textTertiary },
+                      { color: canProceed ? colors.accentText : colors.textTertiary },
                     ]}
                   >
                     Unlock for {selectedDuration.minutes} Minutes
                   </Text>
-                  <ArrowRight size={16} color={canProceed ? "#FFFFFF" : colors.textTertiary} />
+                  <ArrowRight size={16} color={canProceed ? colors.accentText : colors.textTertiary} />
                 </Pressable>
 
                 <Pressable

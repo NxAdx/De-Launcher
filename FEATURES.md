@@ -167,24 +167,47 @@
 
 ---
 
-### 12. Customizable Theme Accent Palettes
-- **Functionality**: Curated, dopamine-free color accent palettes tailored for minimalist distraction-free focus.
-- **Available Presets**:
-  - **Sage Oasis (`#8EAB82`)** (Default): Calming botanical green, natural and organic with 6.5:1 high-readability contrast on dark surfaces.
+### 12. Customizable Theme Accent Palettes & Theme Mode (Dark / Light)
+- **Functionality**: Curated, dopamine-free color accent palettes tailored for minimalist distraction-free focus, coupled with instant Dark (OLED black) and Light (paper white) theme switching.
+- **Theme Modes**:
+  - **Dark Mode** (`#000000`): OLED-pitch canvas, reducing battery draw and visual distraction.
+  - **Light Mode** (`#F8FAFC`): Clean, paper-like high contrast surfaces for bright daylight reading.
+- **Available Accent Presets**:
+  - **Sage Oasis (`#8EAB82`)** (Default): Calming botanical green, natural and organic with high-readability contrast on dark surfaces and deep forest sage on light surfaces.
   - **Nordic Slate (`#7E99A8`)**: Cool icy-blue slate for sharp clarity and focused work environments.
   - **Warm Sand (`#C4A482`)**: Muted sepia / amber warmth, soft on the eyes for night-time or reader setups.
-  - **Monochrome (`#FFFFFF` / `#E2E8F0`)**: 100% distraction-free silver-white on OLED pure black.
-- **Reactive Global Application**:
-  - Selecting any preset immediately transforms all launcher accents in real-time (widgets, Screen Time progress bar, streak flame badges, task completion checkmarks, search bar glow, context menus, settings switches, and active filter chips).
-  - Persisted in MMKV storage across app restarts.
+  - **Monochrome (`#FFFFFF` in Dark / `#171916` in Light)**: 100% distraction-free silver-white on OLED pure black, or deep black on crisp white.
+- **Dynamic Text Contrast (`accentText`)**:
+  - All segment selector buttons (Icon Style, Icon Sizing, Grid Columns, Max Dock Icons, Screen Time Goal, Morning Prompt Time, etc.), unhide buttons, and focus modal action buttons utilize dynamic `colors.accentText`.
+  - When the Monochrome accent is selected (where the active button background is pure `#FFFFFF`), active labels render in deep `#000000` black (21:1 contrast ratio) instead of invisible white-on-white text.
+  - Active switch thumbs render with high-contrast indicator pins (`#000000` against `#FFFFFF` track in dark monochrome mode).
 - **Verification Steps**:
-  1. Open Settings -> Appearance & Icons -> "Theme Accent".
-  2. Tap the "Nordic Slate" circular swatch.
-  3. Verify tactile selection haptic feedback triggers, the swatch gets an active white ring indicator, and the label updates to "Palette: Nordic Slate".
-  4. Return to the homescreen: verify the Screen Time progress bar, streak badge, and active highlights are immediately rendered in Nordic Slate blue.
-  5. Return to Settings and select "Warm Sand": verify all accents shift to warm sepia amber.
-  6. Select "Monochrome": verify all accents shift to high-contrast white and silver.
-  7. Select "Sage Oasis": verify default botanical green is restored.
+  1. Open Settings -> Appearance & Icons -> "Theme Mode".
+  2. Tap "Light": verify the screen smoothly switches to a crisp light paper background (`#F8FAFC`) with dark text.
+  3. Tap "Dark": verify the screen returns to OLED pitch black.
+  4. In "Theme Accent", select the "Monochrome" circular swatch (white circle with black dot).
+  5. Verify all active segment buttons (Icon Style "Monochrome", Icon Sizing "M", Grid Columns "4", Max Dock Icons "5", Screen Time Goal "2h") show clearly readable dark text on the white capsule buttons (no blank/invisible white boxes).
+  6. Verify toggle switches display clear contrast between track and thumb in both active and inactive states.
+
+---
+
+### 13. Default Launcher Navigation Guard & Button Lock Resolution
+- **Problem Resolved**: When De-Launcher was set as the default launcher, Android broadcasts `com.nxadx.delauncher.HOME_PRESSED` whenever the user presses the home button, switches back from system settings, or unlocks the phone. Previously, `onHomePressed` attempted to pop the navigation stack or dismiss routes when the user was already on the root home screen (`/`), permanently locking React Navigation into an uncompleted transition state and freezing all buttons (Settings, Search, All Apps Drawer, and App Grid).
+- **Architectural Solution**:
+  - The root layout (`app/_layout.tsx`) tracks the active route with an active `pathnameRef` synchronized via `usePathname()`.
+  - In `onHomePressed`, if `currentPath === "/" || currentPath === "/index"`, the listener immediately returns without touching the router or dispatching navigation actions.
+  - If the user is on a secondary route (`/settings`, `/drawer`, `/search`), it invokes a clean, single `router.replace("/")` without recursive `while (router.canGoBack()) router.back()` loops or throwing `router.canDismiss()` calls.
+- **Verification Steps**:
+  1. Open Settings -> System & Recovery -> tap "Set as Default Home".
+  2. In Android's Default Home app chooser, select **De-Launcher**.
+  3. Return to the De-Launcher homescreen.
+  4. Tap the Settings icon in the top header: verify Settings opens immediately.
+  5. Press the Android Home button: verify you return to the homescreen.
+  6. Tap the Search icon: verify Search and Command bar opens immediately.
+  7. Press Home again: verify you return to the homescreen.
+  8. Tap "All Apps" or swipe up: verify the All Apps drawer opens smoothly.
+  9. Tap any app on the grid or dock: verify it launches without delay.
+  10. Lock and unlock the phone: verify all buttons remain responsive and fully functional.
 
 ---
 

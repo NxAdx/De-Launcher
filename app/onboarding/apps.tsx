@@ -130,7 +130,7 @@ export default function AppsScreen() {
           ]}
           onPress={handleNext}
         >
-          <Text style={[styles.buttonText, { color: "#0A0A0A" }]}>Next Step</Text>
+          <Text style={[styles.buttonText, { color: colors.accentText }]}>Next Step</Text>
         </Pressable>
       </View>
     </View>

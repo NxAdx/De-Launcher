@@ -66,7 +66,7 @@ export default function WelcomeScreen() {
         ]}
         onPress={handleContinue}
       >
-        <Text style={[styles.buttonText, { color: "#0A0A0A" }]}>Continue</Text>
+        <Text style={[styles.buttonText, { color: colors.accentText }]}>Continue</Text>
       </Pressable>
     </View>
   );

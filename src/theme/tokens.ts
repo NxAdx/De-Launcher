@@ -25,12 +25,12 @@ export const palette = {
 
   // Light Mode Surfaces
   light: {
-    bg: "transparent",
+    bg: "#F8FAFC",
     surface: "#FFFFFF",
     surfaceElevated: "#FFFFFF",
-    surfaceOverlay: "rgba(255,255,255,0.7)",
-    cardBg: "rgba(255, 255, 255, 0.88)",
-    cardBorder: "rgba(0, 0, 0, 0.12)",
+    surfaceOverlay: "rgba(255, 255, 255, 0.85)",
+    cardBg: "rgba(255, 255, 255, 0.92)",
+    cardBorder: "rgba(0, 0, 0, 0.10)",
     border: "rgba(0, 0, 0, 0.08)",
     borderFocused: "rgba(0, 0, 0, 0.16)",
   },
@@ -73,7 +73,9 @@ export interface AccentPreset {
   accent: string;
   accentTint: string;
   accentMuted: string;
+  accentText: string;
   lightAccent: string;
+  lightAccentText: string;
 }
 
 export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
@@ -84,7 +86,9 @@ export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
     accent: "#8EAB82",
     accentTint: "#A3B899",
     accentMuted: "rgba(142, 171, 130, 0.18)",
+    accentText: "#0D150C",
     lightAccent: "#4F6548",
+    lightAccentText: "#FFFFFF",
   },
   slate: {
     id: "slate",
@@ -93,7 +97,9 @@ export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
     accent: "#7E99A8",
     accentTint: "#9DB3C0",
     accentMuted: "rgba(126, 153, 168, 0.18)",
+    accentText: "#0A1217",
     lightAccent: "#3B596A",
+    lightAccentText: "#FFFFFF",
   },
   amber: {
     id: "amber",
@@ -102,7 +108,9 @@ export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
     accent: "#C4A482",
     accentTint: "#D6BCA0",
     accentMuted: "rgba(196, 164, 130, 0.18)",
+    accentText: "#181108",
     lightAccent: "#7C5C38",
+    lightAccentText: "#FFFFFF",
   },
   monochrome: {
     id: "monochrome",
@@ -111,7 +119,9 @@ export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
     accent: "#FFFFFF",
     accentTint: "#E2E8F0",
     accentMuted: "rgba(255, 255, 255, 0.14)",
+    accentText: "#000000",
     lightAccent: "#171916",
+    lightAccentText: "#FFFFFF",
   },
 };
 
@@ -152,6 +162,7 @@ export function getThemeColors(mode: ThemeMode, accentKey: ThemeAccent = "sage")
     accent: isDark ? preset.accent : preset.lightAccent,
     accentMuted: preset.accentMuted,
     accentTint: isDark ? preset.accentTint : preset.lightAccent,
+    accentText: isDark ? preset.accentText : preset.lightAccentText,
     error: palette.error,
     success: palette.success,
     warning: palette.warning,

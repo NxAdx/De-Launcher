@@ -187,8 +187,8 @@ export function MorningFocusPrompt() {
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>Ready to Focus</Text>
-                <ArrowRight size={16} color="#FFFFFF" />
+                <Text style={[styles.primaryButtonText, { color: colors.accentText }]}>Ready to Focus</Text>
+                <ArrowRight size={16} color={colors.accentText} />
               </Pressable>
             </View>
           ) : (
@@ -244,8 +244,8 @@ export function MorningFocusPrompt() {
                     },
                   ]}
                 >
-                  <Plus size={16} color="#FFFFFF" strokeWidth={2.5} />
-                  <Text style={styles.primaryButtonText}>Commit Focus</Text>
+                  <Plus size={16} color={colors.accentText} strokeWidth={2.5} />
+                  <Text style={[styles.primaryButtonText, { color: colors.accentText }]}>Commit Focus</Text>
                 </Pressable>
               </View>
             </View>

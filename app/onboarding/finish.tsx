@@ -126,7 +126,7 @@ export default function FinishScreen() {
           ]}
           onPress={completeOnboarding}
         >
-          <Text style={[styles.buttonText, { color: "#0A0A0A" }]}>Finish Setup</Text>
+          <Text style={[styles.buttonText, { color: colors.accentText }]}>Finish Setup</Text>
         </Pressable>
       </View>
     </View>

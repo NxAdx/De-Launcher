@@ -310,8 +310,7 @@ export default function DrawerScreen() {
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.dismissAll();
-            router.push("/settings");
+            router.replace("/settings");
           }}
           hitSlop={16}
         >
@@ -352,7 +351,7 @@ export default function DrawerScreen() {
                 styles.filterText,
                 {
                   color:
-                    filterMode === mode ? "#0A0A0A" : colors.textSecondary,
+                    filterMode === mode ? colors.accentText : colors.textSecondary,
                 },
               ]}
             >

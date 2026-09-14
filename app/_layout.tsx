@@ -3,10 +3,10 @@
  *
  * Owns font loading, providers, native HOME events, and launcher bootstrap.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { InteractionManager, AppState } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack, ErrorBoundary, router } from "expo-router";
+import { Stack, ErrorBoundary, router, usePathname } from "expo-router";
 import DeLauncherNativeModule from "@/modules/de-launcher-native/src/DeLauncherNativeModule";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -68,6 +68,12 @@ function RootLayoutContent() {
     return () => subscription.remove();
   }, []);
 
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
   useEffect(() => {
     try {
       const subscription = DeLauncherNativeModule.addListener("onHomePressed", () => {
@@ -79,50 +85,20 @@ function RootLayoutContent() {
         const hasCompletedOnboarding = useSettingsStore.getState().hasCompletedOnboarding;
         if (!hasCompletedOnboarding) return;
 
-        // Check if there is actually a route or modal to dismiss / go back from.
-        // If the user is ALREADY on the root home screen ("/"), do ABSOLUTELY NOTHING.
-        // Calling router.replace("/") or router.dismissAll() when already on the root screen
-        // invalidates React Navigation's root stack navigation key and permanently locks navigation.
-        let canDismissRoute = false;
-        let canGoBackRoute = false;
-        try {
-          canDismissRoute = router.canDismiss();
-        } catch {
-          canDismissRoute = false;
-        }
-        try {
-          canGoBackRoute = router.canGoBack();
-        } catch {
-          canGoBackRoute = false;
-        }
-
-        if (!canDismissRoute && !canGoBackRoute) {
-          // Already sitting on the root home screen. Leave navigation untouched.
+        // Check current route using the active pathname ref.
+        // If the user is ALREADY on the root home screen ("/" or "/index"), do ABSOLUTELY NOTHING.
+        // Calling any dismissal or back navigation when already on the root screen
+        // invalidates React Navigation's root stack transition state and permanently locks navigation.
+        const currentPath = pathnameRef.current;
+        if (!currentPath || currentPath === "/" || currentPath === "/index") {
           return;
         }
 
-        if (canDismissRoute) {
-          try {
-            router.dismissAll();
-            return;
-          } catch {
-            // Fall through to dismissal / back navigation
-          }
-        }
-
-        if (canGoBackRoute) {
-          try {
-            router.dismissTo("/");
-            return;
-          } catch {
-            try {
-              while (router.canGoBack()) {
-                router.back();
-              }
-            } catch (eventError) {
-              console.warn("Failed to reset route to home index:", eventError);
-            }
-          }
+        // If currently on another route (e.g. /settings, /drawer, /search), cleanly return to home
+        try {
+          router.replace("/");
+        } catch (eventError) {
+          console.warn("[RootLayout] Failed to return to home screen:", eventError);
         }
       });
       return () => subscription.remove();

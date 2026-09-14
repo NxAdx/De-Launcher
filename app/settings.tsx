@@ -44,13 +44,15 @@ import {
   EyeOff,
   Eye,
   X,
+  Sun,
+  Moon,
 } from "lucide-react-native";
 import { AppIcon } from "@/src/components/AppIcon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as IntentLauncher from "expo-intent-launcher";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, ThemeAccent, ACCENT_PRESETS } from "@/src/theme/tokens";
+import { typography, spacing, ThemeAccent, ThemeMode, ACCENT_PRESETS } from "@/src/theme/tokens";
 import {
   useSettingsStore,
   IconSizeOption,
@@ -183,6 +185,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   // Settings store
+  const theme = useSettingsStore((s) => s.theme) || "dark";
+  const setTheme = useSettingsStore((s) => s.setTheme);
   const themeAccent = useSettingsStore((s) => s.themeAccent) || "sage";
   const setThemeAccent = useSettingsStore((s) => s.setThemeAccent);
   const gridColumns = useSettingsStore((s) => s.gridColumns);
@@ -346,6 +350,43 @@ export default function SettingsScreen() {
         <SectionHeader title="Appearance & Icons" colors={colors} />
         <View style={styles.sectionGroup}>
           <SettingRow
+            icon={isDark ? <Moon size={20} color={colors.accent} /> : <Sun size={20} color={colors.accent} />}
+            label="Theme Mode"
+            description={isDark ? "Dark OLED Minimalism" : "Clean Light Paper"}
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.segmentContainer}>
+                {(["dark", "light"] as ThemeMode[]).map((modeOpt) => {
+                  const isSelected = theme === modeOpt;
+                  return (
+                    <Pressable
+                      key={modeOpt}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setTheme(modeOpt);
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        isSelected && { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          { color: isSelected ? colors.accentText : colors.textSecondary },
+                        ]}
+                      >
+                        {modeOpt === "dark" ? "Dark" : "Light"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            }
+          />
+
+          <SettingRow
             icon={<Palette size={20} color={colors.accent} />}
             label="Theme Accent"
             description={`Palette: ${ACCENT_PRESETS[themeAccent]?.name || "Sage Oasis"}`}
@@ -412,7 +453,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: iconTheme === themeOpt ? "#FFFFFF" : colors.textSecondary },
+                        { color: iconTheme === themeOpt ? colors.accentText : colors.textSecondary },
                       ]}
                     >
                       {themeOpt === "standard" ? "Standard" : "Monochrome"}
@@ -446,7 +487,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: iconSize === opt ? "#FFFFFF" : colors.textSecondary },
+                        { color: iconSize === opt ? colors.accentText : colors.textSecondary },
                       ]}
                     >
                       {opt.charAt(0).toUpperCase()}
@@ -480,7 +521,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: gridColumns === cols ? "#FFFFFF" : colors.textSecondary },
+                        { color: gridColumns === cols ? colors.accentText : colors.textSecondary },
                       ]}
                     >
                       {cols}
@@ -518,7 +559,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: maxDockIcons === num ? "#FFFFFF" : colors.textSecondary },
+                        { color: maxDockIcons === num ? colors.accentText : colors.textSecondary },
                       ]}
                     >
                       {num}
@@ -559,8 +600,8 @@ export default function SettingsScreen() {
                   if (hapticFeedback) Haptics.selectionAsync();
                   setShowTodoWidget(val);
                 }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={showTodoWidget ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -575,8 +616,8 @@ export default function SettingsScreen() {
               <Switch
                 value={showScreenTimeWidget}
                 onValueChange={handleToggleScreenTime}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={showScreenTimeWidget ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -612,7 +653,7 @@ export default function SettingsScreen() {
                           styles.segmentText,
                           {
                             color:
-                              screenTimeGoalMs === goal.ms ? "#FFFFFF" : colors.textSecondary,
+                              screenTimeGoalMs === goal.ms ? colors.accentText : colors.textSecondary,
                           },
                         ]}
                       >
@@ -638,8 +679,8 @@ export default function SettingsScreen() {
                   if (hapticFeedback) Haptics.selectionAsync();
                   setMorningPromptEnabled(val);
                 }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={morningPromptEnabled ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -676,7 +717,7 @@ export default function SettingsScreen() {
                           {
                             color:
                               morningPromptTime === preset.time
-                                ? "#FFFFFF"
+                                ? colors.accentText
                                 : colors.textSecondary,
                           },
                         ]}
@@ -736,8 +777,8 @@ export default function SettingsScreen() {
                   if (hapticFeedback) Haptics.selectionAsync();
                   setDoubleTapToLock(val);
                 }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={doubleTapToLock ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -773,7 +814,7 @@ export default function SettingsScreen() {
                         {
                           color:
                             swipeDownAction === opt.action
-                              ? "#FFFFFF"
+                              ? colors.accentText
                               : colors.textSecondary,
                         },
                       ]}
@@ -804,8 +845,8 @@ export default function SettingsScreen() {
                   if (hapticFeedback) Haptics.selectionAsync();
                   setReturnHomeAfterLock(val);
                 }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={returnHomeAfterLock ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -842,7 +883,7 @@ export default function SettingsScreen() {
                           {
                             color:
                               returnHomeTimeoutMinutes === preset.minutes
-                                ? "#FFFFFF"
+                                ? colors.accentText
                                 : colors.textSecondary,
                           },
                         ]}
@@ -947,8 +988,8 @@ export default function SettingsScreen() {
               <Switch
                 value={hapticFeedback}
                 onValueChange={handleToggleHaptics}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", true: colors.accent }}
+                thumbColor={hapticFeedback ? (themeAccent === "monochrome" && isDark ? "#000000" : "#FFFFFF") : "#FFFFFF"}
               />
             }
           />
@@ -1078,8 +1119,8 @@ export default function SettingsScreen() {
                           unhideApp(pkg);
                         }}
                       >
-                        <Eye size={14} color="#FFFFFF" />
-                        <Text style={styles.unhideBtnText}>Unhide</Text>
+                        <Eye size={14} color={colors.accentText} />
+                        <Text style={[styles.unhideBtnText, { color: colors.accentText }]}>Unhide</Text>
                       </Pressable>
                     </View>
                   );
