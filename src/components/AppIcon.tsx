@@ -59,7 +59,7 @@ function getInitials(label: string): string {
 
 interface AppIconProps {
   app: AppInfo;
-  onPress: (app: AppInfo) => void;
+  onPress?: (app: AppInfo) => void;
   onLongPress?: (app: AppInfo) => void;
   size?: number;
   showLabel?: boolean;
@@ -167,6 +167,7 @@ export const AppIcon = memo(function AppIcon({
   }, [scale, opacity]);
 
   const handlePress = useCallback(() => {
+    if (!onPress) return;
     if (hapticEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }

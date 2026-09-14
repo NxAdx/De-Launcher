@@ -72,9 +72,7 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
   onSwap,
   onDragEnd,
 }: DraggableGridItemProps) {
-  const { colors } = useTheme();
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
-  const homeDisplayMode = useSettingsStore((s) => s.homeDisplayMode);
 
   const localIndex = index % pageSize;
   const col = localIndex % gridColumns;
@@ -215,40 +213,12 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
       <Animated.View style={animatedStyle}>
         <View style={styles.gridItem}>
           {item.type === "app" ? (
-            homeDisplayMode === "text" ? (
-              <Pressable
-                style={styles.textModeItem}
-                onPress={() => onPress(item.app)}
-                onLongPress={() => onLongPress(item.app)}
-              >
-                <Text
-                  style={[styles.textModeLabel, { color: colors.textPrimary }]}
-                  numberOfLines={2}
-                >
-                  {item.app.label}
-                </Text>
-              </Pressable>
-            ) : (
-              <AppIcon
-                key={item.app.packageName}
-                app={item.app}
-                onPress={onPress}
-                onLongPress={onLongPress}
-              />
-            )
-          ) : homeDisplayMode === "text" ? (
-            <Pressable
-              style={styles.textModeItem}
-              onPress={() => onFolderPress && onFolderPress(item.folder)}
-              onLongPress={() => onFolderLongPress && onFolderLongPress(item.folder)}
-            >
-              <Text
-                style={[styles.textModeFolderLabel, { color: colors.accent }]}
-                numberOfLines={2}
-              >
-                [{item.folder.name}]
-              </Text>
-            </Pressable>
+            <AppIcon
+              key={item.app.packageName}
+              app={item.app}
+              onPress={onPress}
+              onLongPress={onLongPress}
+            />
           ) : (
             <FolderIcon
               folder={item.folder}
@@ -574,24 +544,5 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: 11,
     letterSpacing: 0.3,
-  },
-  textModeItem: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  textModeLabel: {
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
-    textAlign: "center",
-    letterSpacing: 0.3,
-  },
-  textModeFolderLabel: {
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.sm,
-    textAlign: "center",
-    letterSpacing: 0.4,
   },
 });

@@ -30,6 +30,7 @@ interface AppState {
   dockPackages: string[];
   intentPausePackages: string[];
   blockedPackages: string[];
+  hiddenPackages: string[];
   folders: FolderInfo[];
   scheduleRules: Record<string, AppScheduleRule>;
   exemptions: Record<string, number>; // packageName -> expiry timestamp (ms)
@@ -43,6 +44,8 @@ interface AppState {
   setAppFocusState: (packageName: string, state: AppFocusState) => void;
   setAllowedPackages: (packages: string[]) => void;
   removeFromHome: (packageName: string) => void;
+  hideApp: (packageName: string) => void;
+  unhideApp: (packageName: string) => void;
   pinAppWithReason: (packageName: string, reason: string, target: "home" | "dock") => void;
   setAppReason: (packageName: string, reason: string) => void;
   addToDock: (packageName: string) => void;
@@ -78,6 +81,7 @@ interface AppState {
 
   // Computed helpers
   getAppFocusState: (packageName: string) => AppFocusState;
+  isAppHidden: (packageName: string) => boolean;
   hasActiveExemption: (packageName: string) => boolean;
   syncNativeWhitelist: () => void;
 }
@@ -90,6 +94,7 @@ export const useAppStore = create<AppState>()(
       dockPackages: [],
       intentPausePackages: [],
       blockedPackages: [],
+      hiddenPackages: [],
       folders: [],
       scheduleRules: {},
       exemptions: {},
@@ -113,6 +118,9 @@ export const useAppStore = create<AppState>()(
           installedPackageNames.has(pkg)
         ))];
         const sanitizedBlocked = [...new Set((current.blockedPackages || []).filter((pkg) =>
+          installedPackageNames.has(pkg)
+        ))];
+        const sanitizedHidden = [...new Set((current.hiddenPackages || []).filter((pkg) =>
           installedPackageNames.has(pkg)
         ))];
 
@@ -139,9 +147,26 @@ export const useAppStore = create<AppState>()(
           dockPackages: sanitizedDock,
           intentPausePackages: sanitizedIntentPause,
           blockedPackages: sanitizedBlocked,
+          hiddenPackages: sanitizedHidden,
           folders: sanitizedFolders,
           ...(exemptionsChanged && { exemptions: sanitizedExemptions }),
         });
+      },
+
+      hideApp: (packageName) => {
+        const current = get().hiddenPackages || [];
+        if (!current.includes(packageName)) {
+          set({ hiddenPackages: [...current, packageName] });
+        }
+      },
+
+      unhideApp: (packageName) => {
+        const current = get().hiddenPackages || [];
+        set({ hiddenPackages: current.filter((p) => p !== packageName) });
+      },
+
+      isAppHidden: (packageName) => {
+        return (get().hiddenPackages || []).includes(packageName);
       },
 
       removeFromHome: (packageName) => {
@@ -564,6 +589,7 @@ export const useAppStore = create<AppState>()(
         dockPackages: state.dockPackages,
         intentPausePackages: state.intentPausePackages,
         blockedPackages: state.blockedPackages,
+        hiddenPackages: state.hiddenPackages,
         folders: state.folders,
         scheduleRules: state.scheduleRules,
         exemptions: state.exemptions,

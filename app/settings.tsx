@@ -20,8 +20,11 @@ import {
   Switch,
   Pressable,
   Image,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import Animated, { FadeIn, FadeInRight } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInRight, FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import {
   ArrowLeft,
@@ -38,10 +41,11 @@ import {
   Lock,
   ArrowDown,
   RotateCcw,
-  Wind,
   EyeOff,
-  Type,
+  Eye,
+  X,
 } from "lucide-react-native";
+import { AppIcon } from "@/src/components/AppIcon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as IntentLauncher from "expo-intent-launcher";
@@ -215,12 +219,6 @@ export default function SettingsScreen() {
   const setReturnHomeAfterLock = useSettingsStore((s) => s.setReturnHomeAfterLock);
   const returnHomeTimeoutMinutes = useSettingsStore((s) => s.returnHomeTimeoutMinutes);
   const setReturnHomeTimeoutMinutes = useSettingsStore((s) => s.setReturnHomeTimeoutMinutes);
-  const mindfulBreathingGate = useSettingsStore((s) => s.mindfulBreathingGate);
-  const setMindfulBreathingGate = useSettingsStore((s) => s.setMindfulBreathingGate);
-  const deepHideDistractionsInDrawer = useSettingsStore((s) => s.deepHideDistractionsInDrawer);
-  const setDeepHideDistractionsInDrawer = useSettingsStore((s) => s.setDeepHideDistractionsInDrawer);
-  const homeDisplayMode = useSettingsStore((s) => s.homeDisplayMode);
-  const setHomeDisplayMode = useSettingsStore((s) => s.setHomeDisplayMode);
 
   const [accessibilityActive, setAccessibilityActive] = useState<boolean | null>(null);
 
@@ -233,7 +231,12 @@ export default function SettingsScreen() {
   // App store
   const autoArrangeHome = useAppStore((s) => s.autoArrangeHome);
   const allowedPackages = useAppStore((s) => s.allowedPackages) || [];
+  const rawHiddenPackages = useAppStore((s) => s.hiddenPackages);
+  const hiddenPackages = React.useMemo(() => rawHiddenPackages || [], [rawHiddenPackages]);
+  const unhideApp = useAppStore((s) => s.unhideApp);
+  const installedApps = useAppStore((s) => s.installedApps) || [];
 
+  const [showHiddenAppsModal, setShowHiddenAppsModal] = useState(false);
   const [autoArrangeMessage, setAutoArrangeMessage] = useState<string | null>(null);
 
   const handleToggleHaptics = useCallback(
@@ -808,85 +811,21 @@ export default function SettingsScreen() {
           )}
 
           <SettingRow
-            icon={<Wind size={20} color={colors.accent} />}
-            label="Mindful Breathing Gate"
-            badge={<FocusPlusBadge colors={colors} />}
-            description="4-second calming breath before opening distracting apps"
-            colors={colors}
-            isDark={isDark}
-            right={
-              <Switch
-                value={mindfulBreathingGate}
-                onValueChange={(val) => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setMindfulBreathingGate(val);
-                }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
-
-          <SettingRow
             icon={<EyeOff size={20} color={colors.accent} />}
-            label="Deep Hide in All Apps"
+            label="Hidden Apps"
             badge={<FocusPlusBadge colors={colors} />}
-            description="Hide distracting apps from drawer list until explicitly searched"
-            colors={colors}
-            isDark={isDark}
-            right={
-              <Switch
-                value={deepHideDistractionsInDrawer}
-                onValueChange={(val) => {
-                  if (hapticFeedback) Haptics.selectionAsync();
-                  setDeepHideDistractionsInDrawer(val);
-                }}
-                trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
+            description={
+              hiddenPackages.length === 0
+                ? "No apps hidden from drawer browsing"
+                : `${hiddenPackages.length} app${hiddenPackages.length !== 1 ? "s" : ""} hidden from drawer browsing`
             }
-          />
-
-          <SettingRow
-            icon={<Type size={20} color={colors.accent} />}
-            label="Homescreen Style"
-            badge={<FocusPlusBadge colors={colors} />}
-            description="Clean minimalist typography vs app icon plates"
             colors={colors}
             isDark={isDark}
+            onPress={() => setShowHiddenAppsModal(true)}
             right={
-              <View style={styles.segmentContainer}>
-                {[
-                  { label: "Icons", mode: "icons" as const },
-                  { label: "Text Only", mode: "text" as const },
-                ].map((opt) => (
-                  <Pressable
-                    key={opt.mode}
-                    onPress={() => {
-                      if (hapticFeedback) Haptics.selectionAsync();
-                      setHomeDisplayMode(opt.mode);
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      homeDisplayMode === opt.mode && { backgroundColor: colors.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        {
-                          color:
-                            homeDisplayMode === opt.mode
-                              ? "#FFFFFF"
-                              : colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <Text style={[styles.linkText, { color: colors.accent }]}>
+                {hiddenPackages.length > 0 ? "Manage →" : "View"}
+              </Text>
             }
           />
         </View>
@@ -984,6 +923,142 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Hidden Apps Modal */}
+      <Modal
+        visible={showHiddenAppsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHiddenAppsModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "android" ? undefined : "padding"}
+          style={styles.modalOverlay}
+        >
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setShowHiddenAppsModal(false)}
+          />
+          <Animated.View
+            entering={FadeInDown.duration(200)}
+            style={[
+              styles.hiddenModalContainer,
+              {
+                backgroundColor: isDark ? "#121212" : "#FFFFFF",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                  Hidden Apps
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                  Apps hidden from All Apps drawer browsing
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowHiddenAppsModal(false)}
+                hitSlop={12}
+                style={styles.closeBtn}
+              >
+                <X size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {hiddenPackages.length === 0 ? (
+              <View style={styles.emptyHiddenState}>
+                <EyeOff size={40} color={colors.textTertiary} />
+                <Text style={[styles.emptyHiddenTitle, { color: colors.textPrimary }]}>
+                  No Hidden Apps
+                </Text>
+                <Text style={[styles.emptyHiddenText, { color: colors.textSecondary }]}>
+                  To hide an app, open All Apps, long-press any app icon, and choose &ldquo;Hide App from Drawer&rdquo;.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={{ maxHeight: 380 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {hiddenPackages.map((pkg) => {
+                  const app = installedApps.find((a) => a.packageName === pkg);
+                  const label = app ? app.label : pkg;
+                  return (
+                    <View
+                      key={pkg}
+                      style={[
+                        styles.hiddenAppRow,
+                        {
+                          borderBottomColor: colors.border,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.03)"
+                            : "rgba(0,0,0,0.02)",
+                        },
+                      ]}
+                    >
+                      <View style={styles.hiddenAppInfo}>
+                        {app && (
+                          <AppIcon
+                            app={app}
+                            size={36}
+                            showLabel={false}
+                          />
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[styles.hiddenAppLabel, { color: colors.textPrimary }]}
+                            numberOfLines={1}
+                          >
+                            {label}
+                          </Text>
+                          <Text
+                            style={[styles.hiddenAppSub, { color: colors.textTertiary }]}
+                            numberOfLines={1}
+                          >
+                            {pkg}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Pressable
+                        style={[
+                          styles.unhideBtn,
+                          { backgroundColor: colors.accent },
+                        ]}
+                        onPress={() => {
+                          if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          unhideApp(pkg);
+                        }}
+                      >
+                        <Eye size={14} color="#FFFFFF" />
+                        <Text style={styles.unhideBtnText}>Unhide</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <Pressable
+              style={[
+                styles.modalDoneBtn,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(0,0,0,0.06)",
+                },
+              ]}
+              onPress={() => setShowHiddenAppsModal(false)}
+            >
+              <Text style={[styles.modalDoneBtnText, { color: colors.textPrimary }]}>
+                Done
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -1166,5 +1241,107 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+  },
+  hiddenModalContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.xl,
+    paddingBottom: spacing["2xl"],
+    borderWidth: 1,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+  },
+  modalSubtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: spacing.xs,
+    borderRadius: 8,
+  },
+  emptyHiddenState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing["3xl"],
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  emptyHiddenTitle: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    marginTop: spacing.xs,
+  },
+  emptyHiddenText: {
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  hiddenAppRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 14,
+    marginBottom: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  hiddenAppInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  hiddenAppLabel: {
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+  },
+  hiddenAppSub: {
+    fontFamily: typography.family.regular,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  unhideBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 8,
+  },
+  unhideBtnText: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xs,
+    color: "#FFFFFF",
+  },
+  modalDoneBtn: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  modalDoneBtnText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: typography.size.base,
   },
 });

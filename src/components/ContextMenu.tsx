@@ -38,6 +38,8 @@ import {
   Sparkles,
   ShieldCheck,
   Pin,
+  Eye,
+  EyeOff,
 } from "lucide-react-native";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { typography, spacing } from "@/src/theme/tokens";
@@ -70,6 +72,9 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
   const getAppFocusState = useAppStore((s) => s.getAppFocusState);
   const removeFromHome = useAppStore((s) => s.removeFromHome);
   const removeFromDock = useAppStore((s) => s.removeFromDock);
+  const hideApp = useAppStore((s) => s.hideApp);
+  const unhideApp = useAppStore((s) => s.unhideApp);
+  const isAppHidden = useAppStore((s) => s.isAppHidden);
   const folders = useAppStore((s) => s.folders) || [];
   const createFolder = useAppStore((s) => s.createFolder);
   const addAppToFolder = useAppStore((s) => s.addAppToFolder);
@@ -641,6 +646,43 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                   <Plus size={18} color={colors.textPrimary} />
                   <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
                     Add to Home Screen (Requires Reason)
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Hide / Unhide from Drawer Option */}
+              {isAppHidden(selectedApp.packageName) ? (
+                <Pressable
+                  style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    unhideApp(selectedApp.packageName);
+                    if (Platform.OS === "android") {
+                      ToastAndroid.show(`${selectedApp.label} unhidden`, ToastAndroid.SHORT);
+                    }
+                    onClose();
+                  }}
+                >
+                  <Eye size={18} color={colors.accent} />
+                  <Text style={[styles.menuOptionText, { color: colors.accent }]}>
+                    Unhide App (Show in Drawer)
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    hideApp(selectedApp.packageName);
+                    if (Platform.OS === "android") {
+                      ToastAndroid.show(`${selectedApp.label} hidden from drawer`, ToastAndroid.SHORT);
+                    }
+                    onClose();
+                  }}
+                >
+                  <EyeOff size={18} color={colors.textSecondary} />
+                  <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                    Hide App from Drawer
                   </Text>
                 </Pressable>
               )}

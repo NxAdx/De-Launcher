@@ -131,8 +131,8 @@
 ---
 
 ### 10. Mindful Breathing Gate [Focus+]
-- **Functionality**: A 4-second paced breathing friction barrier (2s inhale, 2s exhale) triggered whenever accessing distracting or intent-pause apps.
-- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Mindful Breathing Gate (Toggle).
+- **Functionality**: A mandatory 4-second paced breathing friction barrier (2s inhale, 2s exhale) triggered whenever accessing distracting or intent-pause apps.
+- **Permanent Core Behavior**: Active by default on all intent-pause barriers without requiring toggle management or configuration clutter.
 - **Expected Behavior**:
   - Tapping an app marked as "Require Intent Pause" or "Blocked" presents an upfront calming breathing circle with smooth scale animation.
   - Text prompts guide the user: *"Breathe in slowly..."* (0-2s) followed by *"Breathe out gently..."* (2-4s) with a 4-second countdown.
@@ -144,41 +144,26 @@
   3. Verify the screen opens to "Mindful Pause" with a pulsating breathing circle and 4-second countdown.
   4. Tap "Stay Focused": verify you return immediately to the homescreen without opening the app.
   5. Tap the app again and allow the 4 seconds to complete: verify it smoothly transitions to the Session Options form.
-  6. In Settings -> Focus & Distraction Shield, toggle "Mindful Breathing Gate" off. Tap the app and verify it opens directly to the Intent form without the upfront breathing gate.
 
 ---
 
-### 11. Deep Hide in All Apps Drawer [Focus+]
-- **Functionality**: Cleanly purges all distracting and focus-restricted apps from the default All Apps drawer list, keeping the catalog serene while preserving instant search retrieval.
-- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Deep Hide in All Apps (Toggle).
+### 11. User-Controlled Hidden Apps & Drawer Filtering [Focus+]
+- **Functionality**: Full user-controlled hiding and unhiding of any app from All Apps drawer browsing, with instant search retrieval and a dedicated management center in Settings.
 - **Expected Behavior**:
-  - When enabled and the search bar is empty, apps marked as "Blocked", "Intent Pause", or known distractions do not appear in the drawer list.
-  - The drawer displays an indicator: *"Deep Hide Active · Search to reveal all"*.
-  - When typing a search query into the search bar, ALL matching apps are instantly revealed, ensuring apps remain accessible when deliberately searched for.
+  - **Context Menu Action**: Long-pressing any app (on Home, Dock, or Drawer) presents a contextual option:
+    - If visible: *"Hide App from Drawer"* (with `EyeOff` icon).
+    - If already hidden: *"Unhide App (Show in Drawer)"* (with `Eye` accent icon).
+  - **Drawer Browsing Filter**: When browsing the drawer with an empty search query, all hidden apps are completely excluded from the list. The drawer header displays a subtle counter: `"{N} hidden · Search to reveal"`.
+  - **Intentional Search Access**: When typing into the drawer search bar, matching apps—even if hidden—are displayed with a subtle `Hidden` badge, ensuring deliberate search remains fully functional.
+  - **Hidden Apps Manager**: Settings -> Focus & Distraction Shield -> **"Hidden Apps"** displays the count of hidden apps. Tapping it opens a bottom sheet modal listing every hidden app with icon, title, package name, and a 1-tap **Unhide** button.
 - **Verification Steps**:
-  1. In Settings -> Focus & Distraction Shield -> Enable "Deep Hide in All Apps".
-  2. Open All Apps Drawer (`/drawer`) with empty search bar.
-  3. Verify distracting apps (e.g., YouTube, Instagram, or apps marked blocked) do not appear in the list, and the "Deep Hide Active" text is visible.
-  4. Type the name of a hidden app into the search bar.
-  5. Verify the app immediately appears in the filtered search results.
-  6. Clear the search bar: verify the app hides again.
-
----
-
-### 12. Homescreen Minimal Text-Only Display Mode [Focus+]
-- **Functionality**: Minimalist, distraction-free typography display for apps and folders on the homescreen grid instead of graphical squircle icons.
-- **Configurable Settings**: Settings -> Focus & Distraction Shield -> Homescreen Style (Icons vs Text Only).
-- **Expected Behavior**:
-  - When "Text Only" is selected, the home grid items render clean typographic labels in place of icons.
-  - Folder names appear in brackets (e.g., `[Work]`).
-  - Full touch, tap-to-launch, and drag-to-reorder gesture interactivity are preserved.
-- **Verification Steps**:
-  1. Open Settings -> Focus & Distraction Shield -> Homescreen Style -> Select "Text Only".
-  2. Return to the homescreen.
-  3. Verify home apps are rendered purely as elegant typography labels without icon squares.
-  4. Tap a text app: verify it launches properly.
-  5. Long-press a text app: verify the context menu opens.
-  6. Return to Settings -> Select "Icons": verify full graphical icon styling is restored.
+  1. In the All Apps Drawer (`/drawer`), long-press any app and tap "Hide App from Drawer".
+  2. Verify an Android confirmation toast appears (*"{App} hidden from drawer"*) and the app disappears from drawer browsing.
+  3. Verify the drawer count row shows `"1 hidden · Search to reveal"`.
+  4. Type the hidden app's name in the drawer search bar: verify the app appears with a `Hidden` badge and can still be launched or configured.
+  5. Open Settings -> Focus & Distraction Shield -> tap "Hidden Apps".
+  6. Verify the bottom sheet displays the hidden app. Tap "Unhide" on the app row.
+  7. Return to the All Apps drawer and verify the app is back in the default browsing list.
 
 ---
 

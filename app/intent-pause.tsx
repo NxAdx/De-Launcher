@@ -86,10 +86,7 @@ export default function IntentPauseScreen() {
   const app = installedApps.find((a) => a.packageName === packageName);
   const appLabel = app?.label || "this app";
 
-  const mindfulBreathingGate = useSettingsStore((s) => s.mindfulBreathingGate);
-  const [phase, setPhase] = useState<"gate" | "form" | "cooldown">(
-    mindfulBreathingGate ? "gate" : "form"
-  );
+  const [phase, setPhase] = useState<"gate" | "form" | "cooldown">("gate");
   const [gateCountdown, setGateCountdown] = useState(4);
   const [breathInstruction, setBreathInstruction] = useState("Breathe in slowly...");
 

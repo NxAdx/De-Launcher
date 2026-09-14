@@ -16,7 +16,6 @@ export type DockBackgroundStyle = "transparent" | "frosted";
 export type IconSizeOption = "small" | "medium" | "large";
 export type IconThemeOption = "standard" | "monochrome";
 export type SwipeDownAction = "search" | "notifications";
-export type HomeDisplayMode = "icons" | "text";
 
 interface SettingsState {
   theme: ThemeMode;
@@ -49,15 +48,12 @@ interface SettingsState {
   morningPromptEnabled: boolean;
   morningPromptTime: string; // "07:00"
 
-  // Icon Sizing & Display Mode
+  // Icon Sizing
   iconSize: IconSizeOption;
-  homeDisplayMode: HomeDisplayMode;
 
   // Distraction Shield & Focus Features
   returnHomeAfterLock: boolean;
   returnHomeTimeoutMinutes: number;
-  mindfulBreathingGate: boolean;
-  deepHideDistractionsInDrawer: boolean;
 
   // Actions
   setTheme: (theme: ThemeMode) => void;
@@ -80,11 +76,8 @@ interface SettingsState {
   setMorningPromptEnabled: (enabled: boolean) => void;
   setMorningPromptTime: (time: string) => void;
   setIconSize: (size: IconSizeOption) => void;
-  setHomeDisplayMode: (mode: HomeDisplayMode) => void;
   setReturnHomeAfterLock: (enabled: boolean) => void;
   setReturnHomeTimeoutMinutes: (minutes: number) => void;
-  setMindfulBreathingGate: (enabled: boolean) => void;
-  setDeepHideDistractionsInDrawer: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -116,12 +109,9 @@ export const useSettingsStore = create<SettingsState>()(
       morningPromptTime: "07:00",
 
       iconSize: "medium",
-      homeDisplayMode: "icons",
 
       returnHomeAfterLock: true,
       returnHomeTimeoutMinutes: 5,
-      mindfulBreathingGate: true,
-      deepHideDistractionsInDrawer: false,
 
       // Actions
       setTheme: (theme) => set({ theme }),
@@ -157,7 +147,6 @@ export const useSettingsStore = create<SettingsState>()(
       setMorningPromptEnabled: (morningPromptEnabled) => set({ morningPromptEnabled }),
       setMorningPromptTime: (morningPromptTime) => set({ morningPromptTime }),
       setIconSize: (iconSize) => set({ iconSize }),
-      setHomeDisplayMode: (homeDisplayMode) => set({ homeDisplayMode }),
       setReturnHomeAfterLock: (returnHomeAfterLock) => {
         set({ returnHomeAfterLock });
         setReturnHomeConfig(returnHomeAfterLock, get().returnHomeTimeoutMinutes).catch(console.error);
@@ -166,8 +155,6 @@ export const useSettingsStore = create<SettingsState>()(
         set({ returnHomeTimeoutMinutes });
         setReturnHomeConfig(get().returnHomeAfterLock, returnHomeTimeoutMinutes).catch(console.error);
       },
-      setMindfulBreathingGate: (mindfulBreathingGate) => set({ mindfulBreathingGate }),
-      setDeepHideDistractionsInDrawer: (deepHideDistractionsInDrawer) => set({ deepHideDistractionsInDrawer }),
     }),
     {
       name: "settings-store",

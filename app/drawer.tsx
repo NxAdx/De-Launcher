@@ -8,7 +8,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, FlatList, Platform } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
-import { ChevronDown, ShieldOff, Settings, Clock, Pin } from "lucide-react-native";
+import { ChevronDown, ShieldOff, Settings, Clock, Pin, EyeOff } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -17,7 +17,6 @@ import { SearchBar } from "@/src/components/SearchBar";
 import { AppIcon } from "@/src/components/AppIcon";
 import { ContextMenu } from "@/src/components/ContextMenu";
 import { useAppStore } from "@/src/store/appStore";
-import { useSettingsStore } from "@/src/store/settingsStore";
 import { AppInfo } from "@/src/types/app";
 import { launchApp, isKnownDistraction } from "@/src/services/appManager";
 import { signalNavigation } from "./_layout";
@@ -32,6 +31,7 @@ interface DrawerAppRowProps {
   distraction: boolean;
   schedule?: string;
   isHome: boolean;
+  isHidden: boolean;
   onPress: (app: AppInfo) => void;
   onSelect: (app: AppInfo) => void;
 }
@@ -44,6 +44,7 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
   distraction,
   schedule,
   isHome,
+  isHidden,
   onPress,
   onSelect,
 }: DrawerAppRowProps) {
@@ -85,6 +86,14 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
                 <Pin size={10} color={colors.accent} strokeWidth={2.4} />
                 <Text style={[styles.distractionText, { color: colors.accent }]}>
                   Home
+                </Text>
+              </View>
+            )}
+            {isHidden && (
+              <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
+                <EyeOff size={10} color={colors.textTertiary} strokeWidth={2.4} />
+                <Text style={[styles.distractionText, { color: colors.textTertiary }]}>
+                  Hidden
                 </Text>
               </View>
             )}
@@ -135,7 +144,9 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
             styles.stateButtonText,
             {
               color:
-                state === "allowed"
+                isHidden
+                  ? colors.textTertiary
+                  : state === "allowed"
                   ? colors.accent
                   : state === "intent_pause"
                   ? colors.warning
@@ -143,11 +154,13 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
             },
           ]}
         >
-          {state === "allowed"
+          {isHidden
+            ? "Hidden"
+            : state === "allowed"
             ? "Allowed"
             : state === "intent_pause"
             ? "Paused"
-            : "Hidden"}
+            : "Shielded"}
         </Text>
       </Pressable>
     </View>
@@ -160,8 +173,9 @@ export default function DrawerScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
-  const deepHideDistractionsInDrawer = useSettingsStore((s) => s.deepHideDistractionsInDrawer);
   const installedApps = useAppStore((s) => s.installedApps);
+  const rawHiddenPackages = useAppStore((s) => s.hiddenPackages);
+  const hiddenPackages = useMemo(() => rawHiddenPackages || [], [rawHiddenPackages]);
   const getAppFocusState = useAppStore((s) => s.getAppFocusState);
   const allowedPackages = useAppStore((s) => s.allowedPackages);
   const scheduleRules = useAppStore((s) => s.scheduleRules);
@@ -173,7 +187,7 @@ export default function DrawerScreen() {
   const filteredApps = useMemo(() => {
     let apps = installedApps;
 
-    // Search filter: searching immediately reveals all matching apps even if deep hide is active
+    // Search filter: searching immediately reveals all matching apps even if hidden
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       apps = apps.filter(
@@ -181,13 +195,11 @@ export default function DrawerScreen() {
           app.label.toLowerCase().includes(q) ||
           app.packageName.toLowerCase().includes(q)
       );
-    } else if (deepHideDistractionsInDrawer) {
-      // Deep hide active: filter out distractions from default view
-      apps = apps.filter((app) => {
-        const state = getAppFocusState(app.packageName);
-        const distraction = isKnownDistraction(app.packageName);
-        return state !== "blocked" && state !== "intent_pause" && !distraction;
-      });
+    } else {
+      // Default browsing: filter out user-hidden apps
+      if (hiddenPackages.length > 0) {
+        apps = apps.filter((app) => !hiddenPackages.includes(app.packageName));
+      }
     }
 
     // Category filter
@@ -203,7 +215,7 @@ export default function DrawerScreen() {
       if (cmp !== 0) return cmp;
       return a.packageName.localeCompare(b.packageName);
     });
-  }, [installedApps, searchQuery, filterMode, allowedPackages, deepHideDistractionsInDrawer, getAppFocusState]);
+  }, [installedApps, searchQuery, filterMode, allowedPackages, hiddenPackages]);
 
   const handleAppPress = useCallback(
     (app: AppInfo) => {
@@ -248,6 +260,7 @@ export default function DrawerScreen() {
       const distraction = isKnownDistraction(item.packageName);
       const schedule = scheduleRules[item.packageName]?.scheduleType;
       const isHome = allowedPackages.includes(item.packageName);
+      const isHidden = hiddenPackages.includes(item.packageName);
 
       return (
         <DrawerAppRow
@@ -258,12 +271,13 @@ export default function DrawerScreen() {
           distraction={distraction}
           schedule={schedule}
           isHome={isHome}
+          isHidden={isHidden}
           onPress={handleAppPress}
           onSelect={handleSelectApp}
         />
       );
     },
-    [getAppFocusState, colors, isDark, handleAppPress, handleSelectApp, scheduleRules, allowedPackages]
+    [getAppFocusState, colors, isDark, handleAppPress, handleSelectApp, scheduleRules, allowedPackages, hiddenPackages]
   );
 
   return (
@@ -348,14 +362,14 @@ export default function DrawerScreen() {
         ))}
       </View>
 
-      {/* Count & Deep Hide Status */}
+      {/* Count & Hidden Apps Status */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.lg, marginBottom: spacing.xs }}>
         <Text style={[styles.countText, { color: colors.textTertiary, paddingHorizontal: 0, marginBottom: 0 }]}>
           {filteredApps.length} app{filteredApps.length !== 1 ? "s" : ""}
         </Text>
-        {deepHideDistractionsInDrawer && !searchQuery.trim() && (
-          <Text style={{ fontFamily: typography.family.medium, fontSize: typography.size.xs, color: colors.accent }}>
-            Deep Hide Active · Search to reveal all
+        {hiddenPackages.length > 0 && !searchQuery.trim() && (
+          <Text style={{ fontFamily: typography.family.medium, fontSize: typography.size.xs, color: colors.textTertiary }}>
+            {hiddenPackages.length} hidden · Search to reveal
           </Text>
         )}
       </View>
