@@ -63,11 +63,65 @@ export const palette = {
   warning: "#F59E0B",
 } as const;
 
+// ─── Theme Accent Palettes ──────────────────────────────
+export type ThemeAccent = "sage" | "slate" | "amber" | "monochrome";
+
+export interface AccentPreset {
+  id: ThemeAccent;
+  name: string;
+  previewColor: string;
+  accent: string;
+  accentTint: string;
+  accentMuted: string;
+  lightAccent: string;
+}
+
+export const ACCENT_PRESETS: Record<ThemeAccent, AccentPreset> = {
+  sage: {
+    id: "sage",
+    name: "Sage Oasis",
+    previewColor: "#8EAB82",
+    accent: "#8EAB82",
+    accentTint: "#A3B899",
+    accentMuted: "rgba(142, 171, 130, 0.18)",
+    lightAccent: "#4F6548",
+  },
+  slate: {
+    id: "slate",
+    name: "Nordic Slate",
+    previewColor: "#7E99A8",
+    accent: "#7E99A8",
+    accentTint: "#9DB3C0",
+    accentMuted: "rgba(126, 153, 168, 0.18)",
+    lightAccent: "#3B596A",
+  },
+  amber: {
+    id: "amber",
+    name: "Warm Sand",
+    previewColor: "#C4A482",
+    accent: "#C4A482",
+    accentTint: "#D6BCA0",
+    accentMuted: "rgba(196, 164, 130, 0.18)",
+    lightAccent: "#7C5C38",
+  },
+  monochrome: {
+    id: "monochrome",
+    name: "Monochrome",
+    previewColor: "#E2E8F0",
+    accent: "#FFFFFF",
+    accentTint: "#E2E8F0",
+    accentMuted: "rgba(255, 255, 255, 0.14)",
+    lightAccent: "#171916",
+  },
+};
+
 // ─── Semantic Theme Tokens ──────────────────────────────
 export type ThemeMode = "dark" | "light";
 
-export function getThemeColors(mode: ThemeMode) {
+export function getThemeColors(mode: ThemeMode, accentKey: ThemeAccent = "sage") {
   const isDark = mode === "dark";
+  const preset = ACCENT_PRESETS[accentKey] || ACCENT_PRESETS.sage;
+
   return {
     bg: isDark ? palette.dark.bg : palette.light.bg,
     surface: isDark ? palette.dark.surface : palette.light.surface,
@@ -95,9 +149,9 @@ export function getThemeColors(mode: ThemeMode) {
     textDisabled: isDark
       ? palette.textDark.disabled
       : palette.textLight.disabled,
-    accent: isDark ? palette.accent : "#4F6548",
-    accentMuted: isDark ? palette.accentMuted : "rgba(79, 101, 72, 0.20)",
-    accentTint: isDark ? palette.accentTint : "#4F6548",
+    accent: isDark ? preset.accent : preset.lightAccent,
+    accentMuted: preset.accentMuted,
+    accentTint: isDark ? preset.accentTint : preset.lightAccent,
     error: palette.error,
     success: palette.success,
     warning: palette.warning,

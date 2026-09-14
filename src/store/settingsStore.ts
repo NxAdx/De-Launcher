@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { mmkvStorage } from "./storage";
-import { ThemeMode } from "@/src/theme/tokens";
+import { ThemeMode, ThemeAccent } from "@/src/theme/tokens";
 import { useAppStore } from "./appStore";
 import { batchLoadMonochromeIcons } from "../services/appManager";
 import { setReturnHomeConfig } from "../../modules/de-launcher-native";
@@ -19,6 +19,7 @@ export type SwipeDownAction = "search" | "notifications";
 
 interface SettingsState {
   theme: ThemeMode;
+  themeAccent: ThemeAccent;
   gridColumns: number;
   showLabels: boolean;
   showClock: boolean;
@@ -57,6 +58,7 @@ interface SettingsState {
 
   // Actions
   setTheme: (theme: ThemeMode) => void;
+  setThemeAccent: (themeAccent: ThemeAccent) => void;
   setGridColumns: (cols: number) => void;
   setShowLabels: (show: boolean) => void;
   setShowClock: (show: boolean) => void;
@@ -85,6 +87,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set, get) => ({
       // Defaults
       theme: "dark",
+      themeAccent: "sage",
       gridColumns: 4,
       showLabels: true,
       showClock: true,
@@ -115,6 +118,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       // Actions
       setTheme: (theme) => set({ theme }),
+      setThemeAccent: (themeAccent) => set({ themeAccent }),
       setGridColumns: (gridColumns) => set({ gridColumns }),
       setShowLabels: (showLabels) => set({ showLabels }),
       setShowClock: (showClock) => set({ showClock }),

@@ -167,6 +167,27 @@
 
 ---
 
+### 12. Customizable Theme Accent Palettes
+- **Functionality**: Curated, dopamine-free color accent palettes tailored for minimalist distraction-free focus.
+- **Available Presets**:
+  - **Sage Oasis (`#8EAB82`)** (Default): Calming botanical green, natural and organic with 6.5:1 high-readability contrast on dark surfaces.
+  - **Nordic Slate (`#7E99A8`)**: Cool icy-blue slate for sharp clarity and focused work environments.
+  - **Warm Sand (`#C4A482`)**: Muted sepia / amber warmth, soft on the eyes for night-time or reader setups.
+  - **Monochrome (`#FFFFFF` / `#E2E8F0`)**: 100% distraction-free silver-white on OLED pure black.
+- **Reactive Global Application**:
+  - Selecting any preset immediately transforms all launcher accents in real-time (widgets, Screen Time progress bar, streak flame badges, task completion checkmarks, search bar glow, context menus, settings switches, and active filter chips).
+  - Persisted in MMKV storage across app restarts.
+- **Verification Steps**:
+  1. Open Settings -> Appearance & Icons -> "Theme Accent".
+  2. Tap the "Nordic Slate" circular swatch.
+  3. Verify tactile selection haptic feedback triggers, the swatch gets an active white ring indicator, and the label updates to "Palette: Nordic Slate".
+  4. Return to the homescreen: verify the Screen Time progress bar, streak badge, and active highlights are immediately rendered in Nordic Slate blue.
+  5. Return to Settings and select "Warm Sand": verify all accents shift to warm sepia amber.
+  6. Select "Monochrome": verify all accents shift to high-contrast white and silver.
+  7. Select "Sage Oasis": verify default botanical green is restored.
+
+---
+
 ## Mandatory Maintenance Rule for Future Work
 1. Whenever a new feature is added, modified, or bug-fixed:
    - Update this document (`FEATURES.md`) with the new or modified functionality, expected behaviors, and explicit test verification steps.

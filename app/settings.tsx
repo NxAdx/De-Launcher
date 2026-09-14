@@ -50,7 +50,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as IntentLauncher from "expo-intent-launcher";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing } from "@/src/theme/tokens";
+import { typography, spacing, ThemeAccent, ACCENT_PRESETS } from "@/src/theme/tokens";
 import {
   useSettingsStore,
   IconSizeOption,
@@ -74,7 +74,7 @@ function FocusPlusBadge({ colors }: { colors: ReturnType<typeof useTheme>["color
   return (
     <View
       style={{
-        backgroundColor: "rgba(99, 102, 241, 0.15)",
+        backgroundColor: colors.accentMuted,
         borderColor: colors.accent,
         borderWidth: 1,
         paddingHorizontal: 6,
@@ -183,6 +183,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   // Settings store
+  const themeAccent = useSettingsStore((s) => s.themeAccent) || "sage";
+  const setThemeAccent = useSettingsStore((s) => s.setThemeAccent);
   const gridColumns = useSettingsStore((s) => s.gridColumns);
   const setGridColumns = useSettingsStore((s) => s.setGridColumns);
   const hapticFeedback = useSettingsStore((s) => s.hapticFeedback);
@@ -343,6 +345,50 @@ export default function SettingsScreen() {
         {/* ─── Appearance ───────────────────────────── */}
         <SectionHeader title="Appearance & Icons" colors={colors} />
         <View style={styles.sectionGroup}>
+          <SettingRow
+            icon={<Palette size={20} color={colors.accent} />}
+            label="Theme Accent"
+            description={`Palette: ${ACCENT_PRESETS[themeAccent]?.name || "Sage Oasis"}`}
+            colors={colors}
+            isDark={isDark}
+            right={
+              <View style={styles.accentSwatchesRow}>
+                {(Object.keys(ACCENT_PRESETS) as ThemeAccent[]).map((key) => {
+                  const preset = ACCENT_PRESETS[key];
+                  const isSelected = themeAccent === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => {
+                        if (hapticFeedback) Haptics.selectionAsync();
+                        setThemeAccent(key);
+                      }}
+                      style={[
+                        styles.accentSwatchBtn,
+                        {
+                          borderColor: isSelected ? colors.textPrimary : "rgba(255,255,255,0.12)",
+                          backgroundColor: preset.previewColor,
+                        },
+                      ]}
+                      hitSlop={8}
+                    >
+                      {isSelected && (
+                        <View
+                          style={[
+                            styles.accentSwatchInnerDot,
+                            {
+                              backgroundColor: key === "monochrome" ? "#000000" : "#FFFFFF",
+                            },
+                          ]}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            }
+          />
+
           <SettingRow
             icon={<Palette size={20} color={colors.textSecondary} />}
             label="Icon Style"
@@ -1343,5 +1389,23 @@ const styles = StyleSheet.create({
   modalDoneBtnText: {
     fontFamily: typography.family.semiBold,
     fontSize: typography.size.base,
+  },
+  accentSwatchesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  accentSwatchBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accentSwatchInnerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

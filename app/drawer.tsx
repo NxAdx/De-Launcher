@@ -82,7 +82,7 @@ const DrawerAppRow = React.memo(function DrawerAppRow({
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
             {isHome && (
-              <View style={[styles.distractionBadge, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.1)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
+              <View style={[styles.distractionBadge, { backgroundColor: colors.accentMuted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
                 <Pin size={10} color={colors.accent} strokeWidth={2.4} />
                 <Text style={[styles.distractionText, { color: colors.accent }]}>
                   Home

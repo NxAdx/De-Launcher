@@ -5,14 +5,16 @@
  * Persists user preference to MMKV.
  */
 import React, { createContext, useContext, useMemo, useCallback } from "react";
-import { getThemeColors, ThemeColors, ThemeMode } from "./tokens";
+import { getThemeColors, ThemeColors, ThemeMode, ThemeAccent } from "./tokens";
 import { useSettingsStore } from "../store/settingsStore";
 
 interface ThemeContextType {
   mode: ThemeMode;
+  accent: ThemeAccent;
   colors: ThemeColors;
   toggleTheme: () => void;
   setTheme: (mode: ThemeMode) => void;
+  setAccent: (accent: ThemeAccent) => void;
   isDark: boolean;
 }
 
@@ -20,9 +22,11 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const mode = useSettingsStore((s) => s.theme) || "dark";
+  const themeAccent = useSettingsStore((s) => s.themeAccent) || "sage";
   const setStoreTheme = useSettingsStore((s) => s.setTheme);
+  const setStoreAccent = useSettingsStore((s) => s.setThemeAccent);
 
-  const colors = useMemo(() => getThemeColors(mode), [mode]);
+  const colors = useMemo(() => getThemeColors(mode, themeAccent), [mode, themeAccent]);
   const isDark = mode === "dark";
 
   const toggleTheme = useCallback(() => {
@@ -37,15 +41,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [setStoreTheme]
   );
 
+  const setAccent = useCallback(
+    (newAccent: ThemeAccent) => {
+      setStoreAccent(newAccent);
+    },
+    [setStoreAccent]
+  );
+
   const value = useMemo(
     () => ({
       mode,
+      accent: themeAccent,
       colors,
       toggleTheme,
       setTheme,
+      setAccent,
       isDark,
     }),
-    [mode, colors, toggleTheme, setTheme, isDark]
+    [mode, themeAccent, colors, toggleTheme, setTheme, setAccent, isDark]
   );
 
   return (
