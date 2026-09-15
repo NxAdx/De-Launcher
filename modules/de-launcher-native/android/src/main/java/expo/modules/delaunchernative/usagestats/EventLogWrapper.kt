@@ -203,6 +203,102 @@ class EventLogWrapper(private val context: Context) {
         return unlockCount
     }
 
+    /**
+     * Calculates total screen time yesterday in milliseconds and unlock count.
+     */
+    fun getYesterdaysUsage(): Pair<Long, Int> {
+        val startCal = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endCal = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val startTime = startCal.timeInMillis
+        val endTime = endCal.timeInMillis
+
+        val foregroundStats = getForegroundStatsByTimestamps(startTime, endTime)
+        val aggregated = aggregateForegroundStats(foregroundStats)
+        val totalMs = aggregateSimpleUsageStats(aggregated)
+
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        val event = UsageEvents.Event()
+        var unlockCount = 0
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == 18 || event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                unlockCount++
+            }
+        }
+        return Pair(totalMs, unlockCount)
+    }
+
+    /**
+     * Returns past [days] history of screen time and unlocks (e.g. past 7 days).
+     */
+    fun getDailyUsageHistory(days: Int = 7): List<Map<String, Any>> {
+        val history = mutableListOf<Map<String, Any>>()
+        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
+        for (i in (days - 1) downTo 0) {
+            val cal = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, -i)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startTime = cal.timeInMillis
+
+            val endCal = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, -i)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            val endTime = min(endCal.timeInMillis, System.currentTimeMillis())
+
+            val foregroundStats = getForegroundStatsByTimestamps(startTime, endTime)
+            val aggregated = aggregateForegroundStats(foregroundStats)
+            val totalMs = aggregateSimpleUsageStats(aggregated)
+
+            val events = usageStatsManager.queryEvents(startTime, endTime)
+            val event = UsageEvents.Event()
+            var unlockCount = 0
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == 18 || event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                    unlockCount++
+                }
+            }
+
+            val dayOfWeek = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+            val month = cal.get(Calendar.MONTH) + 1
+            val dateStr = String.format("%04d-%02d-%02d", cal.get(Calendar.YEAR), month, dayOfMonth)
+
+            history.add(
+                mapOf(
+                    "date" to dateStr,
+                    "dayOfWeek" to dayOfWeek,
+                    "dayOfMonth" to dayOfMonth,
+                    "screenTimeMs" to totalMs,
+                    "unlockCount" to unlockCount,
+                    "isToday" to (i == 0)
+                )
+            )
+        }
+        return history
+    }
+
     private fun mergeOverlappingIntervals(
         stats: List<ComponentForegroundStat>
     ): List<ComponentForegroundStat> {

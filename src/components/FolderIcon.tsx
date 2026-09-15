@@ -19,7 +19,7 @@ import { typography, spacing, layout, springs } from "@/src/theme/tokens";
 import { FolderInfo, AppInfo } from "@/src/types/app";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useAppStore } from "@/src/store/appStore";
-import { getCachedSystemIcon } from "@/src/services/appManager";
+import { getCachedSystemIcon, getCachedMonochromeIcon, getMonochromeAppIcon } from "@/src/services/appManager";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -29,6 +29,99 @@ interface FolderIconProps {
   onLongPress?: (folder: FolderInfo) => void;
   size?: number;
   showLabel?: boolean;
+}
+
+function FolderMiniIcon({
+  app,
+  size,
+  isMonochrome,
+  isDark,
+  fallbackDotColor,
+}: {
+  app: AppInfo;
+  size: number;
+  isMonochrome: boolean;
+  isDark: boolean;
+  fallbackDotColor: string;
+}) {
+  const [asyncMono, setAsyncMono] = React.useState<string | null>(null);
+
+  const cachedMono = getCachedMonochromeIcon(app.packageName) ?? app.monoIcon;
+  const monoUri = cachedMono || asyncMono;
+
+  React.useEffect(() => {
+    if (isMonochrome && !cachedMono) {
+      let isMounted = true;
+      getMonochromeAppIcon(app.packageName).then((uri) => {
+        if (isMounted && uri) {
+          setAsyncMono(uri);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isMonochrome, cachedMono, app.packageName]);
+
+  const systemIcon = getCachedSystemIcon(app.packageName) || app.icon;
+
+  if (isMonochrome) {
+    if (monoUri) {
+      return (
+        <Image
+          source={{ uri: monoUri }}
+          style={{ width: size, height: size, borderRadius: 3 }}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+      );
+    }
+    return (
+      <View
+        style={[
+          styles.miniFallbackAvatar,
+          {
+            width: size,
+            height: size,
+            borderRadius: 3,
+            backgroundColor: isDark ? "#262626" : "#E2E8F0",
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.miniInitials,
+            {
+              fontSize: Math.max(7, Math.round(size * 0.45)),
+              color: isDark ? "#CBD5E1" : "#334155",
+            },
+          ]}
+        >
+          {app.label ? app.label.charAt(0).toUpperCase() : "•"}
+        </Text>
+      </View>
+    );
+  }
+
+  if (systemIcon) {
+    return (
+      <Image
+        source={{ uri: systemIcon }}
+        style={{ width: size, height: size, borderRadius: 3 }}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+      />
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.miniDot,
+        { width: size, height: size, borderRadius: 3, backgroundColor: fallbackDotColor },
+      ]}
+    />
+  );
 }
 
 export function FolderIcon({
@@ -42,6 +135,8 @@ export function FolderIcon({
   const globalShowLabels = useSettingsStore((s) => s.showLabels);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
   const iconSizeOption = useSettingsStore((s) => s.iconSize);
+  const iconTheme = useSettingsStore((s) => s.iconTheme) || "standard";
+  const isMonochrome = iconTheme === "monochrome";
   const installedApps = useAppStore((s) => s.installedApps);
 
   const getBaseSize = () => {
@@ -118,33 +213,23 @@ export function FolderIcon({
       >
         {folderApps.length > 0 ? (
           <View style={styles.grid2x2}>
-            {folderApps.map((app, idx) => {
-              const iconUri = getCachedSystemIcon(app.packageName) || app.icon;
-              return (
-                <View
-                  key={idx}
-                  style={[
-                    styles.miniIconWrapper,
-                    { width: miniIconSize, height: miniIconSize },
-                  ]}
-                >
-                  {iconUri ? (
-                    <Image
-                      source={{ uri: iconUri }}
-                      style={{ width: miniIconSize, height: miniIconSize, borderRadius: 3 }}
-                      contentFit="contain"
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.miniDot,
-                        { backgroundColor: colors.textSecondary },
-                      ]}
-                    />
-                  )}
-                </View>
-              );
-            })}
+            {folderApps.map((app, idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.miniIconWrapper,
+                  { width: miniIconSize, height: miniIconSize },
+                ]}
+              >
+                <FolderMiniIcon
+                  app={app}
+                  size={miniIconSize}
+                  isMonochrome={isMonochrome}
+                  isDark={isDark}
+                  fallbackDotColor={colors.textSecondary}
+                />
+              </View>
+            ))}
           </View>
         ) : (
           <Folder size={Math.round(size * 0.44)} color={colors.textSecondary} />
@@ -193,6 +278,16 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     opacity: 0.7,
+  },
+  miniFallbackAvatar: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  miniInitials: {
+    fontFamily: typography.family.bold,
+    textAlign: "center",
+    includeFontPadding: false,
   },
   label: {
     marginTop: spacing.xs,

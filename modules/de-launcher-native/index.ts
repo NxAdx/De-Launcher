@@ -22,6 +22,14 @@ export async function launchApp(packageName: string): Promise<void> {
   return await DeLauncherNativeModule.launchApp(packageName);
 }
 
+export async function uninstallApp(packageName: string): Promise<boolean> {
+  return await DeLauncherNativeModule.uninstallApp(packageName);
+}
+
+export async function openAppInfo(packageName: string): Promise<boolean> {
+  return await DeLauncherNativeModule.openAppInfo(packageName);
+}
+
 export async function updateWhitelist(whitelist: string[]): Promise<void> {
   return await DeLauncherNativeModule.updateWhitelist(whitelist);
 }
@@ -88,6 +96,15 @@ export type ScreenTimeInfo = {
   unlockCount: number;
 };
 
+export type DailyUsageHistoryItem = {
+  date: string;
+  dayOfWeek: string;
+  dayOfMonth: number;
+  screenTimeMs: number;
+  unlockCount: number;
+  isToday: boolean;
+};
+
 export type AppUsageItem = {
   packageName: string;
   label: string;
@@ -108,6 +125,14 @@ export async function openDigitalWellbeing(): Promise<boolean> {
 
 export async function getScreenTimeToday(): Promise<ScreenTimeInfo> {
   return await DeLauncherNativeModule.getScreenTimeToday();
+}
+
+export async function getYesterdaysScreenTime(): Promise<ScreenTimeInfo> {
+  return await DeLauncherNativeModule.getYesterdaysScreenTime();
+}
+
+export async function getScreenTimeHistory(days: number = 7): Promise<DailyUsageHistoryItem[]> {
+  return await DeLauncherNativeModule.getScreenTimeHistory(days);
 }
 
 export async function getTopAppUsage(limit: number): Promise<AppUsageItem[]> {

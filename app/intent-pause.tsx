@@ -475,7 +475,7 @@ export default function IntentPauseScreen() {
                         <Text
                           style={[
                             styles.durationText,
-                            { color: isSelected ? "#FFFFFF" : colors.textPrimary },
+                            { color: isSelected ? colors.accentText : colors.textPrimary },
                           ]}
                         >
                           {opt.label}

@@ -7,6 +7,9 @@ export type OnLoadEventPayload = {
 export type DeLauncherNativeModuleEvents = {
   onChange: (params: ChangeEventPayload) => void;
   onHomePressed: (params: any) => void;
+  onPackageRemoved: (params: { packageName: string }) => void;
+  onPackageAdded: (params: { packageName: string }) => void;
+  onPackageChanged: (params: { packageName: string }) => void;
 };
 
 export type ChangeEventPayload = {

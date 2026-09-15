@@ -80,19 +80,15 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
 
   const pageStart = pageIndex * pageSize;
   const pageEnd = Math.min(pageStart + pageSize, items.length);
-  const pageItemsCount = pageEnd - pageStart;
-  const pageRows = Math.ceil(pageItemsCount / gridColumns);
 
-  const itemsInRow =
-    row === pageRows - 1 ? pageItemsCount - row * gridColumns : gridColumns;
-  const rowOffset = ((gridColumns - itemsInRow) * itemWidth) / 2;
-
-  const targetX = spacing.xl + col * itemWidth + rowOffset;
+  // Strict column grid alignment — no row centering so incomplete rows stay aligned with columns
+  const targetX = spacing.xl + col * itemWidth;
   const targetY = row * rowHeight + verticalOffset;
 
   const x = useSharedValue(targetX);
   const y = useSharedValue(targetY);
   const isDragging = useSharedValue(false);
+  const hasMoved = useSharedValue(false);
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
   const zIndex = useSharedValue(1);
@@ -114,17 +110,26 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
     }
   }, [hapticEnabled]);
 
+  const triggerMenu = useCallback(() => {
+    if (item.type === "app") {
+      onLongPress(item.app);
+    } else if (onFolderLongPress) {
+      onFolderLongPress(item.folder);
+    }
+  }, [item, onLongPress, onFolderLongPress]);
+
   const panGesture = useMemo(() => {
     return Gesture.Pan()
-      .activateAfterLongPress(400)
+      .activateAfterLongPress(350)
       .onStart(() => {
         isDragging.value = true;
         isAnyDragging.value = true;
+        hasMoved.value = false;
         runOnJS(setScrollEnabled)(false);
         startX.value = x.value;
         startY.value = y.value;
         scale.value = withSpring(1.15, springs.bouncy);
-        rotation.value = withSpring(4, springs.bouncy);
+        rotation.value = withSpring(3, springs.bouncy);
         zIndex.value = 999;
         runOnJS(triggerHaptic)();
       })
@@ -132,9 +137,13 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
         x.value = startX.value + event.translationX;
         y.value = startY.value + event.translationY;
 
+        if (Math.hypot(event.translationX, event.translationY) > 12) {
+          hasMoved.value = true;
+        }
+
         const currentLocalCol = Math.max(
           0,
-          Math.min(gridColumns - 1, Math.round((x.value - spacing.xl - rowOffset) / itemWidth))
+          Math.min(gridColumns - 1, Math.round((x.value - spacing.xl) / itemWidth))
         );
         const currentLocalRow = Math.max(
           0,
@@ -155,6 +164,7 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
         }
       })
       .onFinalize(() => {
+        const moved = hasMoved.value;
         isDragging.value = false;
         isAnyDragging.value = false;
         scale.value = withSpring(1, springs.stiff);
@@ -162,7 +172,12 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
         zIndex.value = 1;
         lastSwappedIndex.value = -1;
         runOnJS(setScrollEnabled)(true);
-        runOnJS(onDragEnd)();
+
+        if (moved) {
+          runOnJS(onDragEnd)();
+        } else {
+          runOnJS(triggerMenu)();
+        }
       });
   }, [
     item.id,
@@ -172,7 +187,6 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
     itemWidth,
     rowHeight,
     verticalOffset,
-    rowOffset,
     pageIndex,
     pageSize,
     pageStart,
@@ -182,6 +196,7 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
     onSwap,
     onDragEnd,
     triggerHaptic,
+    triggerMenu,
     startX,
     startY,
     x,
@@ -190,6 +205,7 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
     rotation,
     zIndex,
     isDragging,
+    hasMoved,
     lastSwappedIndex,
   ]);
 
@@ -217,13 +233,11 @@ const DraggableGridItem = React.memo(function DraggableGridItem({
               key={item.app.packageName}
               app={item.app}
               onPress={onPress}
-              onLongPress={onLongPress}
             />
           ) : (
             <FolderIcon
               folder={item.folder}
               onPress={onFolderPress || (() => {})}
-              onLongPress={onFolderLongPress}
             />
           )}
         </View>

@@ -23,14 +23,22 @@ import {
   ExternalLink,
   Sun,
   ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { spacing, palette } from "@/src/theme/tokens";
+import { spacing, palette, typography } from "@/src/theme/tokens";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { useWellbeingStore } from "@/src/store/wellbeingStore";
 import { useAppStore } from "@/src/store/appStore";
-import { getTopAppUsage, openDigitalWellbeing, AppUsageItem } from "@/modules/de-launcher-native";
+import {
+  getTopAppUsage,
+  openDigitalWellbeing,
+  AppUsageItem,
+  getScreenTimeHistory,
+  DailyUsageHistoryItem,
+} from "@/modules/de-launcher-native";
 import { formatDuration } from "./ScreenTimeWidget";
 
 interface ScreenTimeModalProps {
@@ -56,11 +64,15 @@ export function ScreenTimeModal({
   const installedApps = useAppStore((s) => s.installedApps);
 
   const [topApps, setTopApps] = useState<AppUsageItem[]>([]);
+  const [history, setHistory] = useState<DailyUsageHistoryItem[]>([]);
 
   useEffect(() => {
     if (!visible) return;
     getTopAppUsage(5).then((apps: AppUsageItem[]) => {
       setTopApps(apps);
+    }).catch(() => {});
+    getScreenTimeHistory(7).then((hist: DailyUsageHistoryItem[]) => {
+      setHistory(hist);
     }).catch(() => {});
   }, [visible]);
 
@@ -222,14 +234,32 @@ export function ScreenTimeModal({
             >
               <View style={styles.goalTopRow}>
                 <View style={styles.streakBadgeWrapper}>
-                  <Flame size={16} color={palette.warning} />
-                  <Text style={[styles.streakTitle, { color: colors.textPrimary }]}>
-                    {streak} Day Streak
-                  </Text>
-                  {bestStreak > 0 && (
-                    <Text style={[styles.bestStreakText, { color: colors.textSecondary }]}>
-                      (Best: {bestStreak}d)
-                    </Text>
+                  {goalMs > 0 && screenTimeMs > goalMs ? (
+                    <>
+                      <AlertTriangle size={16} color={palette.error} />
+                      <Text style={[styles.streakTitle, { color: palette.error }]}>
+                        Daily Limit Exceeded · Streak Broken (0d)
+                      </Text>
+                    </>
+                  ) : streak > 0 ? (
+                    <>
+                      <Flame size={16} color={palette.warning} />
+                      <Text style={[styles.streakTitle, { color: colors.textPrimary }]}>
+                        {streak} Day Streak
+                      </Text>
+                      {bestStreak > 0 && (
+                        <Text style={[styles.bestStreakText, { color: colors.textSecondary }]}>
+                          (Best: {bestStreak}d)
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Flame size={16} color={colors.textTertiary} />
+                      <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>
+                        0 Day Streak
+                      </Text>
+                    </>
                   )}
                 </View>
                 <Text style={[styles.goalTargetText, { color: colors.accentTint }]}>
@@ -264,9 +294,97 @@ export function ScreenTimeModal({
               <Text style={[styles.goalTip, { color: colors.textSecondary }]}>
                 {screenTimeMs <= goalMs
                   ? "Keep screen time under your daily goal before midnight to extend your streak!"
-                  : "Streak resets at midnight if screen time exceeds your goal. Consider unplugging."}
+                  : "Daily threshold exceeded. Unplug and rest your mind to begin a fresh streak tomorrow."}
               </Text>
             </View>
+
+            {/* 7-Day Screen Time History Card */}
+            {history.length > 0 && (
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <View style={styles.historyHeaderRow}>
+                  <Text style={[styles.cardHeaderSmall, { color: colors.textSecondary }]}>
+                    PAST 7 DAYS HISTORY
+                  </Text>
+                  <Text style={[styles.historyGoalIndicator, { color: colors.textTertiary }]}>
+                    Goal: {formatDuration(goalMs)}
+                  </Text>
+                </View>
+
+                <View style={styles.historyList}>
+                  {history.map((dayItem) => {
+                    const isOver = goalMs > 0 && dayItem.screenTimeMs > goalMs;
+                    const isToday = dayItem.isToday;
+                    const dayPct = goalMs > 0 ? Math.min(1.5, dayItem.screenTimeMs / goalMs) : 0;
+
+                    return (
+                      <View key={dayItem.date} style={styles.historyRow}>
+                        <View style={styles.historyDateCol}>
+                          <Text style={[styles.historyDayName, { color: isToday ? colors.accent : colors.textPrimary }]}>
+                            {isToday ? "Today" : dayItem.dayOfWeek}
+                          </Text>
+                          <Text style={[styles.historyDateSub, { color: colors.textTertiary }]}>
+                            {dayItem.date.slice(5)}
+                          </Text>
+                          {dayItem.unlockCount > 0 && (
+                            <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 1 }}>
+                              {dayItem.unlockCount} unl
+                            </Text>
+                          )}
+                        </View>
+
+                        <View style={styles.historyBarContainer}>
+                          <View style={[styles.historyBarBg, { backgroundColor: colors.border }]}>
+                            <View
+                              style={[
+                                styles.historyBarFill,
+                                {
+                                  width: `${Math.min(100, (dayPct / 1.5) * 100)}%`,
+                                  backgroundColor: isOver
+                                    ? palette.error
+                                    : dayItem.screenTimeMs > 0
+                                    ? colors.accent
+                                    : colors.textTertiary,
+                                },
+                              ]}
+                            />
+                          </View>
+                          <Text style={[styles.historyDurationText, { color: isOver ? palette.error : colors.textPrimary }]}>
+                            {formatDuration(dayItem.screenTimeMs)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.historyStatusBadge}>
+                          {dayItem.screenTimeMs === 0 ? (
+                            <Text style={{ fontSize: 11, color: colors.textTertiary }}>—</Text>
+                          ) : isOver ? (
+                            <View style={[styles.historyMiniPill, { backgroundColor: "rgba(239, 68, 68, 0.15)" }]}>
+                              <Text style={{ fontSize: 10, color: palette.error, fontFamily: typography.family.semiBold }}>
+                                Exceeded
+                              </Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.historyMiniPill, { backgroundColor: colors.accentMuted }]}>
+                              <CheckCircle2 size={11} color={colors.accentTint} />
+                              <Text style={{ fontSize: 10, color: colors.accentTint, fontFamily: typography.family.semiBold }}>
+                                Goal Met
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Top Apps Today */}
             {topApps.length > 0 && (
@@ -622,5 +740,70 @@ const styles = StyleSheet.create({
   ghostButtonText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  historyHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  historyGoalIndicator: {
+    fontSize: 11,
+    fontFamily: typography.family.medium,
+  },
+  historyList: {
+    marginTop: spacing.sm,
+    gap: 10,
+  },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  historyDateCol: {
+    width: 48,
+  },
+  historyDayName: {
+    fontSize: 13,
+    fontFamily: typography.family.semiBold,
+  },
+  historyDateSub: {
+    fontSize: 10,
+    fontFamily: typography.family.regular,
+  },
+  historyBarContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  historyBarBg: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  historyBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  historyDurationText: {
+    fontSize: 12,
+    fontFamily: typography.family.medium,
+    width: 58,
+    textAlign: "right",
+  },
+  historyStatusBadge: {
+    width: 68,
+    alignItems: "flex-end",
+  },
+  historyMiniPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
 });

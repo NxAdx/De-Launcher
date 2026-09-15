@@ -30,7 +30,12 @@ interface WellbeingState {
   morningPromptLastDate: string; // YYYY-MM-DD
 
   // Actions
-  evaluateDayStreak: (yesterdayScreenTimeMs: number, goalMs: number) => void;
+  evaluateDayStreak: (yesterdayScreenTimeMs: number, goalMs: number, todayScreenTimeMs?: number) => void;
+  evaluateStreakWithUsage: (
+    history: { date: string; screenTimeMs: number; isToday: boolean }[],
+    todayScreenTimeMs: number,
+    goalMs: number
+  ) => void;
   markMorningPromptShown: () => void;
   shouldShowMorningPrompt: (enabled: boolean, targetTime: string) => boolean;
   resetStreaks: () => void;
@@ -44,11 +49,17 @@ export const useWellbeingStore = create<WellbeingState>()(
       lastEvaluatedDate: "",
       morningPromptLastDate: "",
 
-      evaluateDayStreak: (yesterdayScreenTimeMs: number, goalMs: number) => {
+      evaluateDayStreak: (yesterdayScreenTimeMs: number, goalMs: number, todayScreenTimeMs: number = 0) => {
+        // If today's usage already crossed the daily goal limit, the streak is broken today!
+        if (goalMs > 0 && todayScreenTimeMs > goalMs) {
+          set({ currentScreenStreak: 0 });
+          return;
+        }
+
         const yesterday = getYesterdayDateString();
         const { lastEvaluatedDate, currentScreenStreak, bestScreenStreak } = get();
 
-        // Only evaluate once per day
+        // Only evaluate rollover once per day
         if (lastEvaluatedDate === yesterday) return;
 
         let newStreak = currentScreenStreak;
@@ -64,6 +75,41 @@ export const useWellbeingStore = create<WellbeingState>()(
           bestScreenStreak: newBest,
           lastEvaluatedDate: yesterday,
         });
+      },
+
+      evaluateStreakWithUsage: (
+        history: { date: string; screenTimeMs: number; isToday: boolean }[],
+        todayScreenTimeMs: number,
+        goalMs: number
+      ) => {
+        if (goalMs <= 0) return;
+
+        // If today's screen time has crossed the daily threshold, streak is IMMEDIATELY broken!
+        if (todayScreenTimeMs > goalMs) {
+          set({ currentScreenStreak: 0 });
+          return;
+        }
+
+        // When today is under goal, compute streak from consecutive completed past days
+        if (history && history.length > 0) {
+          const pastDays = history.filter((d) => !d.isToday).reverse();
+          let pastStreak = 0;
+          for (const day of pastDays) {
+            if (day.screenTimeMs > 0 && day.screenTimeMs <= goalMs) {
+              pastStreak += 1;
+            } else if (day.screenTimeMs > goalMs) {
+              break; // A past day exceeded the limit, stopping the chain
+            }
+          }
+
+          const { bestScreenStreak } = get();
+          const newBest = Math.max(bestScreenStreak, pastStreak);
+          set({
+            currentScreenStreak: pastStreak,
+            bestScreenStreak: newBest,
+            lastEvaluatedDate: getTodayDateString(),
+          });
+        }
       },
 
       markMorningPromptShown: () => {

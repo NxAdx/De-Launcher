@@ -13,7 +13,7 @@ import {
   AppState,
   AppStateStatus,
 } from "react-native";
-import { Smartphone, Flame, ChevronRight, ShieldAlert } from "lucide-react-native";
+import { Smartphone, Flame, ChevronRight, ShieldAlert, AlertTriangle } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { spacing, palette } from "@/src/theme/tokens";
@@ -22,6 +22,8 @@ import { useWellbeingStore } from "@/src/store/wellbeingStore";
 import {
   hasUsageStatsPermission,
   getScreenTimeToday,
+  getYesterdaysScreenTime,
+  getScreenTimeHistory,
   openUsageStatsSettings,
 } from "@/modules/de-launcher-native";
 import { ScreenTimeModal } from "./ScreenTimeModal";
@@ -35,13 +37,14 @@ export function formatDuration(ms: number): string {
 }
 
 export function ScreenTimeWidget() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const showScreenTime = useSettingsStore((s) => s.showScreenTimeWidget);
   const goalMs = useSettingsStore((s) => s.screenTimeGoalMs);
   const hapticEnabled = useSettingsStore((s) => s.hapticFeedback);
 
   const streak = useWellbeingStore((s) => s.currentScreenStreak);
   const evaluateDayStreak = useWellbeingStore((s) => s.evaluateDayStreak);
+  const evaluateStreakWithUsage = useWellbeingStore((s) => s.evaluateStreakWithUsage);
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [screenTimeMs, setScreenTimeMs] = useState(0);
@@ -64,12 +67,23 @@ export function ScreenTimeWidget() {
       setUnlockCount(data.unlockCount);
       setLastUpdated(now);
 
-      // Evaluate yesterday's streak rollover
-      evaluateDayStreak(data.screenTimeMs, goalMs);
+      // Accurately evaluate streak from multi-day history, or fallback to yesterday
+      try {
+        const hist = await getScreenTimeHistory(7);
+        if (hist && hist.length > 0) {
+          evaluateStreakWithUsage(hist, data.screenTimeMs, goalMs);
+        } else {
+          const yesterdayData = await getYesterdaysScreenTime();
+          evaluateDayStreak(yesterdayData.screenTimeMs, goalMs, data.screenTimeMs);
+        }
+      } catch {
+        const yesterdayData = await getYesterdaysScreenTime();
+        evaluateDayStreak(yesterdayData.screenTimeMs, goalMs, data.screenTimeMs);
+      }
     } catch {
       // Fallback
     }
-  }, [goalMs, evaluateDayStreak, lastUpdated]);
+  }, [goalMs, evaluateDayStreak, evaluateStreakWithUsage, lastUpdated]);
 
   useEffect(() => {
     if (!showScreenTime) return;
@@ -149,15 +163,81 @@ export function ScreenTimeWidget() {
                 </Text>
                 {hasPermission !== false && (
                   <View style={styles.badgeRow}>
-                    {streak > 0 && (
-                      <View style={[styles.streakBadge, { backgroundColor: colors.accentMuted }]}>
-                        <Flame size={11} color={colors.accentTint} strokeWidth={2.2} />
-                        <Text style={[styles.streakText, { color: colors.accentTint }]}>
+                    {goalMs > 0 && screenTimeMs > goalMs ? (
+                      <View
+                        style={[
+                          styles.streakBadge,
+                          { backgroundColor: "rgba(239, 68, 68, 0.15)" },
+                        ]}
+                      >
+                        <AlertTriangle
+                          size={11}
+                          color={palette.error}
+                          strokeWidth={2.2}
+                        />
+                        <Text
+                          style={[
+                            styles.streakText,
+                            { color: palette.error },
+                          ]}
+                        >
+                          Limit Exceeded · 0d
+                        </Text>
+                      </View>
+                    ) : streak > 0 ? (
+                      <View
+                        style={[
+                          styles.streakBadge,
+                          { backgroundColor: colors.accentMuted },
+                        ]}
+                      >
+                        <Flame
+                          size={11}
+                          color={colors.accentTint}
+                          strokeWidth={2.2}
+                        />
+                        <Text
+                          style={[
+                            styles.streakText,
+                            { color: colors.accentTint },
+                          ]}
+                        >
                           {streak}d
                         </Text>
                       </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.streakBadge,
+                          { backgroundColor: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)" },
+                        ]}
+                      >
+                        <Flame
+                          size={11}
+                          color={colors.textTertiary}
+                          strokeWidth={2.2}
+                        />
+                        <Text
+                          style={[
+                            styles.streakText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          0d
+                        </Text>
+                      </View>
                     )}
-                    <Text style={[styles.timeText, { color: colors.accentTint }]}>
+                    <Text
+                      style={[
+                        styles.timeText,
+                        {
+                          color:
+                            goalMs > 0 && screenTimeMs > goalMs
+                              ? palette.error
+                              : colors.accentTint,
+                        },
+                      ]}
+                    >
                       {formatDuration(screenTimeMs)}
                     </Text>
                   </View>

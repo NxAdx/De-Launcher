@@ -28,6 +28,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Trash,
+  Trash2,
+  Info,
   Plus,
   Minus,
   ShieldAlert,
@@ -46,6 +48,7 @@ import { typography, spacing } from "@/src/theme/tokens";
 import { useAppStore } from "@/src/store/appStore";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { AppInfo, ScheduleType } from "@/src/types/app";
+import { uninstallApp, openAppInfo } from "@/modules/de-launcher-native";
 
 const INSPIRATION_CHIPS = [
   "Work Communication",
@@ -296,8 +299,8 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                     },
                   ]}
                 >
-                  <Sparkles size={14} color={isReasonValid ? "#FFFFFF" : colors.textSecondary} />
-                  <Text style={[styles.pinConfirmText, { color: isReasonValid ? "#FFFFFF" : colors.textSecondary }]}>
+                  <Sparkles size={14} color={isReasonValid ? colors.accentText : colors.textSecondary} />
+                  <Text style={[styles.pinConfirmText, { color: isReasonValid ? colors.accentText : colors.textSecondary }]}>
                     Pin to {targetLabel}
                   </Text>
                 </Pressable>
@@ -435,52 +438,56 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                 </Text>
               </Pressable>
 
+              {/* App Info */}
+              <Pressable
+                style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                onPress={() => {
+                  if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  openAppInfo(selectedApp.packageName);
+                  onClose();
+                }}
+              >
+                <Info size={18} color={colors.textPrimary} />
+                <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                  App Info
+                </Text>
+              </Pressable>
+
+              {/* Uninstall App (System apps cannot be uninstalled) */}
+              {!selectedApp.isSystem && (
+                <Pressable
+                  style={[
+                    styles.menuOption,
+                    { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: "rgba(239, 68, 68, 0.08)" },
+                  ]}
+                  onPress={() => {
+                    if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    uninstallApp(selectedApp.packageName);
+                    onClose();
+                  }}
+                >
+                  <Trash2 size={18} color={colors.error} />
+                  <Text style={[styles.menuOptionText, { color: colors.error }]}>
+                    Uninstall App
+                  </Text>
+                </Pressable>
+              )}
+
               {/* Dock Actions */}
               {isSelectedAppInDock && (
-                <>
-                  {dockPackages.indexOf(selectedApp.packageName) > 0 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveDockApp(selectedApp.packageName, "left");
-                        onClose();
-                      }}
-                    >
-                      <ArrowLeft size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Left in Dock
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {dockPackages.indexOf(selectedApp.packageName) < dockPackages.length - 1 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveDockApp(selectedApp.packageName, "right");
-                        onClose();
-                      }}
-                    >
-                      <ArrowRight size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Right in Dock
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  <Pressable
-                    style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                    onPress={() => {
-                      removeFromDock(selectedApp.packageName);
-                      onClose();
-                    }}
-                  >
-                    <Minus size={18} color={colors.textPrimary} />
-                    <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                      Remove from Dock
-                    </Text>
-                  </Pressable>
-                </>
+                <Pressable
+                  style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    removeFromDock(selectedApp.packageName);
+                    onClose();
+                  }}
+                >
+                  <Minus size={18} color={colors.textPrimary} />
+                  <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
+                    Remove from Dock
+                  </Text>
+                </Pressable>
               )}
 
               {/* Homescreen Actions */}
@@ -505,35 +512,6 @@ export function ContextMenu({ selectedApp, onClose }: ContextMenuProps) {
                       </Text>
                     </View>
                   </Pressable>
-                  {allowedPackages.indexOf(selectedApp.packageName) > 0 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveApp(selectedApp.packageName, "left");
-                        onClose();
-                      }}
-                    >
-                      <ArrowLeft size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Left on Home
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {allowedPackages.indexOf(selectedApp.packageName) < allowedPackages.length - 1 && (
-                    <Pressable
-                      style={[styles.menuOption, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        moveApp(selectedApp.packageName, "right");
-                        onClose();
-                      }}
-                    >
-                      <ArrowRight size={18} color={colors.textPrimary} />
-                      <Text style={[styles.menuOptionText, { color: colors.textPrimary }]}>
-                        Move Right on Home
-                      </Text>
-                    </Pressable>
-                  )}
 
                   {!isSelectedAppInDock && dockPackages.length < maxDockIcons && (
                     <Pressable

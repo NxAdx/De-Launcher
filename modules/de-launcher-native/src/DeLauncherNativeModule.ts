@@ -27,10 +27,21 @@ export interface AppUsageItem {
   timeMs: number;
 }
 
+export interface DailyUsageHistoryItem {
+  date: string;
+  dayOfWeek: string;
+  dayOfMonth: number;
+  screenTimeMs: number;
+  unlockCount: number;
+  isToday: boolean;
+}
+
 declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModuleEvents> {
   // App Management
   getInstalledApps(): Promise<AppInfo[]>;
   launchApp(packageName: string): Promise<void>;
+  uninstallApp(packageName: string): Promise<boolean>;
+  openAppInfo(packageName: string): Promise<boolean>;
   updateWhitelist(whitelist: string[]): Promise<void>;
   updateFocusLists(blockedPackages: string[], intentPausePackages: string[]): Promise<void>;
   setReturnHomeConfig(enabled: boolean, timeoutMinutes: number): Promise<void>;
@@ -50,6 +61,8 @@ declare class DeLauncherNativeModule extends NativeModule<DeLauncherNativeModule
   openUsageStatsSettings(): Promise<void>;
   openDigitalWellbeing(): Promise<boolean>;
   getScreenTimeToday(): Promise<ScreenTimeInfo>;
+  getYesterdaysScreenTime(): Promise<ScreenTimeInfo>;
+  getScreenTimeHistory(days: number): Promise<DailyUsageHistoryItem[]>;
   getTopAppUsage(limit: number): Promise<AppUsageItem[]>;
 
   // System & Gestures
@@ -74,6 +87,8 @@ const expoGoFallback = {
       `[DeLauncherNative] launchApp(${packageName}) requires an Android development build.`
     );
   },
+  uninstallApp: async () => false,
+  openAppInfo: async () => false,
   updateWhitelist: async () => {},
   updateFocusLists: async () => {},
   setReturnHomeConfig: async () => {},
@@ -97,6 +112,8 @@ const expoGoFallback = {
   openUsageStatsSettings: async () => {},
   openDigitalWellbeing: async () => false,
   getScreenTimeToday: async () => ({ screenTimeMs: 0, unlockCount: 0 }),
+  getYesterdaysScreenTime: async () => ({ screenTimeMs: 0, unlockCount: 0 }),
+  getScreenTimeHistory: async () => [],
   getTopAppUsage: async () => [],
   openClockApp: async () => false,
   openCalendarApp: async () => false,

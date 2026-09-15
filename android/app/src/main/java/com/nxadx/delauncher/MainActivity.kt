@@ -22,6 +22,15 @@ class MainActivity : ReactActivity() {
     // @generated end expo-splashscreen
     super.onCreate(null)
     enableHighRefreshRate()
+
+    // Consume back presses at root activity level so Android never finishes or reloads launcher
+    onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+      override fun handleOnBackPressed() {
+        try {
+          reactActivityDelegate?.onBackPressed()
+        } catch (_: Exception) {}
+      }
+    })
   }
 
   private fun enableHighRefreshRate() {
@@ -76,22 +85,13 @@ class MainActivity : ReactActivity() {
   }
 
   /**
-    * Align the back button behavior with Android S
-    * where moving root activities to background instead of finishing activities.
-    * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
+    * Prevent home launcher from exiting, finishing, or moving to back on back press.
+    * When on the root home screen, back press should be safely consumed so the launcher
+    * does not reload or restart its view.
     */
   override fun invokeDefaultOnBackPressed() {
-      if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
-          if (!moveTaskToBack(false)) {
-              // For non-root activities, use the default implementation to finish them.
-              super.invokeDefaultOnBackPressed()
-          }
-          return
-      }
-
-      // Use the default back button implementation on Android S
-      // because it's doing more than [Activity.moveTaskToBack] in fact.
-      super.invokeDefaultOnBackPressed()
+      // As a home launcher root activity, safely consume unhandled back presses
+      // without moving task to back or finishing, preventing reload/flash cycles.
   }
 
   private var lastHomePressedTime = 0L

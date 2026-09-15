@@ -17,10 +17,11 @@ import {
   StatusBar as RNStatusBar,
   AppState,
   Alert,
+  BackHandler,
 } from "react-native";
 import * as IntentLauncher from "expo-intent-launcher";
 import Animated, { FadeInUp, runOnJS } from "react-native-reanimated";
-import { router, useLocalSearchParams, Redirect } from "expo-router";
+import { router, useLocalSearchParams, Redirect, useFocusEffect } from "expo-router";
 import { Settings, Search } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -291,6 +292,27 @@ export default function HomeScreen() {
   const handleFolderPress = useCallback((folder: FolderInfo) => {
     setSelectedFolder(folder);
   }, []);
+
+  // Intercept Android hardware back press when on home screen
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (selectedApp) {
+          setSelectedApp(null);
+          return true;
+        }
+        if (selectedFolder) {
+          setSelectedFolder(null);
+          return true;
+        }
+        // On root homescreen, consume back press to prevent Android activity reload/bounce
+        return true;
+      };
+
+      const backSub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => backSub.remove();
+    }, [selectedApp, selectedFolder])
+  );
 
   if (!hasCompletedOnboarding) {
     return <Redirect href={"/onboarding" as any} />;

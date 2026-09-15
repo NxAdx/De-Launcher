@@ -44,6 +44,7 @@ interface AppState {
   setAppFocusState: (packageName: string, state: AppFocusState) => void;
   setAllowedPackages: (packages: string[]) => void;
   removeFromHome: (packageName: string) => void;
+  removePackageGlobally: (packageName: string) => void;
   hideApp: (packageName: string) => void;
   unhideApp: (packageName: string) => void;
   pinAppWithReason: (packageName: string, reason: string, target: "home" | "dock") => void;
@@ -172,6 +173,49 @@ export const useAppStore = create<AppState>()(
       removeFromHome: (packageName) => {
         set({
           allowedPackages: (get().allowedPackages || []).filter((p) => p !== packageName),
+        });
+        get().syncNativeWhitelist();
+      },
+
+      removePackageGlobally: (packageName) => {
+        set((state) => {
+          const installedApps = (state.installedApps || []).filter((a) => a.packageName !== packageName);
+          const allowedPackages = (state.allowedPackages || []).filter((p) => p !== packageName);
+          const dockPackages = (state.dockPackages || []).filter((p) => p !== packageName);
+          const intentPausePackages = (state.intentPausePackages || []).filter((p) => p !== packageName);
+          const blockedPackages = (state.blockedPackages || []).filter((p) => p !== packageName);
+          const hiddenPackages = (state.hiddenPackages || []).filter((p) => p !== packageName);
+
+          const folders = (state.folders || []).map((f) => ({
+            ...f,
+            packageNames: f.packageNames.filter((p) => p !== packageName),
+          })).filter((f) => f.packageNames.length > 0);
+
+          const appReasons = { ...(state.appReasons || {}) };
+          delete appReasons[packageName];
+
+          const scheduleRules = { ...(state.scheduleRules || {}) };
+          delete scheduleRules[packageName];
+
+          const exemptions = { ...(state.exemptions || {}) };
+          delete exemptions[packageName];
+
+          const activeSessions = { ...(state.activeSessions || {}) };
+          delete activeSessions[packageName];
+
+          return {
+            installedApps,
+            allowedPackages,
+            dockPackages,
+            intentPausePackages,
+            blockedPackages,
+            hiddenPackages,
+            folders,
+            appReasons,
+            scheduleRules,
+            exemptions,
+            activeSessions,
+          };
         });
         get().syncNativeWhitelist();
       },

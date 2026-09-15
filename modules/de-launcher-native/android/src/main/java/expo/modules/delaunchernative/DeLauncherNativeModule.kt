@@ -16,7 +16,7 @@ class DeLauncherNativeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("DeLauncherNative")
 
-    Events("onHomePressed")
+    Events("onHomePressed", "onPackageRemoved", "onPackageAdded", "onPackageChanged")
 
     AsyncFunction("getInstalledApps") { ->
       appContext.reactContext?.let { context ->
@@ -272,6 +272,38 @@ class DeLauncherNativeModule : Module() {
       }
     }
 
+    AsyncFunction("uninstallApp") { packageName: String ->
+      appContext.reactContext?.let { context ->
+        try {
+          val intent = Intent(Intent.ACTION_DELETE).apply {
+            data = android.net.Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+          true
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to start uninstallation for $packageName", e)
+          false
+        }
+      } ?: false
+    }
+
+    AsyncFunction("openAppInfo") { packageName: String ->
+      appContext.reactContext?.let { context ->
+        try {
+          val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+          true
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to open app info for $packageName", e)
+          false
+        }
+      } ?: false
+    }
+
     AsyncFunction("updateWhitelist") { whitelist: List<String> ->
       appContext.reactContext?.let { context ->
         val prefs = context.getSharedPreferences("delauncher_prefs", android.content.Context.MODE_PRIVATE)
@@ -415,6 +447,37 @@ class DeLauncherNativeModule : Module() {
           )
         }
       } ?: mapOf("screenTimeMs" to 0L, "unlockCount" to 0)
+    }
+
+    AsyncFunction("getYesterdaysScreenTime") { ->
+      appContext.reactContext?.let { context ->
+        try {
+          val wrapper = expo.modules.delaunchernative.usagestats.EventLogWrapper(context)
+          val (totalMs, unlockCount) = wrapper.getYesterdaysUsage()
+          mapOf(
+            "screenTimeMs" to totalMs,
+            "unlockCount" to unlockCount
+          )
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get yesterday screen time", e)
+          mapOf(
+            "screenTimeMs" to 0L,
+            "unlockCount" to 0
+          )
+        }
+      } ?: mapOf("screenTimeMs" to 0L, "unlockCount" to 0)
+    }
+
+    AsyncFunction("getScreenTimeHistory") { days: Int ->
+      appContext.reactContext?.let { context ->
+        try {
+          val wrapper = expo.modules.delaunchernative.usagestats.EventLogWrapper(context)
+          wrapper.getDailyUsageHistory(days)
+        } catch (e: Exception) {
+          android.util.Log.e("DeLauncherNative", "Failed to get screen time history", e)
+          emptyList<Map<String, Any>>()
+        }
+      } ?: emptyList<Map<String, Any>>()
     }
 
     AsyncFunction("getTopAppUsage") { limit: Int ->
@@ -644,6 +707,23 @@ class DeLauncherNativeModule : Module() {
           } else {
             context.registerReceiver(homePressedReceiver, filter)
           }
+
+          // Register LauncherApps.Callback for real-time app uninstall and install events
+          val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as? android.content.pm.LauncherApps
+          packageCallback = object : android.content.pm.LauncherApps.Callback() {
+            override fun onPackageRemoved(packageName: String, user: android.os.UserHandle) {
+              this@DeLauncherNativeModule.sendEvent("onPackageRemoved", mapOf("packageName" to packageName))
+            }
+            override fun onPackageAdded(packageName: String, user: android.os.UserHandle) {
+              this@DeLauncherNativeModule.sendEvent("onPackageAdded", mapOf("packageName" to packageName))
+            }
+            override fun onPackageChanged(packageName: String, user: android.os.UserHandle) {
+              this@DeLauncherNativeModule.sendEvent("onPackageChanged", mapOf("packageName" to packageName))
+            }
+            override fun onPackagesAvailable(packageNames: Array<out String>?, user: android.os.UserHandle?, replacing: Boolean) {}
+            override fun onPackagesUnavailable(packageNames: Array<out String>?, user: android.os.UserHandle?, replacing: Boolean) {}
+          }
+          packageCallback?.let { launcherApps?.registerCallback(it) }
         }
       } catch (t: Throwable) {
         android.util.Log.e("DeLauncherNative", "Error in OnCreate initialization", t)
@@ -657,6 +737,11 @@ class DeLauncherNativeModule : Module() {
           homePressedReceiver?.let {
             context.unregisterReceiver(it)
             homePressedReceiver = null
+          }
+          val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as? android.content.pm.LauncherApps
+          packageCallback?.let {
+            launcherApps?.unregisterCallback(it)
+            packageCallback = null
           }
         }
       } catch (e: Exception) {
@@ -676,6 +761,7 @@ class DeLauncherNativeModule : Module() {
   private var appWidgetManager: android.appwidget.AppWidgetManager? = null
   private var appWidgetHost: android.appwidget.AppWidgetHost? = null
   private var homePressedReceiver: android.content.BroadcastReceiver? = null
+  private var packageCallback: android.content.pm.LauncherApps.Callback? = null
   private val APPWIDGET_HOST_ID = 1024
 
   private fun isRealMatch(ri: android.content.pm.ResolveInfo?): Boolean {

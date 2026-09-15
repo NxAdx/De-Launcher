@@ -44,15 +44,13 @@ import {
   EyeOff,
   Eye,
   X,
-  Sun,
-  Moon,
 } from "lucide-react-native";
 import { AppIcon } from "@/src/components/AppIcon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as IntentLauncher from "expo-intent-launcher";
 import { useTheme } from "@/src/theme/ThemeContext";
-import { typography, spacing, ThemeAccent, ThemeMode, ACCENT_PRESETS } from "@/src/theme/tokens";
+import { typography, spacing, ThemeAccent, ACCENT_PRESETS } from "@/src/theme/tokens";
 import {
   useSettingsStore,
   IconSizeOption,
@@ -185,8 +183,6 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   // Settings store
-  const theme = useSettingsStore((s) => s.theme) || "dark";
-  const setTheme = useSettingsStore((s) => s.setTheme);
   const themeAccent = useSettingsStore((s) => s.themeAccent) || "sage";
   const setThemeAccent = useSettingsStore((s) => s.setThemeAccent);
   const gridColumns = useSettingsStore((s) => s.gridColumns);
@@ -349,43 +345,6 @@ export default function SettingsScreen() {
         {/* ─── Appearance ───────────────────────────── */}
         <SectionHeader title="Appearance & Icons" colors={colors} />
         <View style={styles.sectionGroup}>
-          <SettingRow
-            icon={isDark ? <Moon size={20} color={colors.accent} /> : <Sun size={20} color={colors.accent} />}
-            label="Theme Mode"
-            description={isDark ? "Dark OLED Minimalism" : "Clean Light Paper"}
-            colors={colors}
-            isDark={isDark}
-            right={
-              <View style={styles.segmentContainer}>
-                {(["dark", "light"] as ThemeMode[]).map((modeOpt) => {
-                  const isSelected = theme === modeOpt;
-                  return (
-                    <Pressable
-                      key={modeOpt}
-                      onPress={() => {
-                        if (hapticFeedback) Haptics.selectionAsync();
-                        setTheme(modeOpt);
-                      }}
-                      style={[
-                        styles.segmentBtn,
-                        isSelected && { backgroundColor: colors.accent },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          { color: isSelected ? colors.accentText : colors.textSecondary },
-                        ]}
-                      >
-                        {modeOpt === "dark" ? "Dark" : "Light"}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            }
-          />
-
           <SettingRow
             icon={<Palette size={20} color={colors.accent} />}
             label="Theme Accent"

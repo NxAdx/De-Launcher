@@ -107,6 +107,27 @@ function RootLayoutContent() {
     }
   }, []);
 
+  // Listen for package installations and removals in real-time
+  useEffect(() => {
+    try {
+      const removeSub = DeLauncherNativeModule.addListener("onPackageRemoved", (event: { packageName: string }) => {
+        if (event?.packageName) {
+          useAppStore.getState().removePackageGlobally(event.packageName);
+        }
+      });
+      const addSub = DeLauncherNativeModule.addListener("onPackageAdded", async () => {
+        const apps = await getInstalledApps();
+        useAppStore.getState().setInstalledApps(apps);
+      });
+      return () => {
+        removeSub.remove();
+        addSub.remove();
+      };
+    } catch (e) {
+      console.warn("Failed to subscribe to package events:", e);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     let backgroundTask: ReturnType<typeof InteractionManager.runAfterInteractions> | null = null;

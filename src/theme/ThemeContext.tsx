@@ -21,25 +21,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const mode = useSettingsStore((s) => s.theme) || "dark";
+  // De-Launcher is strictly locked to its signature OLED Deep Dark mode
+  const mode: ThemeMode = "dark";
   const themeAccent = useSettingsStore((s) => s.themeAccent) || "sage";
-  const setStoreTheme = useSettingsStore((s) => s.setTheme);
   const setStoreAccent = useSettingsStore((s) => s.setThemeAccent);
 
-  const colors = useMemo(() => getThemeColors(mode, themeAccent), [mode, themeAccent]);
-  const isDark = mode === "dark";
+  const colors = useMemo(() => getThemeColors("dark", themeAccent), [themeAccent]);
+  const isDark = true;
 
   const toggleTheme = useCallback(() => {
-    const nextMode: ThemeMode = mode === "dark" ? "light" : "dark";
-    setStoreTheme(nextMode);
-  }, [mode, setStoreTheme]);
+    // No-op: Dark theme is locked
+  }, []);
 
-  const setTheme = useCallback(
-    (newMode: ThemeMode) => {
-      setStoreTheme(newMode);
-    },
-    [setStoreTheme]
-  );
+  const setTheme = useCallback((_newMode: ThemeMode) => {
+    // No-op: Dark theme is locked
+  }, []);
 
   const setAccent = useCallback(
     (newAccent: ThemeAccent) => {
